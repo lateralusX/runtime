@@ -13,7 +13,7 @@ using Xunit.Abstractions;
 
 namespace System.Net.Sockets.Tests
 {
-    // [Collection(nameof(NoParallelTests))]
+    [Collection(nameof(NoParallelTests))]
     public abstract class SendReceive_UDP<T> : SocketTestHelperBase<T> where T : SocketHelperBase, new()
     {
         protected SendReceive_UDP(ITestOutputHelper output) : base(output)
