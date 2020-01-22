@@ -13,48 +13,35 @@ using Xunit.Abstractions;
 
 namespace System.Net.Sockets.Tests
 {
-    public abstract class SendReceive<T> : SocketTestHelperBase<T> where T : SocketHelperBase, new()
+    // [Collection(nameof(NoParallelTests))]
+    public abstract class SendReceive_UDP<T> : SocketTestHelperBase<T> where T : SocketHelperBase, new()
     {
-        public SendReceive(ITestOutputHelper output) : base(output) {}
-
-        [Theory]
-        [InlineData(null, 0, 0)] // null array
-        [InlineData(1, -1, 0)] // offset low
-        [InlineData(1, 2, 0)] // offset high
-        [InlineData(1, 0, -1)] // count low
-        [InlineData(1, 1, 2)] // count high
-        public async Task InvalidArguments_Throws(int? length, int offset, int count)
+        protected SendReceive_UDP(ITestOutputHelper output) : base(output)
         {
-            if (!ValidatesArrayArguments) return;
-
-            using (Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
-            {
-                Type expectedExceptionType = length == null ? typeof(ArgumentNullException) : typeof(ArgumentOutOfRangeException);
-
-                var validBuffer = new ArraySegment<byte>(new byte[1]);
-                var invalidBuffer = new FakeArraySegment { Array = length != null ? new byte[length.Value] : null, Offset = offset, Count = count }.ToActual();
-
-                await Assert.ThrowsAsync(expectedExceptionType, () => ReceiveAsync(s, invalidBuffer));
-                await Assert.ThrowsAsync(expectedExceptionType, () => ReceiveAsync(s, new List<ArraySegment<byte>> { invalidBuffer }));
-                await Assert.ThrowsAsync(expectedExceptionType, () => ReceiveAsync(s, new List<ArraySegment<byte>> { validBuffer, invalidBuffer }));
-
-                await Assert.ThrowsAsync(expectedExceptionType, () => SendAsync(s, invalidBuffer));
-                await Assert.ThrowsAsync(expectedExceptionType, () => SendAsync(s, new List<ArraySegment<byte>> { invalidBuffer }));
-                await Assert.ThrowsAsync(expectedExceptionType, () => SendAsync(s, new List<ArraySegment<byte>> { validBuffer, invalidBuffer }));
-            }
         }
 
-        [ActiveIssue("https://github.com/dotnet/corefx/issues/16945")]
         [OuterLoop]
         [Theory]
         [MemberData(nameof(Loopbacks))]
-        public async Task SendToRecvFrom_Datagram_UDP(IPAddress loopbackAddress)
+        public async Task SendToRecvFrom_Datagram_UDP_OuterLoop(IPAddress loopbackAddress)
+        {
+            await Run_SendToRecvFrom_Datagram_UDP(loopbackAddress);
+        }
+
+        [Theory]
+        [MemberData(nameof(Loopbacks))]
+        public async Task SendToRecvFrom_Datagram_UDP_InnerLoop(IPAddress loopbackAddress)
+        {
+            await Run_SendToRecvFrom_Datagram_UDP(loopbackAddress);
+        }
+
+        private async Task Run_SendToRecvFrom_Datagram_UDP(IPAddress loopbackAddress)
         {
             IPAddress leftAddress = loopbackAddress, rightAddress = loopbackAddress;
 
             const int DatagramSize = 256;
             const int DatagramsToSend = 256;
-            const int AckTimeout = 10000;
+            const int AckTimeout = 500;
             const int TestTimeout = 30000;
 
             var left = new Socket(leftAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
@@ -63,8 +50,8 @@ namespace System.Net.Sockets.Tests
             var right = new Socket(rightAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             right.BindToAnonymousPort(rightAddress);
 
-            var leftEndpoint = (IPEndPoint)left.LocalEndPoint;
-            var rightEndpoint = (IPEndPoint)right.LocalEndPoint;
+            var leftEndpoint = (IPEndPoint) left.LocalEndPoint;
+            var rightEndpoint = (IPEndPoint) right.LocalEndPoint;
 
             var receiverAck = new SemaphoreSlim(0);
             var senderAck = new SemaphoreSlim(0);
@@ -104,12 +91,13 @@ namespace System.Net.Sockets.Tests
                 for (int i = 0; i < DatagramsToSend; i++)
                 {
                     random.NextBytes(sendBuffer);
-                    sendBuffer[0] = (byte)i;
+                    sendBuffer[0] = (byte) i;
 
                     int sent = await SendToAsync(right, new ArraySegment<byte>(sendBuffer), leftEndpoint);
 
                     bool gotAck = await receiverAck.WaitAsync(AckTimeout);
-                    Assert.True(gotAck, $"{DateTime.Now}: Timeout waiting {AckTimeout} for receiverAck in iteration {i} after sending {sent}. Receiver is in {leftThread.Status}");
+                    Assert.True(gotAck,
+                        $"{DateTime.Now}: Timeout waiting {AckTimeout} for receiverAck in iteration {i} after sending {sent}. Receiver is in {leftThread.Status}");
                     senderAck.Release();
 
                     Assert.Equal(DatagramSize, sent);
@@ -121,9 +109,60 @@ namespace System.Net.Sockets.Tests
             for (int i = 0; i < DatagramsToSend; i++)
             {
                 Assert.NotNull(receivedChecksums[i]);
-                Assert.Equal(sentChecksums[i], (uint)receivedChecksums[i]);
+                Assert.Equal(sentChecksums[i], (uint) receivedChecksums[i]);
             }
         }
+    }
+
+    [TestCategory(nameof(NoParallelTests))]
+    public class SendReceive_UDP_Task : SendReceive_UDP<SocketHelperTask>
+    {
+        public SendReceive_UDP_Task(ITestOutputHelper output) : base(output)
+        {
+        }
+    }
+
+    [TestCategory(nameof(NoParallelTests))]
+    public class SendReceive_UDP_Eap : SendReceive_UDP<SocketHelperEap>
+    {
+        public SendReceive_UDP_Eap(ITestOutputHelper output) : base(output)
+        {
+        }
+    }
+
+    public abstract class SendReceive<T> : SocketTestHelperBase<T> where T : SocketHelperBase, new()
+    {
+        public SendReceive(ITestOutputHelper output) : base(output) {}
+
+        [Theory]
+        [InlineData(null, 0, 0)] // null array
+        [InlineData(1, -1, 0)] // offset low
+        [InlineData(1, 2, 0)] // offset high
+        [InlineData(1, 0, -1)] // count low
+        [InlineData(1, 1, 2)] // count high
+        public async Task InvalidArguments_Throws(int? length, int offset, int count)
+        {
+            if (!ValidatesArrayArguments) return;
+
+            using (Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                Type expectedExceptionType = length == null ? typeof(ArgumentNullException) : typeof(ArgumentOutOfRangeException);
+
+                var validBuffer = new ArraySegment<byte>(new byte[1]);
+                var invalidBuffer = new FakeArraySegment { Array = length != null ? new byte[length.Value] : null, Offset = offset, Count = count }.ToActual();
+
+                await Assert.ThrowsAsync(expectedExceptionType, () => ReceiveAsync(s, invalidBuffer));
+                await Assert.ThrowsAsync(expectedExceptionType, () => ReceiveAsync(s, new List<ArraySegment<byte>> { invalidBuffer }));
+                await Assert.ThrowsAsync(expectedExceptionType, () => ReceiveAsync(s, new List<ArraySegment<byte>> { validBuffer, invalidBuffer }));
+
+                await Assert.ThrowsAsync(expectedExceptionType, () => SendAsync(s, invalidBuffer));
+                await Assert.ThrowsAsync(expectedExceptionType, () => SendAsync(s, new List<ArraySegment<byte>> { invalidBuffer }));
+                await Assert.ThrowsAsync(expectedExceptionType, () => SendAsync(s, new List<ArraySegment<byte>> { validBuffer, invalidBuffer }));
+            }
+        }
+
+
+
 
         [OuterLoop]
         [Theory]
