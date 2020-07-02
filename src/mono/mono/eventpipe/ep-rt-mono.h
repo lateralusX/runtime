@@ -35,6 +35,9 @@
 #undef EP_ALWAYS_INLINE
 #define EP_ALWAYS_INLINE MONO_ALWAYS_INLINE
 
+#undef EP_NEVER_INLINE
+#define EP_NEVER_INLINE MONO_NEVER_INLINE
+
 #undef EP_ALIGN_UP
 #define EP_ALIGN_UP(val,align) ALIGN_TO(val,align)
 
@@ -795,6 +798,17 @@ ep_rt_wait_event_get_wait_handle (ep_rt_wait_event_handle_t *wait_event)
 	return (EventPipeWaitHandle)wait_event;
 }
 
+static
+inline
+bool
+ep_rt_wait_event_is_valid (ep_rt_wait_event_handle_t *wait_event)
+{
+	if (wait_event == NULL || wait_event->event == NULL || wait_event->event == INVALID_HANDLE_VALUE)
+		return false;
+	else
+		return true;
+}
+
 /*
  * Misc.
  */
@@ -1191,6 +1205,39 @@ static
 inline
 void
 ep_rt_utf16_string_free (ep_char16_t *str)
+{
+	g_free (str);
+}
+
+static
+inline
+wchar_t *
+ep_rt_utf8_to_wcs_string (
+	const ep_char8_t *str,
+	size_t len)
+{
+	ep_return_null_if_nok (str != NULL);
+
+	wchar_t *wcstr = NULL;
+	mbstate_t state;
+
+	memset (&state, 0, sizeof state);
+
+	if (len < 0)
+		len = ep_rt_utf8_string_len (str);
+
+	wcstr = g_malloc ((len + 1) * sizeof (wchar_t));
+	if (wcstr) {
+		mbsrtowcs (wcstr, str, len + 1, &state);
+		wcstr [len] = L'\0';
+	}
+	return wcstr;
+}
+
+static
+inline
+void
+ep_rt_wcs_string_free (wchar_t *str)
 {
 	g_free (str);
 }

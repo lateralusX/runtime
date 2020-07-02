@@ -323,7 +323,8 @@ ep_ipc_stream_write (
 	IpcStream *stream,
 	const uint8_t *buffer,
 	uint32_t bytes_to_write,
-	uint32_t *bytes_written);
+	uint32_t *bytes_written,
+	uint32_t timeout);
 
 /*
  * IpcStreamWriter.

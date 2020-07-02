@@ -16,6 +16,7 @@
 #define EP_YIELD_WHILE(condition) ep_rt_redefine
 
 #define EP_ALWAYS_INLINE ep_rt_redefine
+#define EP_NEVER_INLINE ep_rt_redefine
 #define EP_ALIGN_UP(val,align) ep_rt_redefine
 
 #define EP_RT_DECLARE_LIST(list_name, list_type, item_type) \
@@ -321,6 +322,10 @@ static
 EventPipeWaitHandle
 ep_rt_wait_event_get_handle (ep_rt_wait_event_handle_t *wait_event);
 
+static
+bool
+ep_rt_wait_event_is_valid (ep_rt_wait_event_handle_t *wait_event);
+
 /*
  * Misc.
  */
@@ -489,6 +494,12 @@ ep_rt_utf16_to_utf8_string (
 static
 void
 ep_rt_utf16_string_free (ep_char16_t *str);
+
+static
+wchar_t *
+ep_rt_utf8_to_wcs_string (
+	const ep_char8_t *str,
+	size_t len);
 
 static
 const ep_char8_t *

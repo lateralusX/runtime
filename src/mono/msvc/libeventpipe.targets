@@ -5,6 +5,15 @@
     <ExcludeEventPipeFromBuild Condition="'$(MONO_ENABLE_PERFTRACING)'=='' Or '$(MONO_ENABLE_PERFTRACING)'!='true'">true</ExcludeEventPipeFromBuild>
   </PropertyGroup>
   <ItemGroup Label="libeventpipe">
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.h"/>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-protocol.h"/>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-server.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-server.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ep.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>

@@ -8,6 +8,11 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/mono $(GLIB_CFLAGS) $(SHARED_CFLAG
 noinst_LTLIBRARIES = libeventpipe.la
 
 eventpipe_sources = \
+	ds-ipc.c	\
+	ds-ipc.h	\
+	ds-protocol.h	\
+	ds-server.c		\
+	ds-server.h		\
 	ep.c		\
 	ep.h		\
 	ep-block.c	\
