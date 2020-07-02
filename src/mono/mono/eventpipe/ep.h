@@ -261,7 +261,7 @@ inline
 bool
 ep_walk_managed_stack_for_current_thread (EventPipeStackContents *stack_contents)
 {
-	//TODO: Implement.
+	// TODO: Implement.
 	ep_stack_contents_reset (stack_contents);
 	return ep_rt_walk_managed_stack_for_current_thread (stack_contents);
 }
@@ -303,4 +303,4 @@ ep_shutdown (void)
 }
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __EVENTPIPE_H__ **/
+#endif /* __EVENTPIPE_H__ */

@@ -378,4 +378,4 @@ ep_stack_block_clear (EventPipeStackBlock *stack_block)
 }
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __EVENTPIPE_BLOCK_H__ **/
+#endif /* __EVENTPIPE_BLOCK_H__ */

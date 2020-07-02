@@ -3020,4 +3020,10 @@ mono_arch_load_function (MonoJitICallId jit_icall_id);
 MonoGenericContext
 mono_get_generic_context_from_stack_frame (MonoJitInfo *ji, gpointer generic_info);
 
+void
+mono_set_os_args (int argc, char **argv);
+
+char *
+mono_get_os_cmd_line (void);
+
 #endif /* __MONO_MINI_H__ */

@@ -180,4 +180,4 @@ ep_session_set_ipc_streaming_enabled (
 	bool enabled);
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __EVENTPIPE_SESSION_H__ **/
+#endif /* __EVENTPIPE_SESSION_H__ */

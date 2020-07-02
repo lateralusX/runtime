@@ -540,7 +540,7 @@ test_buffer_manager_perf (void)
 	float total_events_written_per_sec = (float)total_events_written / (total_accumulted_time_sec ? total_accumulted_time_sec : 1.0);
 
 	// Measured number of events/second for one thread.
-	//TODO: Setup acceptable pass/failure metrics.
+	// TODO: Setup acceptable pass/failure metrics.
 	printf ("\n\tPerformance stats:\n");
 	printf ("\t\tTotal number of events: %i\n", total_events_written);
 	printf ("\t\tTotal time in sec: %.2f\n\t\tTotal number of events written per sec/core: %.2f\n", total_accumulted_time_sec, total_events_written_per_sec);

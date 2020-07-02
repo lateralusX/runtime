@@ -76,6 +76,7 @@
 
 #ifdef ENABLE_PERFTRACING
 #include <mono/eventpipe/ep.h>
+#include <mono/eventpipe/ds-server.h>
 #endif
 
 #include "mini.h"
@@ -4558,7 +4559,6 @@ mini_init (const char *filename, const char *runtime_version)
 
 #if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
 	ep_init ();
-	ep_finish_init ();
 #endif
 
 	if (mono_aot_only) {
@@ -4629,6 +4629,10 @@ mini_init (const char *filename, const char *runtime_version)
 	MONO_PROFILER_RAISE (thread_name, (MONO_NATIVE_THREAD_ID_TO_UINT (mono_native_thread_id_get ()), "Main"));
 #endif
 	mono_threads_set_runtime_startup_finished ();
+
+#if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
+	ep_finish_init ();
+#endif
 
 #ifdef ENABLE_EXPERIMENT_TIERED
 	if (!mono_compile_aot) {
@@ -5014,6 +5018,7 @@ mini_cleanup (MonoDomain *domain)
 	mini_get_interp_callbacks ()->cleanup ();
 #if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
 	ep_shutdown ();
+	ds_server_shutdown ();
 #endif
 }
 #else
@@ -5316,3 +5321,19 @@ mono_runtime_install_custom_handlers_usage (void)
 		 "No handlers supported on current platform.\n");
 }
 #endif /* HOST_WIN32 */
+
+static int mini_argc = 0;
+static char **mini_argv = NULL;
+
+void
+mono_set_os_args (int argc, char **argv)
+{
+	mini_argc = argc;
+	mini_argv = argv;
+}
+
+char *
+mono_get_os_cmd_line (void)
+{
+	return mono_runtime_get_cmd_line (mini_argc, mini_argv);
+}

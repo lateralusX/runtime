@@ -114,6 +114,29 @@ profiler_eventpipe_thread_exited (MonoProfiler *prof, uintptr_t tid)
 	eventpipe_thread_exited ();
 }
 
+static
+gpointer
+eventpipe_thread_attach (gboolean background_thread)
+{
+	MonoThread *thread = NULL;
+
+	// NOTE, under netcore, only root domain exists.
+	if (!mono_thread_current ()) {
+		thread = mono_thread_attach (mono_get_root_domain ());
+		if (background_thread)
+			mono_thread_set_state (thread, ThreadState_Background);
+	}
+
+	return thread;
+}
+
+static
+void
+eventpipe_thread_detach (gpointer thread)
+{
+	mono_thread_detach ((MonoThread *)thread);
+}
+
 void
 mono_eventpipe_init (
 	EventPipeMonoFuncTable *table,
@@ -144,6 +167,11 @@ mono_eventpipe_init (
 		table->ep_rt_mono_valloc = mono_valloc;
 		table->ep_rt_mono_vfree = mono_vfree;
 		table->ep_rt_mono_valloc_granule = mono_valloc_granule;
+		table->ep_rt_mono_thread_platform_create_thread = mono_thread_platform_create_thread;
+		table->ep_rt_mono_thread_attach = eventpipe_thread_attach;
+		table->ep_rt_mono_thread_detach = eventpipe_thread_detach;
+		table->ep_rt_mono_get_os_cmd_line = mono_get_os_cmd_line;
+		table->ep_rt_mono_get_managed_cmd_line = mono_runtime_get_managed_cmd_line;
 	}
 
 	thread_holder_alloc_callback_func = thread_holder_alloc_func;
