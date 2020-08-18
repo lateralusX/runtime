@@ -43,17 +43,15 @@
 #undef DS_LOG_WARNING_2
 #define DS_LOG_WARNING_2(msg, data1, data2)
 
-typedef struct _rt_mono_array_internal_t ds_rt_connection_state_array_t;
-typedef struct _rt_mono_array_iterator_internal_t ds_rt_connection_state_array_iterator_t;
-
-typedef struct _rt_mono_array_internal_t ds_rt_ipc_poll_handle_array_t;
-typedef struct _rt_mono_array_iterator_internal_t ds_rt_ipc_poll_handle_array_iterator_t;
-
-#define DS_RT_DEFINE_ARRAY(array_name, array_type, item_type) \
-	EP_RT_DEFINE_ARRAY_PREFIX(ds, array_name, array_type, item_type)
+#define DS_RT_DEFINE_ARRAY(array_name, array_type, iterator_type, item_type) \
+	EP_RT_DEFINE_ARRAY_PREFIX(ds, array_name, array_type, iterator_type, item_type)
 
 #define DS_RT_DEFINE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
 	EP_RT_DEFINE_ARRAY_ITERATOR_PREFIX(ds, array_name, array_type, iterator_type, item_type)
+
+/*
+ * DiagnosticsConfiguration.
+ */
 
 static
 inline
@@ -88,6 +86,20 @@ ds_rt_config_value_get_diagnostics_monitor_pause_on_start (void)
 	g_free (value);
 	return enable;
 }
+
+/*
+ * DiagnosticsIpcPollHandle.
+ */
+
+DS_RT_DEFINE_ARRAY (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_ipc_poll_handle_array_iterator_t, DiagnosticsIpcPollHandle)
+DS_RT_DEFINE_ARRAY_ITERATOR (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_ipc_poll_handle_array_iterator_t, DiagnosticsIpcPollHandle)
+
+/*
+ * IpcStreamFactoryConnectionState.
+ */
+
+DS_RT_DEFINE_ARRAY (connection_state_array, ds_rt_connection_state_array_t, ds_rt_connection_state_array_iterator_t, IpcStreamFactoryConnectionState *)
+DS_RT_DEFINE_ARRAY_ITERATOR (connection_state_array, ds_rt_connection_state_array_t, ds_rt_connection_state_array_iterator_t, IpcStreamFactoryConnectionState *)
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */

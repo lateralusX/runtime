@@ -3,7 +3,7 @@
 #endif
 
 #ifndef EP_DEFINE_INLINE_GETTER_PREFIX
-#define EP_DEFINE_INLINE_GETTER_PREFIX(prefix_name,instance_type, instance_type_name, return_type, instance_field_name) \
+#define EP_DEFINE_INLINE_GETTER_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
 	static inline return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name (const instance_type instance) { return instance-> instance_field_name; } \
 	static inline size_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _sizeof_ ## instance_field_name (const instance_type instance) { return sizeof (instance-> instance_field_name); }
 #endif

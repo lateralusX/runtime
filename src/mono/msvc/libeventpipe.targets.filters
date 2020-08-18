@@ -25,6 +25,12 @@
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-mono.h">
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-types.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-types-mono.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-server.c">
       <Filter>Source Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClCompile>

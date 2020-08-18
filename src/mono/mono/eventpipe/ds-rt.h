@@ -1,7 +1,12 @@
 #ifndef __DIAGNOSTICS_RT_H__
 #define __DIAGNOSTICS_RT_H__
 
+#include <config.h>
+
+#ifdef ENABLE_PERFTRACING
 #include "ep-rt.h"
+#include "ds-rt-config.h"
+#include "ds-types.h"
 
 #define DS_LOG_ALWAYS_0(msg) ds_rt_redefine
 #define DS_LOG_ALWAYS_1(msg, data1) ds_rt_redefine
@@ -16,6 +21,16 @@
 #define DS_LOG_WARNING_1(msg, data1) ds_rt_redefine
 #define DS_LOG_WARNING_2(msg, data1, data2) ds_rt_redefine
 
+#define DS_RT_DECLARE_ARRAY(array_name, array_type, iterator_type, item_type) \
+	EP_RT_DECLARE_ARRAY_PREFIX(ds, array_name, array_type, iterator_type, item_type)
+
+#define DS_RT_DECLARE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
+	EP_RT_DECLARE_ARRAY_ITERATOR_PREFIX(ds, array_name, array_type, iterator_type, item_type)
+
+/*
+ * DiagnosticsConfiguration.
+ */
+
 static
 bool
 ds_rt_config_value_get_enable (void);
@@ -28,6 +43,21 @@ static
 bool
 ds_rt_config_value_get_diagnostics_monitor_pause_on_start (void);
 
+/*
+ * DiagnosticsIpcPollHandle.
+ */
+
+DS_RT_DECLARE_ARRAY (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_ipc_poll_handle_array_iterator_t, DiagnosticsIpcPollHandle)
+DS_RT_DECLARE_ARRAY_ITERATOR (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_ipc_poll_handle_array_iterator_t, DiagnosticsIpcPollHandle)
+
+/*
+ * IpcStreamFactoryConnectionState.
+ */
+
+DS_RT_DECLARE_ARRAY (connection_state_array, ds_rt_connection_state_array_t, ds_rt_connection_state_array_iterator_t, IpcStreamFactoryConnectionState *)
+DS_RT_DECLARE_ARRAY_ITERATOR (connection_state_array, ds_rt_connection_state_array_t, ds_rt_connection_state_array_iterator_t, IpcStreamFactoryConnectionState *)
+
 #include "ds-rt-mono.h"
 
+#endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_H__ */

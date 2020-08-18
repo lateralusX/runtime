@@ -938,7 +938,7 @@ eventpipe_protocol_helper_collect_tracing (
 		payload->serialization_format,
 		true,
 		stream,
-		true);
+		NULL);
 
 	if (session_id == 0) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
@@ -982,7 +982,7 @@ eventpipe_protocol_helper_collect_tracing_2 (
 		payload->serialization_format,
 		payload->rundown_requested,
 		stream,
-		true);
+		NULL);
 
 	if (session_id == 0) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
@@ -1016,13 +1016,13 @@ ds_eventpipe_protocol_helper_handle_ipc_message (
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
 	switch ((EventPipeCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_cref (message))) {
-	case EP_COMMANDID_COLLECT_TRACING:
+	case DS_COMMANDID_COLLECT_TRACING:
 		eventpipe_protocol_helper_collect_tracing (message, stream);
 		break;
-	case EP_COMMANDID_COLLECT_TRACING_2:
+	case DS_COMMANDID_COLLECT_TRACING_2:
 		eventpipe_protocol_helper_collect_tracing_2 (message, stream);
 		break;
-	case EP_COMMANDID_STOP_TRACING:
+	case DS_COMMANDID_STOP_TRACING:
 		eventpipe_protocol_helper_stop_tracing (message, stream);
 		break;
 	default:

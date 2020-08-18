@@ -1288,7 +1288,7 @@ ep_finish_init (void)
 					ep_session_start_streaming ((EventPipeSession *)session_id);
 				ep_rt_session_id_array_iterator_next (&_ep_deferred_enable_session_ids, &deferred_session_ids_iterator);
 			}
-			ep_rt_session_id_array_clear (&_ep_deferred_enable_session_ids);
+			ep_rt_session_id_array_clear (&_ep_deferred_enable_session_ids, NULL);
 		}
 
 		ep_rt_sample_profiler_can_start_sampling ();
@@ -1306,7 +1306,7 @@ ep_finish_init (void)
 			disable (session_id);
 			ep_rt_session_id_array_iterator_next (&_ep_deferred_disable_session_ids, &deferred_session_ids_iterator);
 		}
-		ep_rt_session_id_array_clear (&_ep_deferred_disable_session_ids);
+		ep_rt_session_id_array_clear (&_ep_deferred_disable_session_ids, NULL);
 	}
 
 ep_on_exit:

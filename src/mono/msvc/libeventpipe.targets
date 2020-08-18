@@ -17,6 +17,8 @@
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-config.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-mono.h"/>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-types.h"/>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-types-mono.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-server.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>

@@ -16,6 +16,8 @@ eventpipe_sources = \
 	ds-rt.h	\
 	ds-rt-config.h	\
 	ds-rt-mono.h	\
+	ds-rt-types.h	\
+	ds-rt-types-mono.h	\
 	ds-server.c	\
 	ds-server.h	\
 	ds-types.h	\

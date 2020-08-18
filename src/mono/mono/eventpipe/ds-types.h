@@ -5,6 +5,13 @@
 
 #ifdef ENABLE_PERFTRACING
 #include "ep-types.h"
+#include "ds-rt-types.h"
+
+#undef DS_IMPL_GETTER_SETTER
+#ifdef DS_IMPL_IPC_GETTER_SETTER
+#define DS_IMPL_GETTER_SETTER
+#endif
+#include "ds-getter-setter.h"
 
 /*
  * Diagnostic Structs.
@@ -54,9 +61,9 @@ typedef enum {
 // The event pipe command set is 0x02
 // see ds-ipc.h and ds-server.h for more details
 typedef enum {
-	EP_COMMANDID_STOP_TRACING = 0x01,
-	EP_COMMANDID_COLLECT_TRACING  = 0x02,
-	EP_COMMANDID_COLLECT_TRACING_2 = 0x03,
+	DS_COMMANDID_STOP_TRACING = 0x01,
+	DS_COMMANDID_COLLECT_TRACING  = 0x02,
+	DS_COMMANDID_COLLECT_TRACING_2 = 0x03,
 	// future
 } EventPipeCommandId;
 
@@ -109,6 +116,39 @@ typedef enum {
 typedef void (*ds_ipc_error_callback_func)(
 	const ep_char8_t *message,
 	uint32_t code);
+
+/*
+ * DiagnosticsIpcPollHandle.
+ */
+
+// The bookeeping struct used for polling on server and client structs
+#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
+//TODO: Implement.
+struct _DiagnosticsIpcPollHandle {
+#else
+struct _DiagnosticsIpcPollHandle_Internal {
+#endif
+	// Only one of these will be non-null, treat as a union
+	DiagnosticsIpc *ipc;
+	IpcStream *stream;
+
+	// contains some set of PollEvents
+	// will be set by Poll
+	// Any values here are ignored by Poll
+	uint8_t events;
+
+	// a cookie assignable by upstream users for additional bookkeeping
+	void *user_data;
+};
+
+#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsIpcPollHandle {
+	uint8_t _internal [sizeof (struct _DiagnosticsIpcPollHandle_Internal)];
+};
+#endif
+
+DS_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, uint8_t, events)
+DS_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, void *, user_data)
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_TYPES_H__ */
