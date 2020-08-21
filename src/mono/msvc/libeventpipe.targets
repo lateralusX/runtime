@@ -9,6 +9,9 @@
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.h"/>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-protocol.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-protocol.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-server.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>

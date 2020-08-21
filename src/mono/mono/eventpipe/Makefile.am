@@ -10,6 +10,7 @@ noinst_LTLIBRARIES = libeventpipe.la
 eventpipe_sources = \
 	ds-ipc.c	\
 	ds-ipc.h	\
+	ds-protocol.c	\
 	ds-protocol.h	\
 	ds-server.c		\
 	ds-server.h		\

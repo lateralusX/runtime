@@ -11,6 +11,7 @@
 #ifdef EP_IMPL_STREAM_GETTER_SETTER
 #define EP_IMPL_GETTER_SETTER
 #endif
+#define EP_GETTER_SETTER_PREFIX ds_
 #include "ep-getter-setter.h"
 
 // Polling timeout semantics
@@ -42,6 +43,18 @@ typedef enum {
 	DS_IPC_POLL_EVENTS_ERR = 0x04 // other error
 } DiagnosticsIpcPollEvents;
 
+typedef struct _DiagnosticsIpc DiagnosticsIpc;
+typedef struct _DiagnosticsIpcPollHandle DiagnosticsIpcPollHandle;
+typedef struct _IpcStreamFactoryConnectionState IpcStreamFactoryConnectionState;
+
+//TODO: Move into rt shim.
+
+typedef struct _rt_mono_array_internal_t ep_rt_connection_state_array_t;
+typedef struct _rt_mono_array_iterator_internal_t ep_rt_connection_state_array_iterator_t;
+
+typedef struct _rt_mono_array_internal_t ep_rt_ipc_poll_handle_array_t;
+typedef struct _rt_mono_array_iterator_internal_t ep_rt_ipc_poll_handle_array_iterator_t;
+
 /*
  * DiagnosticsIpc.
  */
@@ -61,7 +74,8 @@ struct _DiagnosticsIpc {
 };
 #endif
 
-typedef struct _DiagnosticsIpc DiagnosticsIpc;
+int32_t
+ds_ipc_poll (ep_rt_ipc_poll_handle_array_t *poll_handles, uint32_t timeout_ms, ds_ipc_error_callback_func callback);
 
 /*
  * DiagnosticsIpcPollHandle.
@@ -93,7 +107,8 @@ struct _DiagnosticsIpcPollHandle {
 };
 #endif
 
-typedef struct _DiagnosticsIpcPollHandle DiagnosticsIpcPollHandle;
+EP_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, uint8_t, events)
+EP_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, void *, user_data)
 
 /*
  * IpcStreamFactory.
@@ -146,14 +161,25 @@ struct _IpcStreamFactoryConnectionState {
 };
 #endif
 
-typedef struct _IpcStreamFactoryConnectionState IpcStreamFactoryConnectionState;
-
 // returns a pollable handle and performs any preparation required
 // e.g., as a side-effect, will connect and advertise on reverse connections
 bool
 ds_ipc_stream_factory_connection_state_get_ipc_poll_handle_vcall (
+	IpcStreamFactoryConnectionState * connection_state,
 	DiagnosticsIpcPollHandle *handle,
 	ds_ipc_error_callback_func callback);
+
+IpcStream *
+ds_ipc_stream_factory_connection_state_get_connected_stream (
+	IpcStreamFactoryConnectionState * connection_state,
+	ds_ipc_error_callback_func callback);
+
+void
+ds_ipc_stream_factory_connection_state_reset (
+	IpcStreamFactoryConnectionState * connection_state,
+	ds_ipc_error_callback_func callback);
+
+#undef EP_GETTER_SETTER_PREFIX
 
 #endif /* ENABLE_PERFTRACING */
 #endif /** __DIAGNOSTICS_IPC_H__ **/

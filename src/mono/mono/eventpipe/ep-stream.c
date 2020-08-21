@@ -567,7 +567,7 @@ ep_ipc_stream_writer_write (
 	bool result = false;
 
 	ep_raise_error_if_nok (ep_ipc_stream_writer_get_ipc_stream (ipc_stream_writer) != NULL);
-	result = ep_ipc_stream_write (ep_ipc_stream_writer_get_ipc_stream (ipc_stream_writer), buffer, bytes_to_write, bytes_written);
+	result = ep_ipc_stream_write (ep_ipc_stream_writer_get_ipc_stream (ipc_stream_writer), buffer, bytes_to_write, bytes_written, EP_INFINITE_WAIT);
 
 ep_on_exit:
 	return result;

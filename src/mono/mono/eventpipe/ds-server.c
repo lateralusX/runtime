@@ -5,6 +5,7 @@
 
 #include "ds-server.h"
 #include "ds-ipc.h"
+#include "ep-stream.h"
 
 // Option to include all internal source files into ds-server.c.
 #ifdef EP_INCLUDE_SOURCE_FILES
@@ -45,19 +46,19 @@ ds_server_volatile_store_shutting_down_state (bool state)
 static
 void
 error_callback_create (
-	const ep_char8_t message,
+	const ep_char8_t *message,
 	uint32_t code);
 
 static
 void
 error_callback_close (
-	const ep_char8_t message,
+	const ep_char8_t *message,
 	uint32_t code);
 
 static
 void
 warning_callback (
-	const ep_char8_t message,
+	const ep_char8_t *message,
 	uint32_t code);
 
 /*
@@ -67,7 +68,7 @@ warning_callback (
 static
 void
 error_callback_create (
-	const ep_char8_t message,
+	const ep_char8_t *message,
 	uint32_t code)
 {
 	EP_ASSERT (message != NULL);
@@ -77,7 +78,7 @@ error_callback_create (
 static
 void
 error_callback_close (
-	const ep_char8_t message,
+	const ep_char8_t *message,
 	uint32_t code)
 {
 	EP_ASSERT (message != NULL);
@@ -87,7 +88,7 @@ error_callback_close (
 static
 void
 warning_callback (
-	const ep_char8_t message,
+	const ep_char8_t *message,
 	uint32_t code)
 {
 	EP_ASSERT (message != NULL);
@@ -104,33 +105,37 @@ DS_RT_DEFINE_THREAD_FUNC (server_thread)
 	}
 
 	while (!ds_server_volatile_load_shutting_down_state ()) {
-		IpcStream *stream = ds_ipc_stream_factor_get_next_available_stream (warning_callback);
+		IpcStream *stream = ds_ipc_stream_factory_get_next_available_stream (warning_callback);
 		if (!stream)
 			continue;
 
 		DiagnosticsIpcMessage message;
-		if (!ds_ipc_message_init (&message, stream)) {
-			ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
-			ds_ipc_stream_free (stream);
+		ds_ipc_message_init (&message);
+		if (!ds_ipc_message_initialize (&message, stream)) {
+			ds_ipc_message_send_error_message (stream, DS_IPC_E_BAD_ENCODING);
+			ep_ipc_stream_free (stream);
+			ds_ipc_message_fini (&message);
 			continue;
 		}
 
 		if (ep_rt_utf8_string_compare (
-			(const ep_char8_t *)ds_ipc_message_header_get_magic (ds_ipc_message_get_header (&message)),
-			(const ep_char8_t *)ds_ipc_magic_v1_get_magic ()) != 0) {
+			(const ep_char8_t *)ds_ipc_header_get_magic_ref (ds_ipc_message_get_header_ref (&message)),
+			(const ep_char8_t *)DOTNET_IPC_V1_MAGIC) != 0) {
 
-			ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_MAGIC);
+			ds_ipc_message_send_error_message (stream, DS_IPC_E_UNKNOWN_MAGIC);
 			ep_ipc_stream_free (stream);
+			ds_ipc_message_fini (&message);
 			continue;
 		}
 
-		switch ((DiagnosticServerCommandSet)ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message))) {
+		switch ((DiagnosticServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
 		case DS_SERVER_COMMANDSET_SERVER:
-			ds_protocol_helper_handle_ipc_message (message, stream);
+			ds_server_protocol_helper_handle_ipc_message (&message, stream);
 			break;
 
 		case DS_SERVER_COMMANDSET_EVENTPIPE:
-			ep_protocol_helper_handle_ipc_message (message, stream);
+			// TODO: Implement
+			//ep_protocol_helper_handle_ipc_message (&message, stream);
 			break;
 
 		case DS_SERVER_COMMANDSET_DUMP:
@@ -139,10 +144,12 @@ DS_RT_DEFINE_THREAD_FUNC (server_thread)
 #endif // FEATURE_PROFAPI_ATTACH_DETACH
 		default:
 			DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
-			ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
+			ds_ipc_message_send_error_message (stream, DS_IPC_E_UNKNOWN_COMMAND);
 			ep_ipc_stream_free (stream);
 			break;
 		}
+
+		ds_ipc_message_fini (&message);
 	}
 
 	return (ds_rt_thread_start_func_return_t)0;
@@ -168,11 +175,11 @@ ds_server_init (void)
 	ep_raise_error_if_nok (ds_ipc_stream_factory_create_server (NULL, error_callback_create) == true);
 
 	if (ds_ipc_stream_factory_has_active_connections ()) {
-		size_t thread_id = 0;
+		ep_rt_thread_id_t thread_id = 0;
 
-		if (!ep_rt_thread_create (NULL, NULL, &thread_id)) {
+		if (!ep_rt_thread_create (server_thread, NULL, &thread_id)) {
 			// Failed to create IPC thread.
-			ds_ipc_stream_factory_close_connections ();
+			ds_ipc_stream_factory_close_connections (NULL);
 			DS_LOG_ERROR_1 ("Failed to create diagnostic server thread (%d).\n", ds_rt_get_last_error ());
 			ep_raise_error ();
 		}
@@ -246,13 +253,13 @@ ds_server_protocol_helper_handle_ipc_message (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
-	switch ((DiagnosticServerCommandId)ds_ipc_message_header_get_commandid (ds_ipc_message_get_header (&message))) {
-	case DS_IPC_COMMAND_ID_RESUME_RUNTIME:
-		ds_protocol_helper_resume_runtime_startup (message, stream);
+	switch ((DiagnosticServerCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
+	case DS_SERVER_COMMANDID_RESUME_RUNTIME:
+		ds_server_protocol_helper_resume_runtime_startup (message, stream);
 		break;
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
-		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
+		ds_ipc_message_send_error_message (stream, DS_IPC_E_UNKNOWN_COMMAND);
 		ep_ipc_stream_free (stream);
 		break;
 	}
@@ -267,10 +274,8 @@ ds_server_protocol_helper_resume_runtime_startup (
 	EP_ASSERT (stream != NULL);
 
 	// no payload
-	ds_resume_runtime_startup ();
-	DiagnosticIpcMessage success_response;
-	if (ds_ipc_message_init (&success_response, ds_ipc_generic_success_header_get (), DS_IPC_S_OK))
-		ds_ipc_message_send (&success_response, stream);
+	ds_server_resume_runtime_startup ();
+	ds_ipc_message_send_success_message (stream, DS_IPC_S_OK);
 }
 
 #endif /* ENABLE_PERFTRACING */

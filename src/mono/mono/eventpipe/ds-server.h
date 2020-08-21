@@ -11,10 +11,10 @@
 
 //Error codes used in logging.
 //TODO: Convert into hex.
-#define DS_IPC_S_OK ((unsigned long)0L)
-#define DS_IPC_E_BAD_ENCODING (((unsigned long)(1)<<31) | ((unsigned long)(19)<<16) | ((unsigned long)(0x1384)))
-#define DS_IPC_E_UNKNOWN_COMMAND (((unsigned long)(1)<<31) | ((unsigned long)(19)<<16) | ((unsigned long)(0x1385)))
-#define DS_IPC_E_UNKNOWN_MAGIC (((unsigned long)(1)<<31) | ((unsigned long)(19)<<16) | ((unsigned long)(0x1386)))
+#define DS_IPC_S_OK ((uint32_t)0L)
+#define DS_IPC_E_BAD_ENCODING (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1384)))
+#define DS_IPC_E_UNKNOWN_COMMAND (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1385)))
+#define DS_IPC_E_UNKNOWN_MAGIC (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1386)))
 
 //TODO: MOVE all this into rt shim.
 //Logging macros used in diagnostic server.
@@ -35,9 +35,19 @@ typedef void (*ds_error_callback_func)(
 	const ep_char8_t *message,
 	uint32_t code);
 
-typedef MonoThreadStart ds_rt_thread_start_func;
+typedef MonoThreadStart ep_rt_thread_start_func;
 typedef mono_thread_start_return_t ds_rt_thread_start_func_return_t;
-#define DS_RT_DEFINE_THREAD_FUNC(name) static mono_thread_start_return_t WINAPI ## name ## (gpointer data)
+typedef MonoNativeThreadId ep_rt_thread_id_t;
+#define DS_RT_DEFINE_THREAD_FUNC(name) static mono_thread_start_return_t WINAPI name (gpointer data)
+
+static
+inline
+bool
+ep_rt_thread_create (ep_rt_thread_start_func thread_func, void *params, ep_rt_thread_id_t *id)
+{
+	//TODO: When moved to shim, support both static/dynamic runtime linkage.
+	return mono_thread_platform_create_thread (thread_func, params, NULL, id);
+}
 
 static
 inline

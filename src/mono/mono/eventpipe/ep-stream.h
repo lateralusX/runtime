@@ -326,6 +326,14 @@ ep_ipc_stream_write (
 	uint32_t *bytes_written,
 	uint32_t timeout);
 
+bool
+ep_ipc_stream_read (
+	IpcStream *stream,
+	uint8_t *buffer,
+	uint32_t bytes_to_read,
+	uint32_t *bytes_aread,
+	uint32_t timeout);
+
 /*
  * IpcStreamWriter.
  */
