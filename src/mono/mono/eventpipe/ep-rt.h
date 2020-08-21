@@ -19,6 +19,10 @@
 #define EP_NEVER_INLINE ep_rt_redefine
 #define EP_ALIGN_UP(val,align) ep_rt_redefine
 
+#ifndef EP_EXPAND_PREFIX_NAME
+#define EP_EXPAND_PREFIX_NAME(prefix_name) prefix_name
+#endif
+
 #define EP_RT_DECLARE_LIST(list_name, list_type, item_type) \
 	static void ep_rt_ ## list_name ## _free (list_type *list, void (*callback)(void *)); \
 	static void ep_rt_ ## list_name ## _clear (list_type *list, void (*callback)(void *)); \
@@ -41,19 +45,27 @@
 	static void ep_rt_ ## queue_name ## _push_tail (queue_type *queue, item_type item); \
 	static bool ep_rt_ ## queue_name ## _is_empty (const queue_type *queue);
 
+#define EP_RT_DECLARE_ARRAY_PREFIX(prefix_name, array_name, array_type, item_type) \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _alloc (array_type *ep_array); \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _alloc_capacity (array_type *ep_array, size_t capacity); \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _free (array_type *ep_array); \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _append (array_type *ep_array, item_type item); \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _clear (array_type *ep_array, void (*callback)(void *)); \
+	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _remove (array_type *ep_array, const item_type item); \
+	static size_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _size (const array_type *ep_array); \
+	static item_type * EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _data (const array_type *ep_array);
+
 #define EP_RT_DECLARE_ARRAY(array_name, array_type, item_type) \
-	static void ep_rt_ ## array_name ## _alloc (array_type *ep_array); \
-	static void ep_rt_ ## array_name ## _free (array_type *ep_array); \
-	static void ep_rt_ ## array_name ## _clear (array_type *ep_array); \
-	static void ep_rt_ ## array_name ## _append (array_type *ep_array, item_type item); \
-	static bool ep_rt_ ## array_name ## _remove (array_type *ep_array, const item_type item); \
-	static size_t ep_rt_ ## array_name ## _size (const array_type *ep_array);
+	EP_RT_DECLARE_ARRAY_PREFIX(ep, array_name, array_type, item_type)
+
+#define EP_RT_DECLARE_ARRAY_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_begin (const array_type *ep_array, iterator_type *iterator); \
+	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_end (const array_type *ep_array, const iterator_type *iterator); \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_next (const array_type *ep_array, iterator_type *iterator); \
+	static item_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_value (const iterator_type *iterator);
 
 #define EP_RT_DECLARE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
-	static void ep_rt_ ## array_name ## _iterator_begin (const array_type *ep_array, iterator_type *iterator); \
-	static bool ep_rt_ ## array_name ## _iterator_end (const array_type *ep_array, const iterator_type *iterator); \
-	static void ep_rt_ ## array_name ## _iterator_next (const array_type *ep_array, iterator_type *iterator); \
-	static item_type ep_rt_ ## array_name ## _iterator_value (const iterator_type *iterator);
+	EP_RT_DECLARE_ARRAY_ITERATOR_PREFIX(ep, array_name, array_type, iterator_type, item_type) \
 
 #define EP_RT_DECLARE_HASH_MAP(hash_map_name, hash_map_type, key_type, value_type) \
 	static void ep_rt_ ## hash_map_name ## _alloc (hash_map_type *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)); \
@@ -195,6 +207,9 @@ ep_rt_provider_list_find_by_name (
  * EventPipeProviderConfiguration.
  */
 
+EP_RT_DECLARE_ARRAY (provider_config_array, ep_rt_provider_config_array_t, EventPipeProviderConfiguration)
+EP_RT_DECLARE_ARRAY_ITERATOR (provider_config_array, ep_rt_provider_config_array_t, ep_rt_provider_config_array_iterator_t, EventPipeProviderConfiguration)
+
 static
 bool
 ep_rt_config_value_get_enable (void);
@@ -331,6 +346,10 @@ ep_rt_wait_event_is_valid (ep_rt_wait_event_handle_t *wait_event);
  */
 
 static
+int
+ep_rt_get_last_error (void);
+
+static
 bool
 ep_rt_process_detach (void);
 
@@ -359,6 +378,13 @@ ep_rt_object_free (void *ptr);
 /*
  * PAL.
  */
+
+static
+bool
+ep_rt_thread_create (
+	void *thread_func,
+	void *params,
+	void *id);
 
 static
 uint32_t
@@ -508,6 +534,7 @@ ep_rt_managed_command_line_get (void);
 /*
  * Thread.
  */
+
 static
 void
 ep_rt_thread_setup (void);

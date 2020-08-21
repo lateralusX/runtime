@@ -75,12 +75,13 @@
 	static inline void ep_rt_ ## queue_name ## _push_tail (queue_type *queue, item_type item) { g_queue_push_tail (queue->queue, ((gpointer)(gsize)item)); } \
 	static inline bool ep_rt_ ## queue_name ## _is_empty (const queue_type *queue) { return g_queue_is_empty (queue->queue); }
 
-#define EP_RT_DEFINE_ARRAY(array_name, array_type, item_type) \
-	static inline void ep_rt_ ## array_name ## _alloc (array_type *ep_array) { ep_array->array = g_array_new (FALSE, FALSE, sizeof (item_type)); } \
-	static inline void ep_rt_ ## array_name ## _free (array_type *ep_array) { g_array_free (ep_array->array, TRUE); } \
-	static inline void ep_rt_ ## array_name ## _clear (array_type *ep_array) { g_array_set_size (ep_array->array, 0); } \
-	static inline void ep_rt_ ## array_name ## _append (array_type *ep_array, item_type item) { g_array_append_val (ep_array->array, item); } \
-	static inline bool ep_rt_ ## array_name ## _remove (array_type *ep_array, const item_type item) { \
+#define EP_RT_DEFINE_ARRAY_PREFIX(prefix_name, array_name, array_type, item_type) \
+	static inline void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _alloc (array_type *ep_array) { ep_array->array = g_array_new (FALSE, FALSE, sizeof (item_type)); } \
+	static inline void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _alloc_capacity (array_type *ep_array, size_t capacity) { ep_array->array = g_array_sized_new (FALSE, FALSE, sizeof (item_type), capacity); } \
+	static inline void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _free (array_type *ep_array) { g_array_free (ep_array->array, TRUE); } \
+	static inline void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _append (array_type *ep_array, item_type item) { g_array_append_val (ep_array->array, item); } \
+	static inline void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _clear (array_type *ep_array, void (*callback)(void *)) { g_array_set_size (ep_array->array, 0); } \
+	static inline bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _remove (array_type *ep_array, const item_type item) { \
 		for (gint i = 0; i < ep_array->array->len; ++i ) { \
 			if (g_array_index (ep_array->array, item_type, i) == item) { \
 				ep_array->array = g_array_remove_index_fast (ep_array->array, i); \
@@ -89,13 +90,20 @@
 		} \
 		return false; \
 	} \
-	static inline size_t ep_rt_ ## array_name ## _size (const array_type *ep_array) { return ep_array->array->len; }
+	static inline size_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _size (const array_type *ep_array) { return ep_array->array->len; } \
+	static inline item_type * EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _data (const array_type *ep_array) { return (item_type *)ep_array->array->data; }
+
+#define EP_RT_DEFINE_ARRAY(array_name, array_type, item_type) \
+	EP_RT_DEFINE_ARRAY_PREFIX(ep, array_name, array_type, item_type)
+
+#define EP_RT_DEFINE_ARRAY_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
+	static inline void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_begin (const array_type *ep_array, iterator_type *iterator) { iterator->array = ep_array->array; iterator->index = 0; } \
+	static inline bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_end (const array_type *ep_array, const iterator_type *iterator) { return iterator->index >= iterator->array->len; } \
+	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_next (const array_type *ep_array, iterator_type *iterator) { iterator->index++; } \
+	static item_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_value (const iterator_type *iterator) { return g_array_index(iterator->array, item_type, iterator->index); }
 
 #define EP_RT_DEFINE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
-	static inline void ep_rt_ ## array_name ## _iterator_begin (const array_type *ep_array, iterator_type *iterator) { iterator->array = ep_array->array; iterator->index = 0; } \
-	static inline bool ep_rt_ ## array_name ## _iterator_end (const array_type *ep_array, const iterator_type *iterator) { return iterator->index >= iterator->array->len; } \
-	static void ep_rt_ ## array_name ## _iterator_next (const array_type *ep_array, iterator_type *iterator) { iterator->index++; } \
-	static item_type ep_rt_ ## array_name ## _iterator_value (const iterator_type *iterator) { return g_array_index(iterator->array, item_type, iterator->index); }
+	EP_RT_DEFINE_ARRAY_ITERATOR_PREFIX(ep, array_name, array_type, iterator_type, item_type)
 
 #define EP_RT_DEFINE_HASH_MAP(hash_map_name, hash_map_type, key_type, value_type) \
 	static inline void ep_rt_ ## hash_map_name ## _alloc (hash_map_type *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)) { \
@@ -202,6 +210,12 @@ typedef struct _EventPipeMonoFuncTable {
 
 typedef EventPipeThreadHolder * (*ep_rt_thread_holder_alloc_func)(void);
 typedef void (*ep_rt_thread_holder_free_func)(EventPipeThreadHolder *thread_holder);
+
+typedef MonoThreadStart ep_rt_thread_start_func;
+typedef mono_thread_start_return_t ep_rt_thread_start_func_return_t;
+typedef MonoNativeThreadId ep_rt_thread_id_t;
+
+#define EP_RT_DEFINE_THREAD_FUNC(name) static mono_thread_start_return_t WINAPI name (gpointer data)
 
 static
 inline
@@ -551,6 +565,9 @@ ep_rt_provider_list_find_by_name (
  * EventPipeProviderConfiguration.
  */
 
+EP_RT_DEFINE_ARRAY (provider_config_array, ep_rt_provider_config_array_t, EventPipeProviderConfiguration)
+EP_RT_DEFINE_ARRAY_ITERATOR (provider_config_array, ep_rt_provider_config_array_t, ep_rt_provider_config_array_iterator_t, EventPipeProviderConfiguration)
+
 static
 inline
 bool
@@ -815,6 +832,18 @@ ep_rt_wait_event_is_valid (ep_rt_wait_event_handle_t *wait_event)
 
 static
 inline
+int
+ep_rt_get_last_error (void)
+{
+#ifdef HOST_WIN32
+	return GetLastError ();
+#else
+	return errno;
+#endif
+}
+
+static
+inline
 bool
 ep_rt_process_detach (void)
 {
@@ -891,6 +920,21 @@ ep_rt_object_free (void *ptr)
 /*
  * PAL.
  */
+
+static
+inline
+bool
+ep_rt_thread_create (
+	void *thread_func,
+	void *params,
+	void *id)
+{
+#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
+	return (bool)mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
+#else
+	return (bool)ep_rt_mono_func_table_get ()->ep_rt_mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
+#endif
+}
 
 static
 inline

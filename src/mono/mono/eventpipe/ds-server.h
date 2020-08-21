@@ -1,102 +1,15 @@
-#ifndef __DIAGNOSTIC_SERVER_H__
-#define __DIAGNOSTIC_SERVER_H__
+#ifndef __DIAGNOSTICS_SERVER_H__
+#define __DIAGNOSTICS_SERVER_H__
 
 #include <config.h>
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
-#include "ep-rt.h"
-
-#include "ds-protocol.h"
-
-//Error codes used in logging.
-//TODO: Convert into hex.
-#define DS_IPC_S_OK ((uint32_t)0L)
-#define DS_IPC_E_BAD_ENCODING (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1384)))
-#define DS_IPC_E_UNKNOWN_COMMAND (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1385)))
-#define DS_IPC_E_UNKNOWN_MAGIC (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1386)))
-
-//TODO: MOVE all this into rt shim.
-//Logging macros used in diagnostic server.
-#define DS_LOG_ALWAYS_0(msg)
-#define DS_LOG_ALWAYS_1(msg, data1)
-#define DS_LOG_ALWAYS_2(msg, data1, data2)
-#define DS_LOG_INFO_0(msg)
-#define DS_LOG_INFO_1(msg, data1)
-#define DS_LOG_INFO_2(msg, data1, data2)
-#define DS_LOG_ERROR_0(msg)
-#define DS_LOG_ERROR_1(msg, data1)
-#define DS_LOG_ERROR_2(msg, data1, data2)
-#define DS_LOG_WARNING_0(msg)
-#define DS_LOG_WARNING_1(msg, data1)
-#define DS_LOG_WARNING_2(msg, data1, data2)
-
-typedef void (*ds_error_callback_func)(
-	const ep_char8_t *message,
-	uint32_t code);
-
-typedef MonoThreadStart ep_rt_thread_start_func;
-typedef mono_thread_start_return_t ds_rt_thread_start_func_return_t;
-typedef MonoNativeThreadId ep_rt_thread_id_t;
-#define DS_RT_DEFINE_THREAD_FUNC(name) static mono_thread_start_return_t WINAPI name (gpointer data)
-
-static
-inline
-bool
-ep_rt_thread_create (ep_rt_thread_start_func thread_func, void *params, ep_rt_thread_id_t *id)
-{
-	//TODO: When moved to shim, support both static/dynamic runtime linkage.
-	return mono_thread_platform_create_thread (thread_func, params, NULL, id);
-}
-
-static
-inline
-int
-ds_rt_get_last_error (void)
-{
-#ifdef HOST_WIN32
-	return GetLastError ();
-#else
-	return errno;
-#endif
-}
-
-static
-inline
-bool
-ds_rt_config_value_get_enable (void)
-{
-	bool enable = false;
-	gchar *value = g_getenv ("COMPlus_EnableDiagnostics");
-	if (value && atoi (value) == 1)
-		enable = true;
-	g_free (value);
-	return enable;
-}
-
-static
-inline
-ep_char8_t *
-ds_rt_config_value_get_monitor_address (void)
-{
-	return g_getenv ("DOTNET_DiagnosticsMonitorAddress");
-}
-
-static
-inline
-bool
-ds_rt_config_value_get_diagnostic_monitor_pause_on_start (void)
-{
-	bool enable = false;
-	gchar *value = g_getenv ("DOTNET_DiagnosticsMonitorPauseOnStart");
-	if (value && atoi (value) != 0)
-		enable = true;
-	g_free (value);
-	return enable;
-}
+#include "ds-rt-config.h"
+#include "ds-types.h"
+#include "ds-rt.h"
 
 /*
- * DiagnosticServer.
+ * DiagnosticsServer.
  */
 
 // Initialize the event pipe (Creates the EventPipe IPC server).
@@ -134,4 +47,4 @@ ds_server_protocol_helper_resume_runtime_startup (
 	IpcStream *stream);
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __DIAGNOSTIC_SERVER_H__ **/
+#endif /** __DIAGNOSTICS_SERVER_H__ **/

@@ -3,40 +3,40 @@
 #ifdef ENABLE_PERFTRACING
 #include "ep-rt-config.h"
 
+// Option to include all internal source files into ds-server.c.
+#ifdef DS_INCLUDE_SOURCE_FILES
+#define DS_FORCE_INCLUDE_SOURCE_FILES
+#include "ds-ipc.c"
+#include "ds-protocol.c"
+#else
+#define DS_IMPL_SERVER_GETTER_SETTER
 #include "ds-server.h"
 #include "ds-ipc.h"
+#include "ds-protocol.h"
 #include "ep-stream.h"
-
-// Option to include all internal source files into ds-server.c.
-#ifdef EP_INCLUDE_SOURCE_FILES
-#define EP_FORCE_INCLUDE_SOURCE_FILES
-
-#else
-#define EP_IMPL_EP_GETTER_SETTER
-#include "ds-server.h"
 #endif
 
 /*
  * Globals and volatile access functions.
  */
 
-static volatile uint32_t _ds_server_shutting_down_state = 0;
-static ep_rt_wait_event_handle_t _ds_server_resume_runtime_startup_event = { 0 };
+static volatile uint32_t _server_shutting_down_state = 0;
+static ep_rt_wait_event_handle_t _server_resume_runtime_startup_event = { 0 };
 
 static
 inline
 bool
-ds_server_volatile_load_shutting_down_state (void)
+server_volatile_load_shutting_down_state (void)
 {
-	return (ep_rt_volatile_load_uint32_t (&_ds_server_shutting_down_state) != 0) ? true : false;
+	return (ep_rt_volatile_load_uint32_t (&_server_shutting_down_state) != 0) ? true : false;
 }
 
 static
 inline
 void
-ds_server_volatile_store_shutting_down_state (bool state)
+server_volatile_store_shutting_down_state (bool state)
 {
-	ep_rt_volatile_store_uint32_t (&_ds_server_shutting_down_state, state ? 1 : 0);
+	ep_rt_volatile_store_uint32_t (&_server_shutting_down_state, state ? 1 : 0);
 }
 
 /*
@@ -45,19 +45,19 @@ ds_server_volatile_store_shutting_down_state (bool state)
 
 static
 void
-error_callback_create (
+server_error_callback_create (
 	const ep_char8_t *message,
 	uint32_t code);
 
 static
 void
-error_callback_close (
+server_error_callback_close (
 	const ep_char8_t *message,
 	uint32_t code);
 
 static
 void
-warning_callback (
+server_warning_callback (
 	const ep_char8_t *message,
 	uint32_t code);
 
@@ -67,7 +67,7 @@ warning_callback (
 
 static
 void
-error_callback_create (
+server_error_callback_create (
 	const ep_char8_t *message,
 	uint32_t code)
 {
@@ -77,7 +77,7 @@ error_callback_create (
 
 static
 void
-error_callback_close (
+server_error_callback_close (
 	const ep_char8_t *message,
 	uint32_t code)
 {
@@ -87,7 +87,7 @@ error_callback_close (
 
 static
 void
-warning_callback (
+server_warning_callback (
 	const ep_char8_t *message,
 	uint32_t code)
 {
@@ -95,24 +95,24 @@ warning_callback (
 	DS_LOG_WARNING_2 ("warning (%d): %s.\n", code, message);
 }
 
-DS_RT_DEFINE_THREAD_FUNC (server_thread)
+EP_RT_DEFINE_THREAD_FUNC (server_thread)
 {
-	EP_ASSERT (ds_server_volatile_load_shutting_down_state () == true || ds_ipc_stream_factory_has_active_connections () == true);
+	EP_ASSERT (server_volatile_load_shutting_down_state () == true || ds_ipc_stream_factory_has_active_connections () == true);
 
 	if (!ds_ipc_stream_factory_has_active_connections ()) {
 		DS_LOG_ERROR_0 ("Diagnostics IPC listener was undefined\n");
 		return 1;
 	}
 
-	while (!ds_server_volatile_load_shutting_down_state ()) {
-		IpcStream *stream = ds_ipc_stream_factory_get_next_available_stream (warning_callback);
+	while (!server_volatile_load_shutting_down_state ()) {
+		IpcStream *stream = ds_ipc_stream_factory_get_next_available_stream (server_warning_callback);
 		if (!stream)
 			continue;
 
 		DiagnosticsIpcMessage message;
 		ds_ipc_message_init (&message);
 		if (!ds_ipc_message_initialize (&message, stream)) {
-			ds_ipc_message_send_error_message (stream, DS_IPC_E_BAD_ENCODING);
+			ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
 			ep_ipc_stream_free (stream);
 			ds_ipc_message_fini (&message);
 			continue;
@@ -122,20 +122,19 @@ DS_RT_DEFINE_THREAD_FUNC (server_thread)
 			(const ep_char8_t *)ds_ipc_header_get_magic_ref (ds_ipc_message_get_header_ref (&message)),
 			(const ep_char8_t *)DOTNET_IPC_V1_MAGIC) != 0) {
 
-			ds_ipc_message_send_error_message (stream, DS_IPC_E_UNKNOWN_MAGIC);
+			ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_MAGIC);
 			ep_ipc_stream_free (stream);
 			ds_ipc_message_fini (&message);
 			continue;
 		}
 
-		switch ((DiagnosticServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
+		switch ((DiagnosticsServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
 		case DS_SERVER_COMMANDSET_SERVER:
 			ds_server_protocol_helper_handle_ipc_message (&message, stream);
 			break;
 
 		case DS_SERVER_COMMANDSET_EVENTPIPE:
-			// TODO: Implement
-			//ep_protocol_helper_handle_ipc_message (&message, stream);
+			ds_eventpipe_protocol_helper_handle_ipc_message (&message, stream);
 			break;
 
 		case DS_SERVER_COMMANDSET_DUMP:
@@ -144,7 +143,7 @@ DS_RT_DEFINE_THREAD_FUNC (server_thread)
 #endif // FEATURE_PROFAPI_ATTACH_DETACH
 		default:
 			DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
-			ds_ipc_message_send_error_message (stream, DS_IPC_E_UNKNOWN_COMMAND);
+			ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 			ep_ipc_stream_free (stream);
 			break;
 		}
@@ -152,7 +151,7 @@ DS_RT_DEFINE_THREAD_FUNC (server_thread)
 		ds_ipc_message_fini (&message);
 	}
 
-	return (ds_rt_thread_start_func_return_t)0;
+	return (ep_rt_thread_start_func_return_t)0;
 }
 
 bool
@@ -167,12 +166,12 @@ ds_server_init (void)
 	address = ds_rt_config_value_get_monitor_address ();
 	if (address) {
 		// By default, opts in to Pause on Start.
-		ep_rt_wait_event_alloc (&_ds_server_resume_runtime_startup_event, true, false);
+		ep_rt_wait_event_alloc (&_server_resume_runtime_startup_event, true, false);
 		// Create the client mode connection.
-		ep_raise_error_if_nok (ds_ipc_stream_factory_create_client (address, error_callback_create) == true);
+		ep_raise_error_if_nok (ds_ipc_stream_factory_create_client (address, server_error_callback_create) == true);
 	}
 
-	ep_raise_error_if_nok (ds_ipc_stream_factory_create_server (NULL, error_callback_create) == true);
+	ep_raise_error_if_nok (ds_ipc_stream_factory_create_server (NULL, server_error_callback_create) == true);
 
 	if (ds_ipc_stream_factory_has_active_connections ()) {
 		ep_rt_thread_id_t thread_id = 0;
@@ -180,7 +179,7 @@ ds_server_init (void)
 		if (!ep_rt_thread_create (server_thread, NULL, &thread_id)) {
 			// Failed to create IPC thread.
 			ds_ipc_stream_factory_close_connections (NULL);
-			DS_LOG_ERROR_1 ("Failed to create diagnostic server thread (%d).\n", ds_rt_get_last_error ());
+			DS_LOG_ERROR_1 ("Failed to create diagnostic server thread (%d).\n", ep_rt_get_last_error ());
 			ep_raise_error ();
 		}
 	}
@@ -197,10 +196,10 @@ ep_on_error:
 bool
 ds_server_shutdown (void)
 {
-	ds_server_volatile_store_shutting_down_state (true);
+	server_volatile_store_shutting_down_state (true);
 
 	if (ds_ipc_stream_factory_has_active_connections ())
-		ds_ipc_stream_factory_shutdown (error_callback_close);
+		ds_ipc_stream_factory_shutdown (server_error_callback_close);
 
 	return true;
 }
@@ -215,7 +214,7 @@ ds_server_pause_for_diagnostics_monitor (void)
 
 	address = ds_rt_config_value_get_monitor_address ();
 	if (address) {
-		if (ds_rt_config_value_get_diagnostic_monitor_pause_on_start ()) {
+		if (ds_rt_config_value_get_diagnostics_monitor_pause_on_start ()) {
 			EP_ASSERT (ep_rt_wait_event_is_valid (&_ds_resume_runtime_startup_event) == true);
 			address_wcs = ep_rt_utf8_to_wcs_string (address, -1);
 			if (address_wcs) {
@@ -223,9 +222,9 @@ ds_server_pause_for_diagnostics_monitor (void)
 				fflush (stdout);
 			}
 			DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command.");
-			if (ep_rt_wait_event_wait (&_ds_server_resume_runtime_startup_event, 5000, false) != 0) {
+			if (ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, 5000, false) != 0) {
 				DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command and has waitied 5 seconds.");
-				ep_rt_wait_event_wait (&_ds_server_resume_runtime_startup_event, EP_INFINITE_WAIT, false);
+				ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, EP_INFINITE_WAIT, false);
 			}
 		}
 	}
@@ -237,8 +236,8 @@ ds_server_pause_for_diagnostics_monitor (void)
 void
 ds_server_resume_runtime_startup (void)
 {
-	if (ep_rt_wait_event_is_valid (&_ds_server_resume_runtime_startup_event))
-		ep_rt_wait_event_set (&_ds_server_resume_runtime_startup_event);
+	if (ep_rt_wait_event_is_valid (&_server_resume_runtime_startup_event))
+		ep_rt_wait_event_set (&_server_resume_runtime_startup_event);
 }
 
 /*
@@ -253,13 +252,13 @@ ds_server_protocol_helper_handle_ipc_message (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
-	switch ((DiagnosticServerCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
+	switch ((DiagnosticsServerCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
 	case DS_SERVER_COMMANDID_RESUME_RUNTIME:
 		ds_server_protocol_helper_resume_runtime_startup (message, stream);
 		break;
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
-		ds_ipc_message_send_error_message (stream, DS_IPC_E_UNKNOWN_COMMAND);
+		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 		ep_ipc_stream_free (stream);
 		break;
 	}
@@ -275,10 +274,10 @@ ds_server_protocol_helper_resume_runtime_startup (
 
 	// no payload
 	ds_server_resume_runtime_startup ();
-	ds_ipc_message_send_success_message (stream, DS_IPC_S_OK);
+	ds_ipc_message_send_success (stream, DS_IPC_S_OK);
 }
 
 #endif /* ENABLE_PERFTRACING */
 
-extern const char quiet_linker_empty_file_warning_diagnostic_server;
-const char quiet_linker_empty_file_warning_diagnostic_server = 0;
+extern const char quiet_linker_empty_file_warning_diagnostics_server;
+const char quiet_linker_empty_file_warning_diagnostics_server = 0;
