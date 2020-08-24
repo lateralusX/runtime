@@ -6,8 +6,10 @@
 
 #define DS_IMPL_PROTOCOL_GETTER_SETTER
 #include "ds-protocol.h"
+#include "ds-server.h"
 #include "ep.h"
 #include "ep-stream.h"
+#include "ep-event-source.h"
 
 static const DiagnosticsIpcHeader _ds_ipc_generic_success_header = {
 	{ DOTNET_IPC_V1_MAGIC },
@@ -25,6 +27,7 @@ static const DiagnosticsIpcHeader _ds_ipc_generic_error_header = {
 	(uint16_t)0x0000
 };
 
+typedef bool (ipc_flatten_payload_func)(void *payload, uint8_t **buffer, uint16_t *buffer_len);
 typedef const uint8_t * (*ipc_parse_payload_func)(uint8_t *buffer, uint16_t buffer_len);
 
 /*
@@ -34,10 +37,6 @@ typedef const uint8_t * (*ipc_parse_payload_func)(uint8_t *buffer, uint16_t buff
 static
 uint8_t *
 ipc_advertise_cookie_v1_get (void);
-
-static
-bool
-icp_advertise_v1_send (IpcStream *stream);
 
 static
 bool
@@ -75,7 +74,7 @@ bool
 ipc_message_flatten_blitable_type (
 	DiagnosticsIpcMessage *message,
 	uint8_t *payload,
-	size_t payload_size);
+	size_t payload_len);
 
 static
 bool
@@ -105,6 +104,19 @@ ipc_message_try_parse_payload (
 
 static
 bool
+ipc_message_try_write_string_utf16_t (
+	uint8_t **buffer,
+	uint16_t *buffer_len,
+	const ep_char16_t *value);
+
+static
+bool
+ipc_message_try_send_string_utf16_t (
+	IpcStream *stream,
+	const ep_char16_t *value);
+
+static
+bool
 ipc_message_send (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream);
@@ -120,6 +132,23 @@ bool
 ipc_message_send_start_tracing_success (
 	IpcStream *stream,
 	EventPipeSessionID session_id);
+
+static
+bool
+ipc_message_flatten (
+	DiagnosticsIpcMessage *message,
+	void *payload,
+	uint16_t payload_len,
+	ipc_flatten_payload_func flatten_payload);
+
+static
+bool
+ipc_message_initialize_buffer (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcHeader *header,
+	void *payload,
+	uint16_t payload_len,
+	ipc_flatten_payload_func flatten_payload);
 
 static
 bool
@@ -184,6 +213,17 @@ void
 eventpipe_protocol_helper_collect_tracing_2 (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream);
+
+static
+uint16_t
+process_info_payload_get_size (DiagnosticsProcessInfoPayload *payload);
+
+static
+bool
+process_info_payload_flatten (
+	DiagnosticsProcessInfoPayload *payload,
+	uint8_t **buffer,
+	uint16_t *size);
 
 /*
 * DiagnosticsIpc
@@ -382,10 +422,72 @@ ep_on_error:
 
 static
 bool
+ipc_message_try_write_string_utf16_t (
+	uint8_t **buffer,
+	uint16_t *buffer_len,
+	const ep_char16_t *value)
+{
+	EP_ASSERT (buffer != NULL);
+	EP_ASSERT (*buffer != NULL);
+	EP_ASSERT (buffer_len != NULL);
+	EP_ASSERT (value != NULL);
+
+	bool result = true;
+	uint32_t string_len = (uint32_t)(ep_rt_utf16_string_len (value) + 1);
+	size_t total_bytes = (string_len * sizeof (ep_char16_t)) + sizeof(uint32_t);
+
+	EP_ASSERT (total_bytes <= UINT16_MAX);
+	EP_ASSERT (*buffer_len >= (uint16_t)total_bytes);
+	if (*buffer_len < (uint16_t)total_bytes || total_bytes > UINT16_MAX)
+		ep_raise_error ();
+
+	memcpy (*buffer, &string_len, sizeof (string_len));
+	*buffer += sizeof (string_len);
+
+	memcpy (*buffer, value, string_len * sizeof (ep_char16_t));
+	*buffer += (string_len * sizeof (ep_char16_t));
+
+	*buffer_len -= (uint16_t)total_bytes;
+
+ep_on_exit:
+	return result;
+
+ep_on_error:
+	result = false;
+	ep_exit_error_handler ();
+}
+
+static
+bool
+ipc_message_try_send_string_utf16_t (
+	IpcStream *stream,
+	const ep_char16_t *value)
+{
+	uint32_t string_len = (uint32_t)(ep_rt_utf16_string_len (value) + 1);
+	uint32_t string_bytes = (uint32_t)(string_len * sizeof (ep_char16_t));
+	uint32_t total_bytes = (uint32_t)(string_bytes + sizeof (uint32_t));
+
+	uint32_t total_written = 0;
+	uint32_t written = 0;
+
+	bool success = ep_ipc_stream_write (stream, (const uint8_t *)&string_len, (uint32_t)sizeof (string_len), &written, EP_INFINITE_WAIT);
+	total_written += written;
+
+	if (success) {
+		success &= ep_ipc_stream_write (stream, (const uint8_t *)value, string_bytes, &written, EP_INFINITE_WAIT);
+		total_written += written;
+	}
+
+	EP_ASSERT (total_bytes == total_written);
+	return success && (total_bytes == total_written);
+}
+
+static
+bool
 ipc_message_flatten_blitable_type (
 	DiagnosticsIpcMessage *message,
 	uint8_t *payload,
-	size_t payload_size)
+	size_t payload_len)
 {
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (payload != NULL);
@@ -397,8 +499,8 @@ ipc_message_flatten_blitable_type (
 	uint8_t *buffer = NULL;
 	uint8_t *buffer_cursor = NULL;
 
-	EP_ASSERT (sizeof (message->header) + payload_size <= UINT16_MAX);
-	message->size = sizeof (message->header) + payload_size;
+	EP_ASSERT (sizeof (message->header) + payload_len <= UINT16_MAX);
+	message->size = sizeof (message->header) + payload_len;
 
 	buffer = ep_rt_byte_array_alloc (message->size);
 	ep_raise_error_if_nok (buffer != NULL);
@@ -409,7 +511,7 @@ ipc_message_flatten_blitable_type (
 	memcpy (buffer_cursor, &message->header, sizeof (message->header));
 	buffer_cursor += sizeof (message->header);
 
-	memcpy (buffer_cursor, payload, payload_size);
+	memcpy (buffer_cursor, payload, payload_len);
 
 	EP_ASSERT (message->data == NULL);
 	message->data = buffer;
@@ -480,13 +582,13 @@ ipc_message_try_parse (
 	message->size = message->header.size;
 
 	// Then read out payload to buffer.
-	uint16_t payload_size = message->header.size - sizeof (message->header);
-	if (payload_size != 0) {
-		uint8_t *buffer = ep_rt_byte_array_alloc (payload_size);
+	uint16_t payload_len = message->header.size - sizeof (message->header);
+	if (payload_len != 0) {
+		uint8_t *buffer = ep_rt_byte_array_alloc (payload_len);
 		ep_raise_error_if_nok (buffer != NULL);
 
-		success = ep_ipc_stream_read (stream, buffer, payload_size, &bytes_read, EP_INFINITE_WAIT);
-		if (!success || (bytes_read < payload_size))
+		success = ep_ipc_stream_read (stream, buffer, payload_len, &bytes_read, EP_INFINITE_WAIT);
+		if (!success || (bytes_read < payload_len))
 			ep_raise_error ();
 
 		message->data = buffer;
@@ -514,13 +616,12 @@ ipc_message_try_parse_payload (
 
 	uint8_t *payload = NULL;
 
-	if (parse_func) {
-		EP_ASSERT (!parse_func);
-	} else {
+	if (parse_func)
+		payload = parse_func (message->data, message->size - sizeof (message->header));
+	else
 		payload = message->data;
-		message->data = NULL; // user is expected to clean up buffer when finished with it
-	}
 
+	message->data = NULL; // user is expected to clean up buffer when finished with it
 	return payload;
 }
 
@@ -573,6 +674,72 @@ ipc_message_send_start_tracing_success (
 	return success;
 }
 
+static
+bool
+ipc_message_flatten (
+	DiagnosticsIpcMessage *message,
+	void *payload,
+	uint16_t payload_len,
+	ipc_flatten_payload_func flatten_payload)
+{
+	EP_ASSERT (message != NULL);
+	EP_ASSERT (payload != NULL);
+
+	if (message->data)
+		return true;
+
+	bool result = true;
+	uint8_t *buffer = NULL;
+
+	uint16_t total_len = 0;
+	total_len += sizeof (DiagnosticsIpcHeader) + payload_len;
+
+	uint16_t remaining_len = total_len;
+	message->size = total_len;
+
+	buffer = ep_rt_byte_array_alloc (message->size);
+	ep_raise_error_if_nok (buffer != NULL);
+
+	uint8_t * buffer_cursor = buffer;
+	message->header.size = message->size;
+
+	memcpy (buffer_cursor, &message->header, sizeof (DiagnosticsIpcHeader));
+	buffer_cursor += sizeof (DiagnosticsIpcHeader);
+	remaining_len -= sizeof (DiagnosticsIpcHeader);
+
+	if (flatten_payload)
+		result = flatten_payload (payload, &buffer_cursor, &remaining_len);
+	else
+		memcpy (buffer_cursor, payload, payload_len);
+
+	EP_ASSERT (message->data == NULL);
+
+	//Transfer ownership.
+	message->data = buffer;
+	buffer = NULL;
+
+ep_on_exit:
+	ep_rt_byte_array_free (buffer);
+	return result;
+
+ep_on_error:
+	result = false;
+	ep_exit_error_handler ();
+}
+
+static
+bool
+ipc_message_initialize_buffer (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcHeader *header,
+	void *payload,
+	uint16_t payload_len,
+	ipc_flatten_payload_func flatten_payload)
+{
+	message->header = *header;
+	return ipc_message_flatten (message, payload, payload_len, flatten_payload);
+}
+
 DiagnosticsIpcMessage *
 ds_ipc_message_init (DiagnosticsIpcMessage *message)
 {
@@ -593,7 +760,7 @@ ds_ipc_message_fini (DiagnosticsIpcMessage *message)
 }
 
 bool
-ds_ipc_message_initialize (
+ds_ipc_message_initialize_stream (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream)
 {
@@ -1027,6 +1194,217 @@ ds_eventpipe_protocol_helper_handle_ipc_message (
 		break;
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_cref (message)));
+		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
+		ep_ipc_stream_free (stream);
+		break;
+	}
+}
+
+/*
+ * DiagnosticsProcessInfoPayload.
+ */
+
+static
+uint16_t
+process_info_payload_get_size (DiagnosticsProcessInfoPayload *payload)
+{
+	// see IPC spec @ https://github.com/dotnet/diagnostics/blob/master/documentation/design-docs/ipc-protocol.md
+	// for definition of serialization format
+
+	// uint64_t ProcessId;  -> 8 bytes
+	// GUID RuntimeCookie;  -> 16 bytes
+	// LPCWSTR CommandLine; -> 4 bytes + strlen * sizeof(WCHAR)
+	// LPCWSTR OS;          -> 4 bytes + strlen * sizeof(WCHAR)
+	// LPCWSTR Arch;        -> 4 bytes + strlen * sizeof(WCHAR)
+
+	EP_ASSERT (payload != NULL);
+
+	size_t size = 0;
+	size += sizeof(payload->process_id);
+	size += sizeof(payload->runtime_cookie);
+
+	size += sizeof(uint32_t);
+	size += (payload->command_line != NULL) ?
+		(ep_rt_utf16_string_len (payload->command_line) + 1) * sizeof(ep_char16_t) : 0;
+
+	size += sizeof(uint32_t);
+	size += (payload->os != NULL) ?
+		(ep_rt_utf16_string_len (payload->os) + 1) * sizeof(ep_char16_t) : 0;
+
+	size += sizeof(uint32_t);
+	size += (payload->arch != NULL) ?
+		(ep_rt_utf16_string_len (payload->arch) + 1) * sizeof(ep_char16_t) : 0;
+
+	EP_ASSERT (size <= UINT16_MAX);
+	return (uint16_t)size;
+}
+
+static
+bool
+process_info_payload_flatten (
+	DiagnosticsProcessInfoPayload *payload,
+	uint8_t **buffer,
+	uint16_t *size)
+{
+	EP_ASSERT (payload != NULL);
+	EP_ASSERT (buffer != NULL);
+	EP_ASSERT (*buffer != NULL);
+	EP_ASSERT (size != NULL);
+	EP_ASSERT (process_info_payload_get_size (payload) == *size);
+
+	// see IPC spec @ https://github.com/dotnet/diagnostics/blob/master/documentation/design-docs/ipc-protocol.md
+	// for definition of serialization format
+
+	bool success = true;
+
+	// uint64_t ProcessId;
+	memcpy (*buffer, &payload->process_id, sizeof (payload->process_id));
+	*buffer += sizeof (payload->process_id);
+	*size -= sizeof (payload->process_id);
+
+	// GUID RuntimeCookie;
+	memcpy(*buffer, &payload->runtime_cookie, sizeof (payload->runtime_cookie));
+	*buffer += sizeof (payload->runtime_cookie);
+	*size -= sizeof (payload->runtime_cookie);
+
+	// LPCWSTR CommandLine;
+	success &= ipc_message_try_write_string_utf16_t (buffer, size, payload->command_line);
+
+	// LPCWSTR OS;
+	if (success)
+		success &= ipc_message_try_write_string_utf16_t (buffer, size, payload->os);
+
+	// LPCWSTR Arch;
+	if (success)
+		success &= ipc_message_try_write_string_utf16_t (buffer, size, payload->arch);
+
+	// Assert we've used the whole buffer we were given
+	EP_ASSERT(*size == 0);
+
+	return success;
+}
+
+DiagnosticsProcessInfoPayload *
+ds_process_info_payload_init (
+	DiagnosticsProcessInfoPayload *payload,
+	const ep_char16_t *command_line,
+	const ep_char16_t *os,
+	const ep_char16_t *arch,
+	uint32_t process_id,
+	const uint8_t *runtime_cookie)
+{
+	ep_return_null_if_nok (payload != NULL);
+
+	payload->command_line = command_line;
+	payload->os = os;
+	payload->arch = arch;
+	payload->process_id = process_id;
+
+	if (runtime_cookie)
+		memcpy (&payload->runtime_cookie, runtime_cookie, EP_ACTIVITY_ID_SIZE);
+
+	return payload;
+}
+
+void
+ds_process_info_payload_fini (DiagnosticsProcessInfoPayload *payload)
+{
+	;
+}
+
+/*
+ * DiagnosticsProcessProtocolHelper.
+ */
+
+void
+ds_process_protocol_helper_get_process_info (
+	DiagnosticsIpcMessage *message,
+	IpcStream *stream)
+{
+	EP_ASSERT (message != NULL);
+	EP_ASSERT (stream != NULL);
+
+	ep_char16_t *command_line = NULL;
+	ep_char16_t *os_info = NULL;
+	ep_char16_t *arch_info = NULL;
+
+	if (ep_rt_managed_command_line_get ())
+		command_line = ep_rt_utf8_to_utf16_string (ep_rt_managed_command_line_get (), -1);
+
+	// Checkout https://github.com/dotnet/coreclr/pull/24433 for more information about this fall back.
+	if (!command_line)
+		// Use the result from ep_rt_command_line_get() instead
+		command_line = ep_rt_utf8_to_utf16_string (ep_rt_command_line_get (), -1);
+
+	// get OS + Arch info
+	os_info = ep_rt_utf8_to_utf16_string (ep_event_source_get_os_info (), -1);
+	arch_info = ep_rt_utf8_to_utf16_string (ep_event_source_get_arch_info (), -1);
+
+	DiagnosticsProcessInfoPayload payload;
+	ds_process_info_payload_init (
+		&payload,
+		command_line,
+		os_info,
+		arch_info,
+		ep_rt_current_process_get_id (),
+		ipc_advertise_cookie_v1_get ());
+
+	ep_raise_error_if_nok (ipc_message_initialize_buffer (
+		message,
+		&_ds_ipc_generic_success_header,
+		&payload,
+		process_info_payload_get_size (&payload),
+		process_info_payload_flatten) == true);
+
+	ipc_message_send (message, stream);
+
+ep_on_exit:
+	ds_process_info_payload_fini (&payload);
+	ep_rt_utf16_string_free (arch_info);
+	ep_rt_utf16_string_free (os_info);
+	ep_rt_utf16_string_free (command_line);
+	ep_ipc_stream_free (stream);
+	return;
+
+ep_on_error:
+	ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
+	DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
+	ep_exit_error_handler ();
+}
+
+void
+ds_process_protocol_helper_resume_runtime_startup (
+	DiagnosticsIpcMessage *message,
+	IpcStream *stream)
+{
+	EP_ASSERT (message != NULL);
+	EP_ASSERT (stream != NULL);
+
+	// no payload
+	ds_server_resume_runtime_startup ();
+	bool success = ds_ipc_message_send_success (stream, DS_IPC_S_OK);
+	if (!success) {
+		ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
+		DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
+	}
+
+	ep_ipc_stream_free (stream);
+}
+
+void
+ds_process_protocol_helper_handle_ipc_message (
+	DiagnosticsIpcMessage *message,
+	IpcStream *stream)
+{
+	EP_ASSERT (message != NULL);
+	EP_ASSERT (stream != NULL);
+
+	switch ((DiagnosticsProcessCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
+	case DS_PROCESS_COMMANDID_GET_PROCESS_INFO:
+		ds_process_protocol_helper_get_process_info (message, stream);
+		break;
+	default:
+		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
 		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 		ep_ipc_stream_free (stream);
 		break;

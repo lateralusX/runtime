@@ -32,19 +32,5 @@ ds_server_pause_for_diagnostics_monitor (void);
 void
 ds_server_resume_runtime_startup (void);
 
-/*
- * DiagnosticServerProtocolHelper.
- */
-
-void
-ds_server_protocol_helper_handle_ipc_message (
-	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
-
-void
-ds_server_protocol_helper_resume_runtime_startup (
-	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
-
 #endif /* ENABLE_PERFTRACING */
 #endif /** __DIAGNOSTICS_SERVER_H__ **/

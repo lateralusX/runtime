@@ -129,14 +129,12 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 		}
 
 		switch ((DiagnosticsServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
-		case DS_SERVER_COMMANDSET_SERVER:
-			ds_server_protocol_helper_handle_ipc_message (&message, stream);
-			break;
-
 		case DS_SERVER_COMMANDSET_EVENTPIPE:
 			ds_eventpipe_protocol_helper_handle_ipc_message (&message, stream);
 			break;
-
+		case DS_SERVER_COMMANDSET_PROCESS:
+			ds_process_protocol_helper_handle_ipc_message (&message, stream);
+			break;
 		case DS_SERVER_COMMANDSET_DUMP:
 #ifdef FEATURE_PROFAPI_ATTACH_DETACH
 		case DS_SERVER_COMMAND_SET_PROFILER:
@@ -238,43 +236,6 @@ ds_server_resume_runtime_startup (void)
 {
 	if (ep_rt_wait_event_is_valid (&_server_resume_runtime_startup_event))
 		ep_rt_wait_event_set (&_server_resume_runtime_startup_event);
-}
-
-/*
- * DiagnosticServerProtocolHelper.
- */
-
-void
-ds_server_protocol_helper_handle_ipc_message (
-	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
-{
-	EP_ASSERT (message != NULL);
-	EP_ASSERT (stream != NULL);
-
-	switch ((DiagnosticsServerCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
-	case DS_SERVER_COMMANDID_RESUME_RUNTIME:
-		ds_server_protocol_helper_resume_runtime_startup (message, stream);
-		break;
-	default:
-		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
-		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-		ep_ipc_stream_free (stream);
-		break;
-	}
-}
-
-void
-ds_server_protocol_helper_resume_runtime_startup (
-	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
-{
-	EP_ASSERT (message != NULL);
-	EP_ASSERT (stream != NULL);
-
-	// no payload
-	ds_server_resume_runtime_startup ();
-	ds_ipc_message_send_success (stream, DS_IPC_S_OK);
 }
 
 #endif /* ENABLE_PERFTRACING */

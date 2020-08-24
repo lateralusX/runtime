@@ -21,6 +21,7 @@ typedef struct _DiagnosticsIpc DiagnosticsIpc;
 typedef struct _DiagnosticsIpcHeader DiagnosticsIpcHeader;
 typedef struct _DiagnosticsIpcMessage DiagnosticsIpcMessage;
 typedef struct _DiagnosticsIpcPollHandle DiagnosticsIpcPollHandle;
+typedef struct _DiagnosticsProcessInfoPayload DiagnosticsProcessInfoPayload;
 typedef struct _EventPipeCollectTracingCommandPayload EventPipeCollectTracingCommandPayload;
 typedef struct _EventPipeCollectTracing2CommandPayload EventPipeCollectTracing2CommandPayload;
 typedef struct _EventPipeStopTracingCommandPayload EventPipeStopTracingCommandPayload;
@@ -40,21 +41,23 @@ typedef enum {
 	DS_SERVER_COMMANDSET_DUMP = 0x01,
 	DS_SERVER_COMMANDSET_EVENTPIPE = 0x02,
 	DS_SERVER_COMMANDSET_PROFILER = 0x03,
+	DS_SERVER_COMMANDSET_PROCESS = 0x04,
 	DS_SERVER_COMMANDSET_SERVER = 0xFF
 } DiagnosticsServerCommandSet;
 
-// Overlaps with DiagnosticsServerResponseId
-// DON'T create overlapping values
+// The event pipe command set is 0x02
+// see ds-ipc.h and ds-server.h for more details
 typedef enum {
-	// 0x00 used in DiagnosticsServerResponseId
-	DS_SERVER_COMMANDID_RESUME_RUNTIME = 0x01,
-	// 0xFF used DiagnosticsServerResponseId
-} DiagnosticsServerCommandId;
+	DS_PROCESS_COMMANDID_GET_PROCESS_INFO = 0x00,
+	DS_PROCESS_COMMANDID_RESUME_RUNTIME = 0x01,
+	// future
+} DiagnosticsProcessCommandId;
 
 // Overlaps with DiagnosticsServerCommandId
 // DON'T create overlapping values
 typedef enum {
 	DS_SERVER_RESPONSEID_OK = 0x00,
+	// future
 	DS_SERVER_RESPONSEID_ERROR = 0xFF,
 } DiagnosticsServerResponseId;
 
