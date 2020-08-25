@@ -110,11 +110,13 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 			DS_IPC_POLL_TIMEOUT_INFINITE :
 			ipc_stream_factory_get_next_timeout (poll_timeout_ms);
 
-		int32_t ret_val = ds_ipc_poll (&ipc_poll_handles, poll_timeout_ms, callback);
 		poll_attempts++;
 		DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - Poll attempt: %d, timeout: %dms.\n", poll_attempts, poll_timeout_ms);
+		int32_t ret_val = ds_ipc_poll (&ipc_poll_handles, poll_timeout_ms, callback);
+		bool saw_error = false;
 
 		if (ret_val != 0) {
+			uint32_t connection_id = 0;
 			ds_rt_ipc_poll_handle_array_iterator_t ipc_poll_handles_iterator;
 			ds_rt_ipc_poll_handle_array_iterator_begin (&ipc_poll_handles, &ipc_poll_handles_iterator);
 			while (!ds_rt_ipc_poll_handle_array_iterator_end (&ipc_poll_handles, &ipc_poll_handles_iterator)) {
@@ -124,24 +126,35 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 				case DS_IPC_POLL_EVENTS_HANGUP:
 					EP_ASSERT (state != NULL);
 					ds_ipc_stream_factory_connection_state_reset (connection_state, callback);
-					DS_LOG_INFO_1 ("IpcStreamFactory::GetNextAvailableStream - Poll attempt: %d, connection hung up.\n", nPollAttempts);
+					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - HUP :: Poll attempt: %d, connection %d hung up.\n", nPollAttempts, connection_id);
 					poll_timeout_ms = DS_IPC_POLL_TIMEOUT_MIN_MS;
 					break;
 				case DS_IPC_POLL_EVENTS_SIGNALED:
 					EP_ASSERT (state != NULL);
 					if (!stream)  // only use first signaled stream; will get others on subsequent calls
 						stream = ds_ipc_stream_factory_connection_state_get_connected_stream (connection_state, callback);
+					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - SIG :: Poll attempt: %d, connection %d signalled.\n", nPollAttempts, connection_id);
 					break;
 				case DS_IPC_POLL_EVENTS_ERR:
-					ep_raise_error ();
+					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - ERR :: Poll attempt: %d, connection %d errored.\n", nPollAttempts, connection_id);
+					saw_error = true;
+					break;
+				case DS_IPC_POLL_EVENTS_NONE:
+					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - NON :: Poll attempt: %d, connection %d had no events.\n", nPollAttempts, connection_id);
+					break;
 				default:
-					// TODO: Error handling
+					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - UNK :: Poll attempt: %d, connection %d had invalid PollEvent.\n", nPollAttempts, connection_id);
+					saw_error = true;
 					break;
 				}
 
 				ds_rt_ipc_poll_handle_array_iterator_next (&ipc_poll_handles, &ipc_poll_handles_iterator);
+				connection_id++;
 			}
 		}
+
+		if (!stream && saw_error)
+			ep_raise_error ();
 
 		// clear the view.
 		ds_rt_ipc_poll_handle_array_clear (&ipc_poll_handles, NULL);

@@ -76,7 +76,7 @@ typedef enum {
 } DiagnosticsIpcConnectionMode;
 
 typedef enum {
-	DS_IPC_POLL_EVENTS_TIMEOUT = 0x00, // implies timeout
+	DS_IPC_POLL_EVENTS_NONE = 0x00, // no events
 	DS_IPC_POLL_EVENTS_SIGNALED = 0x01, // ready for use
 	DS_IPC_POLL_EVENTS_HANGUP = 0x02, // connection remotely closed
 	DS_IPC_POLL_EVENTS_ERR = 0x04 // other error
