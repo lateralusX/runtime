@@ -79,6 +79,8 @@ ds_ipc_stream_factory_has_active_connections (void)
 IpcStream *
 ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func callback)
 {
+	DS_LOG_INFO_0 ("IpcStreamFactory::GetNextAvailableStream - ENTER");
+
 	IpcStream *stream = NULL;
 	ds_rt_ipc_poll_handle_array_t ipc_poll_handles;
 	DiagnosticsIpcPollHandle ipc_poll_handle;
@@ -112,6 +114,26 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 
 		poll_attempts++;
 		DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - Poll attempt: %d, timeout: %dms.\n", poll_attempts, poll_timeout_ms);
+//TODO: FIX when having PAL.
+//		for (uint32_t i = 0; i < rgIpcPollHandles.Size(); i++)
+//		{
+//			if (rgIpcPollHandles[i].pIpc != nullptr)
+//			{
+//#ifdef TARGET_UNIX
+//				STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tSERVER IpcPollHandle[%d] = { _serverSocket = %d }\n", i, rgIpcPollHandles[i].pIpc->_serverSocket);
+//#else
+//				STRESS_LOG3(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tSERVER IpcPollHandle[%d] = { _hPipe = %d, _oOverlap.hEvent = %d }\n", i, rgIpcPollHandles[i].pIpc->_hPipe, rgIpcPollHandles[i].pIpc->_oOverlap.hEvent);
+//#endif
+//			}
+//			else
+//			{
+//#ifdef TARGET_UNIX
+//				STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tCLIENT IpcPollHandle[%d] = { _clientSocket = %d }\n", i, rgIpcPollHandles[i].pStream->_clientSocket);
+//#else
+//				STRESS_LOG3(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tCLIENT IpcPollHandle[%d] = { _hPipe = %d, _oOverlap.hEvent = %d }\n", i, rgIpcPollHandles[i].pStream->_hPipe, rgIpcPollHandles[i].pStream->_oOverlap.hEvent);
+//#endif
+//			}
+//		}
 		int32_t ret_val = ds_ipc_poll (&ipc_poll_handles, poll_timeout_ms, callback);
 		bool saw_error = false;
 
@@ -161,6 +183,14 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 	}
 
 ep_on_exit:
+
+//TODO: FIX when having PAL.
+//#ifdef TARGET_UNIX
+//	STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "IpcStreamFactory::GetNextAvailableStream - EXIT :: Poll attempt: %d, stream using handle %d.\n", nPollAttempts, pStream->_clientSocket);
+//#else
+//	STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "IpcStreamFactory::GetNextAvailableStream - EXIT :: Poll attempt: %d, stream using handle %d.\n", nPollAttempts, pStream->_hPipe);
+//#endif
+
 	return stream;
 
 ep_on_error:

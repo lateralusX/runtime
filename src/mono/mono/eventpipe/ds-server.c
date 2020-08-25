@@ -128,6 +128,8 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 			continue;
 		}
 
+		DS_LOG_INFO_2 ("DiagnosticServer - received IPC message with command set (%d) and command id (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)), ds_ipc_header_get_commandid (ds_ipc_message_get_header (&message)));
+
 		switch ((DiagnosticsServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
 		case DS_SERVER_COMMANDSET_EVENTPIPE:
 			ds_eventpipe_protocol_helper_handle_ipc_message (&message, stream);
