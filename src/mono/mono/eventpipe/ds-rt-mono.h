@@ -56,7 +56,7 @@
 static
 inline
 bool
-ds_rt_config_value_get_enable (void)
+ds_rt_config_value_get_diagnostic_enable (void)
 {
 	bool enable = false;
 	gchar *value = g_getenv ("COMPlus_EnableDiagnostics");
@@ -69,22 +69,19 @@ ds_rt_config_value_get_enable (void)
 static
 inline
 ep_char8_t *
-ds_rt_config_value_get_monitor_address (void)
+ds_rt_config_value_get_diagnostic_ports (void)
 {
-	return g_getenv ("DOTNET_DiagnosticsMonitorAddress");
+	return g_getenv ("DOTNET_DiagnosticPorts");
 }
 
 static
 inline
-bool
-ds_rt_config_value_get_diagnostics_monitor_pause_on_start (void)
+int32_t
+ds_rt_config_value_get_default_diagnostic_port_suspend (void)
 {
 	bool enable = false;
-	gchar *value = g_getenv ("DOTNET_DiagnosticsMonitorPauseOnStart");
-	if (value && atoi (value) != 0)
-		enable = true;
-	g_free (value);
-	return enable;
+	gchar *value = g_getenv ("DOTNET_DefaultDiagnosticPortSuspend");
+	return value != NULL ? atoi (value) : 0;
 }
 
 /*
@@ -95,11 +92,11 @@ DS_RT_DEFINE_ARRAY (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_
 DS_RT_DEFINE_ARRAY_ITERATOR (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_ipc_poll_handle_array_iterator_t, DiagnosticsIpcPollHandle)
 
 /*
- * IpcStreamFactoryConnectionState.
+ * IpcStreamFactoryDiagnosticPort.
  */
 
-DS_RT_DEFINE_ARRAY (connection_state_array, ds_rt_connection_state_array_t, ds_rt_connection_state_array_iterator_t, IpcStreamFactoryConnectionState *)
-DS_RT_DEFINE_ARRAY_ITERATOR (connection_state_array, ds_rt_connection_state_array_t, ds_rt_connection_state_array_iterator_t, IpcStreamFactoryConnectionState *)
+DS_RT_DEFINE_ARRAY (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
+DS_RT_DEFINE_ARRAY_ITERATOR (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */

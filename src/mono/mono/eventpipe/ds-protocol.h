@@ -18,6 +18,12 @@
 * DiagnosticsIpc
 */
 
+uint8_t *
+ds_ipc_advertise_cookie_v1_get (void);
+
+void
+ds_ipc_advertise_cookie_v1_init (void);
+
 bool
 ds_icp_advertise_v1_send (IpcStream *stream);
 

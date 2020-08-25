@@ -49,61 +49,70 @@ ds_ipc_stream_factory_init (void);
 void
 ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback);
 
-bool
-ds_ipc_stream_factory_create_server (
-	const ep_char8_t *const ipc_name,
-	ds_ipc_error_callback_func callback);
+//bool
+//ds_ipc_stream_factory_create_server (
+//	const ep_char8_t *const ipc_name,
+//	ds_ipc_error_callback_func callback);
+//
+//bool
+//ds_ipc_stream_factory_create_client (
+//	const ep_char8_t *const ipc_name,
+//	ds_ipc_error_callback_func callback);
 
 bool
-ds_ipc_stream_factory_create_client (
-	const ep_char8_t *const ipc_name,
-	ds_ipc_error_callback_func callback);
+ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback);
 
 IpcStream *
 ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func callback);
 
+void
+ds_ipc_stream_factory_resume_current_port (void);
+
 bool
-ds_ipc_stream_factory_has_active_connections (void);
+ds_ipc_stream_factory_any_suspended_ports (void);
+
+bool
+ds_ipc_stream_factory_has_active_ports (void);
 
 void
-ds_ipc_stream_factory_close_connections (ds_ipc_error_callback_func callback);
+ds_ipc_stream_factory_close_ports (ds_ipc_error_callback_func callback);
 
 /*
- * IpcStreamFactoryConnectionState.
+ * IpcStreamFactoryDiagnosticPort.
  */
 
 #if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
 //TODO: Implement.
-struct _IpcStreamFactoryConnectionState {
+struct _IpcStreamFactoryDiagnosticPort {
 #else
-struct _IpcStreamFactoryConnectionState_Internal {
+struct _IpcStreamFactoryDiagnosticPort_Internal {
 #endif
 //	DiagnosticsIpc *ipc;
 	IpcStream *stream;
 };
 
 #if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _IpcStreamFactoryConnectionState {
-	uint8_t _internal [sizeof (struct _IpcStreamFactoryConnectionState_Internal)];
+struct _IpcStreamFactoryDiagnosticPort {
+	uint8_t _internal [sizeof (struct _IpcStreamFactoryDiagnosticPort_Internal)];
 };
 #endif
 
 // returns a pollable handle and performs any preparation required
 // e.g., as a side-effect, will connect and advertise on reverse connections
 bool
-ds_ipc_stream_factory_connection_state_get_ipc_poll_handle_vcall (
-	IpcStreamFactoryConnectionState * connection_state,
+ds_ipc_stream_factory_diagnostic_port_get_ipc_poll_handle_vcall (
+	IpcStreamFactoryDiagnosticPort * diagnostic_port,
 	DiagnosticsIpcPollHandle *handle,
 	ds_ipc_error_callback_func callback);
 
 IpcStream *
-ds_ipc_stream_factory_connection_state_get_connected_stream (
-	IpcStreamFactoryConnectionState * connection_state,
+ds_ipc_stream_factory_diagnostic_port_get_connected_stream (
+	IpcStreamFactoryDiagnosticPort * diagnostic_port,
 	ds_ipc_error_callback_func callback);
 
 void
-ds_ipc_stream_factory_connection_state_reset (
-	IpcStreamFactoryConnectionState * connection_state,
+ds_ipc_stream_factory_diagnostic_port_reset (
+	IpcStreamFactoryDiagnosticPort * diagnostic_port,
 	ds_ipc_error_callback_func callback);
 
 #endif /* ENABLE_PERFTRACING */

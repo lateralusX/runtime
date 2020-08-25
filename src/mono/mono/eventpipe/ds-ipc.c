@@ -12,7 +12,11 @@
  */
 
 static volatile uint32_t _ds_ipc_stream_factory_shutting_down_state = 0;
-static ds_rt_connection_state_array_t _ds_ipc_stream_factory_connection_states_array = { 0 };
+static ds_rt_diagnostic_port_array_t _ds_ipc_stream_factory_diagnostic_port_array = { 0 };
+
+// set this in get_next_available_stream, and then expose a callback that
+// allows us to track which connections have sent their ResumeRuntime commands
+static IpcStreamFactoryDiagnosticPort *_ds_ipc_stream_factory_current_port = NULL;
 
 static
 inline
@@ -58,7 +62,7 @@ ipc_stream_factory_get_next_timeout (uint32_t current_timeout_ms)
 void
 ds_ipc_stream_factory_init (void)
 {
-	ds_rt_connection_state_array_alloc (&_ds_ipc_stream_factory_connection_states_array);
+	ds_rt_diagnostic_port_array_alloc (&_ds_ipc_stream_factory_diagnostic_port_array);
 }
 
 void
@@ -66,14 +70,14 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback)
 {
 	//TODO: Implement.
 	EP_ASSERT (callback == NULL);
-	ds_rt_connection_state_array_free (&_ds_ipc_stream_factory_connection_states_array);
+	ds_rt_diagnostic_port_array_free (&_ds_ipc_stream_factory_diagnostic_port_array);
 }
 
 bool
-ds_ipc_stream_factory_has_active_connections (void)
+ds_ipc_stream_factory_has_active_ports (void)
 {
 	return !ipc_stream_factory_load_shutting_down_state () &&
-		ds_rt_connection_state_array_size (&_ds_ipc_stream_factory_connection_states_array) > 0;
+		ds_rt_diagnostic_port_array_size (&_ds_ipc_stream_factory_diagnostic_port_array) > 0;
 }
 
 IpcStream *
@@ -84,8 +88,8 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 	IpcStream *stream = NULL;
 	ds_rt_ipc_poll_handle_array_t ipc_poll_handles;
 	DiagnosticsIpcPollHandle ipc_poll_handle;
-	ds_rt_connection_state_array_t *connection_states = &_ds_ipc_stream_factory_connection_states_array;
-	IpcStreamFactoryConnectionState *connection_state = NULL;
+	ds_rt_diagnostic_port_array_t *diagnostic_ports = &_ds_ipc_stream_factory_diagnostic_port_array;
+	IpcStreamFactoryDiagnosticPort *diagnostic_port = NULL;
 
 	int32_t poll_timeout_ms = DS_IPC_POLL_TIMEOUT_INFINITE;
 	bool connect_success = true;
@@ -95,17 +99,17 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 
 	while (!stream) {
 		connect_success = true;
-		ds_rt_connection_state_array_iterator_t connection_states_iterator;
-		ds_rt_connection_state_array_iterator_begin (connection_states, &connection_states_iterator);
-		while (!ds_rt_connection_state_array_iterator_end (connection_states, &connection_states_iterator)) {
-			connection_state = ds_rt_connection_state_array_iterator_value (&connection_states_iterator);
+		ds_rt_diagnostic_port_array_iterator_t diagnostic_ports_iterator;
+		ds_rt_diagnostic_port_array_iterator_begin (diagnostic_ports, &diagnostic_ports_iterator);
+		while (!ds_rt_diagnostic_port_array_iterator_end (diagnostic_ports, &diagnostic_ports_iterator)) {
+			diagnostic_port = ds_rt_diagnostic_port_array_iterator_value (&diagnostic_ports_iterator);
 			DiagnosticsIpcPollHandle handle;
-			if (ds_ipc_stream_factory_connection_state_get_ipc_poll_handle_vcall (connection_state, &ipc_poll_handle, callback))
+			if (ds_ipc_stream_factory_diagnostic_port_get_ipc_poll_handle_vcall (diagnostic_port, &ipc_poll_handle, callback))
 				ds_rt_ipc_poll_handle_array_append (&ipc_poll_handles, ipc_poll_handle);
 			else
 				connect_success = false;
 
-			ds_rt_connection_state_array_iterator_next (connection_states, &connection_states_iterator);
+			ds_rt_diagnostic_port_array_iterator_next (diagnostic_ports, &diagnostic_ports_iterator);
 		}
 
 		poll_timeout_ms = connect_success ?
@@ -143,18 +147,20 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 			ds_rt_ipc_poll_handle_array_iterator_begin (&ipc_poll_handles, &ipc_poll_handles_iterator);
 			while (!ds_rt_ipc_poll_handle_array_iterator_end (&ipc_poll_handles, &ipc_poll_handles_iterator)) {
 				ipc_poll_handle = ds_rt_ipc_poll_handle_array_iterator_value (&ipc_poll_handles_iterator);
-				connection_state = (IpcStreamFactoryConnectionState *)ipc_poll_handle.user_data;
+				diagnostic_port = (IpcStreamFactoryDiagnosticPort *)ipc_poll_handle.user_data;
 				switch (ipc_poll_handle.events) {
 				case DS_IPC_POLL_EVENTS_HANGUP:
 					EP_ASSERT (state != NULL);
-					ds_ipc_stream_factory_connection_state_reset (connection_state, callback);
+					ds_ipc_stream_factory_diagnostic_port_reset (diagnostic_port, callback);
 					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - HUP :: Poll attempt: %d, connection %d hung up.\n", nPollAttempts, connection_id);
 					poll_timeout_ms = DS_IPC_POLL_TIMEOUT_MIN_MS;
 					break;
 				case DS_IPC_POLL_EVENTS_SIGNALED:
 					EP_ASSERT (state != NULL);
-					if (!stream)  // only use first signaled stream; will get others on subsequent calls
-						stream = ds_ipc_stream_factory_connection_state_get_connected_stream (connection_state, callback);
+					if (!stream) {  // only use first signaled stream; will get others on subsequent calls
+						stream = ds_ipc_stream_factory_diagnostic_port_get_connected_stream (diagnostic_port, callback);
+						_ds_ipc_stream_factory_current_port = diagnostic_port;
+					}
 					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - SIG :: Poll attempt: %d, connection %d signalled.\n", nPollAttempts, connection_id);
 					break;
 				case DS_IPC_POLL_EVENTS_ERR:
@@ -175,8 +181,10 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 			}
 		}
 
-		if (!stream && saw_error)
+		if (!stream && saw_error) {
+			_ds_ipc_stream_factory_current_port = NULL;
 			ep_raise_error ();
+		}
 
 		// clear the view.
 		ds_rt_ipc_poll_handle_array_clear (&ipc_poll_handles, NULL);

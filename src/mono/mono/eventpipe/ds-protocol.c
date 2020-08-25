@@ -27,16 +27,14 @@ static const DiagnosticsIpcHeader _ds_ipc_generic_error_header = {
 	(uint16_t)0x0000
 };
 
+static uint8_t _ds_ipc_advertise_cooike_v1 [EP_ACTIVITY_ID_SIZE] = { 0 };
+
 typedef bool (ipc_flatten_payload_func)(void *payload, uint8_t **buffer, uint16_t *buffer_len);
 typedef const uint8_t * (*ipc_parse_payload_func)(uint8_t *buffer, uint16_t buffer_len);
 
 /*
  * Forward declares of all static functions.
  */
-
-static
-uint8_t *
-ipc_advertise_cookie_v1_get (void);
 
 static
 bool
@@ -229,6 +227,18 @@ process_info_payload_flatten (
 * DiagnosticsIpc
 */
 
+uint8_t *
+ds_ipc_advertise_cookie_v1_get (void)
+{
+	return _ds_ipc_advertise_cooike_v1;
+}
+
+void
+ds_ipc_advertise_cookie_v1_init (void)
+{
+	ep_rt_create_activity_id ((uint8_t *)&_ds_ipc_advertise_cooike_v1, EP_ACTIVITY_ID_SIZE);
+}
+
 /**
 * ==ADVERTISE PROTOCOL==
 * Before standard IPC Protocol communication can occur on a client-mode connection
@@ -237,31 +247,17 @@ process_info_payload_flatten (
 * 
 * See spec in: dotnet/diagnostics@documentation/design-docs/ipc-spec.md
 * 
-* The flow for Advertise is a one-way burst of 24 bytes consisting of
+* The flow for Advertise is a one-way burst of 34 bytes consisting of
 * 8 bytes  - "ADVR_V1\0" (ASCII chars + null byte)
 * 16 bytes - random 128 bit number cookie (little-endian)
 * 8 bytes  - PID (little-endian)
 * 2 bytes  - unused 2 byte field for futureproofing
 */
-static
-uint8_t *
-ipc_advertise_cookie_v1_get (void)
-{
-	static uint8_t advertise_cooike_v1_buffer [EP_ACTIVITY_ID_SIZE];
-	static uint8_t *advertise_cooike_v1 = NULL;
-
-	if (!advertise_cooike_v1) {
-		ep_rt_create_activity_id (advertise_cooike_v1_buffer, EP_ACTIVITY_ID_SIZE);
-		advertise_cooike_v1 = advertise_cooike_v1_buffer;
-	}
-	return advertise_cooike_v1;
-}
-
 bool
 ds_icp_advertise_v1_send (IpcStream *stream)
 {
 	uint8_t advertise_buffer [DOTNET_IPC_V1_ADVERTISE_SIZE];
-	uint8_t *cookie = ipc_advertise_cookie_v1_get ();
+	uint8_t *cookie = ds_ipc_advertise_cookie_v1_get ();
 	uint64_t pid = DS_VAL64 (ep_rt_current_process_get_id ());
 	uint64_t *buffer = (uint64_t *)advertise_buffer;
 	bool result = false;
@@ -271,30 +267,9 @@ ds_icp_advertise_v1_send (IpcStream *stream)
 	memcpy (buffer, DOTNET_IPC_V1_ADVERTISE_MAGIC, sizeof (uint64_t));
 	buffer++;
 
-	//Etract parts of guid buffer, convert elemnts to little endian.
-	uint32_t data1;
-	memcpy (&data1, cookie, sizeof (data1));
-	data1 = DS_VAL32 (data1);
-	cookie += sizeof (data1);
-
-	uint16_t data2;
-	memcpy (&data2, cookie, sizeof (data2));
-	data2 = DS_VAL16 (data2);
-	cookie += sizeof (data2);
-
-	uint16_t data3;
-	memcpy (&data3, cookie, sizeof (data3));
-	data3 = DS_VAL16 (data3);
-	cookie += sizeof (data3);
-
-	uint64_t data4;
-	memcpy (&data4, cookie, sizeof (data4));
-
-	uint64_t swap = ((uint64_t)data1 << 32) | ((uint64_t)data2 << 16) | (uint64_t)data3;
-	memcpy (buffer, &swap, sizeof (uint64_t));
-
-	memcpy (buffer, &data4, sizeof (uint64_t));
-	buffer++;
+	// fills buffer[1] and buffer[2]
+	memcpy (buffer, cookie, EP_ACTIVITY_ID_SIZE);
+	buffer +=2;
 
 	memcpy (buffer, &pid, sizeof (uint64_t));
 	buffer++;
@@ -1347,7 +1322,7 @@ ds_process_protocol_helper_get_process_info (
 		os_info,
 		arch_info,
 		ep_rt_current_process_get_id (),
-		ipc_advertise_cookie_v1_get ());
+		ds_ipc_advertise_cookie_v1_get ());
 
 	ep_raise_error_if_nok (ipc_message_initialize_buffer (
 		message,

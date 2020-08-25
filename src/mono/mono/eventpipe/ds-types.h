@@ -25,7 +25,7 @@ typedef struct _DiagnosticsProcessInfoPayload DiagnosticsProcessInfoPayload;
 typedef struct _EventPipeCollectTracingCommandPayload EventPipeCollectTracingCommandPayload;
 typedef struct _EventPipeCollectTracing2CommandPayload EventPipeCollectTracing2CommandPayload;
 typedef struct _EventPipeStopTracingCommandPayload EventPipeStopTracingCommandPayload;
-typedef struct _IpcStreamFactoryConnectionState IpcStreamFactoryConnectionState;
+typedef struct _IpcStreamFactoryDiagnosticPort IpcStreamFactoryDiagnosticPort;
 
 /*
  * Diagnostics Enums.
@@ -71,8 +71,8 @@ typedef enum {
 } EventPipeCommandId;
 
 typedef enum {
-	DS_IPC_CONNECTION_MODE_CLIENT,
-	DS_IPC_CONNECTION_MODE_SERVER
+	DS_IPC_CONNECTION_MODE_CONNECT,
+	DS_IPC_CONNECTION_MODE_LISTEN
 } DiagnosticsIpcConnectionMode;
 
 typedef enum {
