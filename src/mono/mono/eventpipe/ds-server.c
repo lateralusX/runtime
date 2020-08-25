@@ -111,7 +111,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 
 		DiagnosticsIpcMessage message;
 		ds_ipc_message_init (&message);
-		if (!ds_ipc_message_initialize (&message, stream)) {
+		if (!ds_ipc_message_initialize_stream (&message, stream)) {
 			ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
 			ep_ipc_stream_free (stream);
 			ds_ipc_message_fini (&message);
@@ -214,13 +214,13 @@ ds_server_pause_for_diagnostics_monitor (void)
 	if (address) {
 		if (ds_rt_config_value_get_diagnostics_monitor_pause_on_start ()) {
 			EP_ASSERT (ep_rt_wait_event_is_valid (&_ds_resume_runtime_startup_event) == true);
-			address_wcs = ep_rt_utf8_to_wcs_string (address, -1);
-			if (address_wcs) {
-				printf ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a server at '%ls'.\n", address_wcs);
-				fflush (stdout);
-			}
 			DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command.");
 			if (ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, 5000, false) != 0) {
+				address_wcs = ep_rt_utf8_to_wcs_string (address, -1);
+				if (address_wcs) {
+					printf ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a server at '%ls'.\n", address_wcs);
+					fflush (stdout);
+				}
 				DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command and has waitied 5 seconds.");
 				ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, EP_INFINITE_WAIT, false);
 			}
