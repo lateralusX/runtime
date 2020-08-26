@@ -57,6 +57,9 @@ DS_RT_DECLARE_ARRAY_ITERATOR (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array
 DS_RT_DECLARE_ARRAY (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
 DS_RT_DECLARE_ARRAY_ITERATOR (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
 
+DS_RT_DECLARE_ARRAY (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
+DS_RT_DECLARE_ARRAY_ITERATOR (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
+
 #include "ds-rt-mono.h"
 
 #endif /* ENABLE_PERFTRACING */

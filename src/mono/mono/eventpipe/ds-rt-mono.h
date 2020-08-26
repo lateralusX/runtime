@@ -79,9 +79,12 @@ inline
 int32_t
 ds_rt_config_value_get_default_diagnostic_port_suspend (void)
 {
-	bool enable = false;
+	int32_t value_int32_t = 0;
 	gchar *value = g_getenv ("DOTNET_DefaultDiagnosticPortSuspend");
-	return value != NULL ? atoi (value) : 0;
+	if (value)
+		value_int32_t = atoi (value);
+	g_free (value);
+	return value_int32_t;
 }
 
 /*
@@ -97,6 +100,9 @@ DS_RT_DEFINE_ARRAY_ITERATOR (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_
 
 DS_RT_DEFINE_ARRAY (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
 DS_RT_DEFINE_ARRAY_ITERATOR (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
+
+DS_RT_DEFINE_ARRAY (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
+DS_RT_DEFINE_ARRAY_ITERATOR (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */

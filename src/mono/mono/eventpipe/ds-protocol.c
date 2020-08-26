@@ -171,10 +171,6 @@ collect_tracing_command_try_parse_rundown_requested (
 
 static
 bool
-is_null_or_whitespace (ep_char8_t *str);
-
-static
-bool
 collect_tracing_command_try_parse_config (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
@@ -830,21 +826,6 @@ collect_tracing_command_try_parse_rundown_requested (
 
 static
 bool
-is_null_or_whitespace (ep_char8_t *str)
-{
-	if (str == NULL)
-		return true;
-
-	while (*str) {
-		if (!isspace(*str))
-			return false;
-		str++;
-	}
-	return true;
-}
-
-static
-bool
 collect_tracing_command_try_parse_config (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
@@ -882,7 +863,7 @@ collect_tracing_command_try_parse_config (
 		provider_name_utf8 = ep_rt_utf16_to_utf8_string (provider_name, -1);
 		ep_raise_error_if_nok (provider_name_utf8 != NULL);
 
-		ep_raise_error_if_nok (is_null_or_whitespace (provider_name_utf8) == false);
+		ep_raise_error_if_nok (ep_rt_utf8_string_is_null_or_empty (provider_name_utf8) == false);
 
 		const ep_char16_t *filter_data = NULL; // This parameter is optional.
 		ipc_message_try_parse_string_utf16_t (buffer, buffer_len, &filter_data);

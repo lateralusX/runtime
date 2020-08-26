@@ -26,6 +26,8 @@ typedef struct _EventPipeCollectTracingCommandPayload EventPipeCollectTracingCom
 typedef struct _EventPipeCollectTracing2CommandPayload EventPipeCollectTracing2CommandPayload;
 typedef struct _EventPipeStopTracingCommandPayload EventPipeStopTracingCommandPayload;
 typedef struct _IpcStreamFactoryDiagnosticPort IpcStreamFactoryDiagnosticPort;
+typedef struct _IpcStreamFactoryDiagnosticPortBuilder IpcStreamFactoryDiagnosticPortBuilder;
+typedef struct _IpcStreamFactoryDiagnosticPortVtable IpcStreamFactoryDiagnosticPortVtable;
 
 /*
  * Diagnostics Enums.
@@ -82,6 +84,16 @@ typedef enum {
 	DS_IPC_POLL_EVENTS_ERR = 0x04, // error
 	DS_IPC_POLL_EVENTS_UNKNOWN = 0x80 // unknown state
 } DiagnosticsIpcPollEvents;
+
+typedef enum {
+	DS_PORT_TYPE_LISTEN = 0,
+	DS_PORT_TYPE_CONNECT = 1
+} DiagnosticPortType;
+
+typedef enum {
+	DS_PORT_SUSPEND_MODE_NOSUSPEND = 0,
+	DS_PORT_SUSPEND_MODE_SUSPEND = 1
+} DiagnosticPortSuspendMode;
 
 #define DOTNET_IPC_V1_MAGIC "DOTNET_IPC_V1"
 #define DOTNET_IPC_V1_ADVERTISE_MAGIC "ADVR_V1"

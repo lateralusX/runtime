@@ -1217,6 +1217,32 @@ ep_rt_utf8_string_compare (
 
 static
 inline
+int
+ep_rt_utf8_string_compare_ignore_case (
+	const ep_char8_t *str1,
+	const ep_char8_t *str2)
+{
+	return stricmp ((const char *)str1, (const char *)str2);
+}
+
+static
+inline
+bool
+ep_rt_utf8_string_is_null_or_empty (const ep_char8_t *str)
+{
+	if (str == NULL)
+		return true;
+
+	while (*str) {
+		if (!isspace(*str))
+			return false;
+		str++;
+	}
+	return true;
+}
+
+static
+inline
 ep_char16_t *
 ep_rt_utf8_to_utf16_string (
 	const ep_char8_t *str,
@@ -1231,6 +1257,17 @@ ep_char8_t *
 ep_rt_utf8_string_dup (const ep_char8_t *str)
 {
 	return g_strdup (str);
+}
+
+static
+inline
+ep_char8_t *
+ep_rt_utf8_string_strtok (
+	ep_char8_t *str,
+	const ep_char8_t *delimiter,
+	ep_char8_t **context)
+{
+	return strtok_r (str, delimiter, context);
 }
 
 static

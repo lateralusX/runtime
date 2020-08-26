@@ -42,6 +42,13 @@ static
 uint32_t
 ipc_stream_factory_get_next_timeout (uint32_t current_timout_ms);
 
+static
+void
+ipc_stream_factory_split_diagnostic_port_config (
+	ep_char8_t *config,
+	const ep_char8_t *delimiters,
+	ds_rt_diagnostic_port_config_array_t *config_array);
+
 /*
  * IpcStreamFactory.
  */
@@ -59,6 +66,28 @@ ipc_stream_factory_get_next_timeout (uint32_t current_timeout_ms)
 			(uint32_t)((float)current_timeout_ms * DS_IPC_POLL_TIMEOUT_FALLOFF_FACTOR);
 }
 
+static
+void
+ipc_stream_factory_split_diagnostic_port_config (
+	ep_char8_t *config,
+	const ep_char8_t *delimiters,
+	ds_rt_diagnostic_port_config_array_t *config_array)
+{
+	ep_char8_t *part = NULL;
+	ep_char8_t *context = NULL;
+	ep_char8_t *cursor = config;
+
+	EP_ASSERT (config != NULL);
+	EP_ASSERT (context != NULL);
+	EP_ASSERT (cursor != NULL);
+
+	part = ep_rt_utf8_string_strtok (cursor, delimiters, &context);
+	while (part) {
+		ds_rt_diagnostic_port_config_array_append (config_array, part);
+		part = ep_rt_utf8_string_strtok (NULL, delimiters, &context);
+	}
+}
+
 void
 ds_ipc_stream_factory_init (void)
 {
@@ -71,6 +100,82 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback)
 	//TODO: Implement.
 	EP_ASSERT (callback == NULL);
 	ds_rt_diagnostic_port_array_free (&_ds_ipc_stream_factory_diagnostic_port_array);
+}
+
+bool
+ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
+{
+	bool success = true;
+
+	ds_rt_diagnostic_port_config_array_t port_configs;
+	ds_rt_diagnostic_port_config_array_t port_config_parts;
+
+	ep_char8_t *ports = ds_rt_config_value_get_diagnostic_ports ();
+	if (ports) {
+		ds_rt_diagnostic_port_array_alloc (&port_configs);
+		ds_rt_diagnostic_port_array_alloc (&port_config_parts);
+
+		ipc_stream_factory_split_diagnostic_port_config (ports, ";", &port_configs);
+
+		ep_char8_t **port_configs_data = ds_rt_diagnostic_port_config_array_data ((&port_configs));
+		size_t port_configs_size = ds_rt_diagnostic_port_config_array_size (&port_configs);
+		for (size_t port_configs_index = 0; port_configs_index < port_configs_size; ++port_configs_index) {
+			ep_char8_t *port_config = port_configs_data [port_configs_index];
+			DS_LOG_INFO_1 ("IpcStreamFactory::Configure - Attempted to create Diagnostic Port from \"%s\".\n", port_config ? port_config : "");
+			if (port_config) {
+				ds_rt_diagnostic_port_config_array_clear (&port_config_parts, NULL);
+				ipc_stream_factory_split_diagnostic_port_config (port_config, ",", &port_config_parts);
+
+				ep_char8_t **port_config_parts_data = ds_rt_diagnostic_port_config_array_data ((&port_config_parts));
+				size_t port_config_parts_size = ds_rt_diagnostic_port_config_array_size (&port_config_parts);
+				if (port_config_parts_size != 0) {
+					IpcStreamFactoryDiagnosticPortBuilder port_builder;
+					ds_ipc_stream_factory_diagnostic_port_builder_init (&port_builder);
+					for (size_t port_config_parts_index = 0; port_config_parts_index < port_config_parts_size; ++port_config_parts_index) {
+						if (port_config_parts_index == 0)
+							port_builder.path = port_config_parts_data [port_config_parts_index];
+						else
+							ds_ipc_stream_factory_diagnostic_port_builder_set_tag (&port_builder, port_config_parts_data [port_config_parts_index]);
+					}
+					if (!ep_rt_utf8_string_is_null_or_empty (port_builder.path)) {
+						// Ignore listen type (see conversation in https://github.com/dotnet/runtime/pull/40499 for details)
+						if (port_builder.type != DS_PORT_TYPE_LISTEN) {
+							const bool build_success = ipc_stream_factory_build_and_add_port (&port_builder, callback);
+							DS_LOG_INFO_1 ("IpcStreamFactory::Configure - Diagnostic Port creation succeeded? %d \n", build_success);
+							success &= build_success;
+						} else {
+							DS_LOG_INFO_0 ("IpcStreamFactory::Configure - Ignoring LISTEN port configuration \n");
+						}
+					} else {
+						DS_LOG_INFO_0("IpcStreamFactory::Configure - Ignoring port configuration with empty address\n");
+					}
+					ds_ipc_stream_factory_diagnostic_port_builder_fini (&port_builder);
+				} else {
+					success &= false;
+				}
+			}
+		}
+	}
+
+	// create the default listen port
+	int32_t port_suspend = ds_rt_config_value_get_default_diagnostic_port_suspend ();
+	IpcStreamFactoryDiagnosticPortBuilder default_port_builder;
+	ds_ipc_stream_factory_diagnostic_port_builder_init (&default_port_builder);
+
+	default_port_builder.path = NULL;
+	default_port_builder.suspend_mode = port_suspend > 0 ? DS_PORT_SUSPEND_MODE_SUSPEND : DS_PORT_SUSPEND_MODE_NOSUSPEND;
+	default_port_builder.type = DS_PORT_TYPE_LISTEN;
+
+	success &= ipc_stream_factory_build_and_add_port (&default_port_builder, callback);
+
+	ds_ipc_stream_factory_diagnostic_port_builder_fini (&default_port_builder);
+
+	ds_rt_diagnostic_port_array_free (&port_config_parts);
+	ds_rt_diagnostic_port_array_free (&port_configs);
+
+	ep_rt_utf8_string_free (ports);
+
+	return success;
 }
 
 bool
@@ -151,14 +256,14 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 				switch (ipc_poll_handle.events) {
 				case DS_IPC_POLL_EVENTS_HANGUP:
 					EP_ASSERT (state != NULL);
-					ds_ipc_stream_factory_diagnostic_port_reset (diagnostic_port, callback);
+					ds_ipc_stream_factory_diagnostic_port_reset_vcall (diagnostic_port, callback);
 					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - HUP :: Poll attempt: %d, connection %d hung up.\n", nPollAttempts, connection_id);
 					poll_timeout_ms = DS_IPC_POLL_TIMEOUT_MIN_MS;
 					break;
 				case DS_IPC_POLL_EVENTS_SIGNALED:
 					EP_ASSERT (state != NULL);
 					if (!stream) {  // only use first signaled stream; will get others on subsequent calls
-						stream = ds_ipc_stream_factory_diagnostic_port_get_connected_stream (diagnostic_port, callback);
+						stream = ds_ipc_stream_factory_diagnostic_port_get_connected_stream_vcall (diagnostic_port, callback);
 						_ds_ipc_stream_factory_current_port = diagnostic_port;
 					}
 					DS_LOG_INFO_2 ("IpcStreamFactory::GetNextAvailableStream - SIG :: Poll attempt: %d, connection %d signalled.\n", nPollAttempts, connection_id);
@@ -204,6 +309,132 @@ ep_on_exit:
 ep_on_error:
 	stream = NULL;
 	ep_exit_error_handler ();
+}
+
+/*
+ * IpcStreamFactoryDiagnosticPort.
+ */
+
+IpcStreamFactoryDiagnosticPort *
+ds_ipc_stream_factory_diagnostic_port_init (
+	IpcStreamFactoryDiagnosticPort *diagnostic_port,
+	IpcStreamFactoryDiagnosticPortVtable *vtable,
+	DiagnosticsIpc *ipc,
+	IpcStreamFactoryDiagnosticPortBuilder *builder)
+{
+	EP_ASSERT (diagnostic_port != NULL);
+	EP_ASSERT (vtable != NULL);
+	EP_ASSERT (ipc != NULL);
+	EP_ASSERT (builder != NULL);
+
+	diagnostic_port->vtable = vtable;
+	diagnostic_port->suspend_mode = builder->suspend_mode;
+	diagnostic_port->type = builder->type;
+	diagnostic_port->ipc = ipc;
+	diagnostic_port->stream = NULL;
+	diagnostic_port->has_resumed_runtime = false;
+
+	return diagnostic_port;
+}
+
+void
+ds_ipc_stream_factory_diagnostic_port_fini (IpcStreamFactoryDiagnosticPort *diagnostic_port)
+{
+	return;
+}
+
+bool
+ds_ipc_stream_factory_diagnostic_port_get_ipc_poll_handle_vcall (
+	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+	DiagnosticsIpcPollHandle *handle,
+	ds_ipc_error_callback_func callback)
+{
+	EP_ASSERT (diagnostic_port != NULL);
+	EP_ASSERT (diagnostic_port->vtable != NULL);
+
+	IpcStreamFactoryDiagnosticPortVtable *vtable = diagnostic_port->vtable;
+
+	EP_ASSERT (vtable->get_ipc_poll_handle_func != NULL);
+	return vtable->get_ipc_poll_handle_func (diagnostic_port, handle, callback);
+}
+
+IpcStream *
+ds_ipc_stream_factory_diagnostic_port_get_connected_stream_vcall (
+	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+	ds_ipc_error_callback_func callback)
+{
+	EP_ASSERT (diagnostic_port != NULL);
+	EP_ASSERT (diagnostic_port->vtable != NULL);
+
+	IpcStreamFactoryDiagnosticPortVtable *vtable = diagnostic_port->vtable;
+
+	EP_ASSERT (vtable->get_connected_stream_func != NULL);
+	return vtable->get_connected_stream_func (diagnostic_port, callback);
+}
+
+void
+ds_ipc_stream_factory_diagnostic_port_reset_vcall (
+	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+	ds_ipc_error_callback_func callback)
+{
+	EP_ASSERT (diagnostic_port != NULL);
+	EP_ASSERT (diagnostic_port->vtable != NULL);
+
+	IpcStreamFactoryDiagnosticPortVtable *vtable = diagnostic_port->vtable;
+
+	EP_ASSERT (vtable->reset_func != NULL);
+	vtable->reset_func (diagnostic_port, callback);
+}
+
+void
+ds_ipc_stream_factory_diagnostic_port_close (
+	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+	bool is_shutdown,
+	ds_ipc_error_callback_func callback)
+{
+	EP_ASSERT (diagnostic_port != NULL);
+	if (diagnostic_port->ipc)
+		ds_ipc_close (is_shutdown, callback);
+	if (diagnostic_port->stream && !is_shutdown)
+		ep_ipc_stream_close (callback); //TODO: Move ipc stream into ds.
+}
+
+IpcStreamFactoryDiagnosticPortBuilder *
+ds_ipc_stream_factory_diagnostic_port_builder_init (IpcStreamFactoryDiagnosticPortBuilder *builder)
+{
+	EP_ASSERT (builder != NULL);
+	builder->path = NULL;
+	builder->suspend_mode = DS_PORT_SUSPEND_MODE_SUSPEND;
+	builder->type = DS_PORT_TYPE_CONNECT;
+
+	return builder;
+}
+
+void
+ds_ipc_stream_factory_diagnostic_port_builder_fini (IpcStreamFactoryDiagnosticPortBuilder *builder)
+{
+	return;
+}
+
+void
+ds_ipc_stream_factory_diagnostic_port_builder_set_tag (
+	IpcStreamFactoryDiagnosticPortBuilder *builder,
+	ep_char8_t *tag)
+{
+	EP_ASSERT (builder != NULL);
+	EP_ASSERT (tag != NULL);
+
+	if (ep_rt_utf8_string_compare_ignore_case (tag, "listen") == 0)
+		builder->type = DS_PORT_TYPE_LISTEN;
+	else if (ep_rt_utf8_string_compare_ignore_case (tag, "connect") == 0)
+		builder->type = DS_PORT_TYPE_CONNECT;
+	else if (ep_rt_utf8_string_compare_ignore_case (tag, "nosuspend") == 0)
+		builder->suspend_mode = DS_PORT_SUSPEND_MODE_NOSUSPEND;
+	else if (ep_rt_utf8_string_compare_ignore_case (tag, "suspend") == 0)
+		builder->suspend_mode = DS_PORT_SUSPEND_MODE_SUSPEND;
+	else
+		// don't mutate if it's not a valid option
+		DS_LOG_INFO_1 ("IpcStreamFactory::DiagnosticPortBuilder::WithTag - Unknown tag '%s'.\n", tag);
 }
 
 #endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */
