@@ -40,27 +40,6 @@ ds_ipc_poll (
 	ds_ipc_error_callback_func callback);
 
 /*
- * DiagnosticPortBuilder.
- */
-
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
-//TODO: Implement.
-struct _DiagnosticPortBuilder {
-#else
-struct _DiagnosticPortBuilder_Internal {
-#endif
-	ep_char8_t *path;
-	DiagnosticPortType type;
-	DiagnosticPortSuspendMode suspend_mode;
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _DiagnosticPortBuilder {
-	uint8_t _internal [sizeof (struct _DiagnosticPortBuilder_Internal)];
-};
-#endif
-
-/*
  * IpcStreamFactory.
  */
 
@@ -69,16 +48,6 @@ ds_ipc_stream_factory_init (void);
 
 void
 ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback);
-
-//bool
-//ds_ipc_stream_factory_create_server (
-//	const ep_char8_t *const ipc_name,
-//	ds_ipc_error_callback_func callback);
-//
-//bool
-//ds_ipc_stream_factory_create_client (
-//	const ep_char8_t *const ipc_name,
-//	ds_ipc_error_callback_func callback);
 
 bool
 ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback);
@@ -102,106 +71,163 @@ void
 ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback);
 
 /*
- * IpcStreamFactoryDiagnosticPort.
+ * DiagnosticsPort.
  */
 
-typedef bool (*IpcStreamFactoryDiagnosticPortGetIPCPollHandleFunc)(void *object, DiagnosticsIpcPollHandle *handle, ds_ipc_error_callback_func callback);
-typedef IpcStream * (*IpcStreamFactoryDiagnosticPortGetConnectedStreamFunc)(void *object, ds_ipc_error_callback_func callback);
-typedef void (*IpcStreamFactoryDiagnosticPortReset)(void *object, ds_ipc_error_callback_func callback);
+typedef void (*DiagnosticsPortFreeFunc)(void *object);
+typedef bool (*DiagnosticsPortGetIPCPollHandleFunc)(void *object, DiagnosticsIpcPollHandle *handle, ds_ipc_error_callback_func callback);
+typedef IpcStream *(*DiagnosticsPortGetConnectedStreamFunc)(void *object, ds_ipc_error_callback_func callback);
+typedef void (*DiagnosticsPortResetFunc)(void *object, ds_ipc_error_callback_func callback);
 
-struct _IpcStreamFactoryDiagnosticPortVtable {
-	IpcStreamFactoryDiagnosticPortGetIPCPollHandleFunc get_ipc_poll_handle_func;
-	IpcStreamFactoryDiagnosticPortGetConnectedStreamFunc get_connected_stream_func;
-	IpcStreamFactoryDiagnosticPortReset reset_func;
+struct _DiagnosticsPortVtable {
+	DiagnosticsPortFreeFunc free_func;
+	DiagnosticsPortGetIPCPollHandleFunc get_ipc_poll_handle_func;
+	DiagnosticsPortGetConnectedStreamFunc get_connected_stream_func;
+	DiagnosticsPortResetFunc reset_func;
 };
 
 #if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _IpcStreamFactoryDiagnosticPort {
+struct _DiagnosticsPort {
 #else
-struct _IpcStreamFactoryDiagnosticPort_Internal {
+struct _DiagnosticsPort_Internal {
 #endif
-	IpcStreamFactoryDiagnosticPortVtable *vtable;
+	DiagnosticsPortVtable *vtable;
 	DiagnosticsIpc *ipc;
 	IpcStream *stream;
 	bool has_resumed_runtime;
-	DiagnosticPortSuspendMode suspend_mode;
-	DiagnosticPortType type;
+	DiagnosticsPortSuspendMode suspend_mode;
+	DiagnosticsPortType type;
 };
 
 #if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _IpcStreamFactoryDiagnosticPort {
-	uint8_t _internal [sizeof (struct _IpcStreamFactoryDiagnosticPort_Internal)];
+struct _DiagnosticsPort {
+	uint8_t _internal [sizeof (struct _DiagnosticsPort_Internal)];
 };
 #endif
 
-IpcStreamFactoryDiagnosticPort *
-ds_ipc_stream_factory_diagnostic_port_init (
-	IpcStreamFactoryDiagnosticPort *diagnostic_port,
-	IpcStreamFactoryDiagnosticPortVtable *vtable,
+DiagnosticsPort *
+ds_port_init (
+	DiagnosticsPort *port,
+	DiagnosticsPortVtable *vtable,
 	DiagnosticsIpc *ipc,
-	IpcStreamFactoryDiagnosticPortBuilder *builder);
+	DiagnosticsPortBuilder *builder);
 
 void
-ds_ipc_stream_factory_diagnostic_port_fini (IpcStreamFactoryDiagnosticPort *diagnostic_port);
+ds_port_fini (DiagnosticsPort *port);
+
+void
+ds_port_free_vcall (DiagnosticsPort *port);
 
 // returns a pollable handle and performs any preparation required
 // e.g., as a side-effect, will connect and advertise on reverse connections
 bool
-ds_ipc_stream_factory_diagnostic_port_get_ipc_poll_handle_vcall (
-	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+ds_port_get_ipc_poll_handle_vcall (
+	DiagnosticsPort *port,
 	DiagnosticsIpcPollHandle *handle,
 	ds_ipc_error_callback_func callback);
 
 // Returns the signaled stream in a usable state
 IpcStream *
-ds_ipc_stream_factory_diagnostic_port_get_connected_stream_vcall (
-	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+ds_port_get_connected_stream_vcall (
+	DiagnosticsPort * port,
 	ds_ipc_error_callback_func callback);
 
 // Resets the connection in the event of a hangup
 void
-ds_ipc_stream_factory_diagnostic_port_reset_vcall (
-	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+ds_port_reset_vcall (
+	DiagnosticsPort * port,
 	ds_ipc_error_callback_func callback);
 
 // closes the underlying connections
 // only performs minimal cleanup if isShutdown==true
 void
-ds_ipc_stream_factory_diagnostic_port_close (
-	IpcStreamFactoryDiagnosticPort * diagnostic_port,
+ds_port_close (
+	DiagnosticsPort * port,
 	bool is_shutdown,
 	ds_ipc_error_callback_func callback);
 
 /*
- * IpcStreamFactoryDiagnosticPortBuilder.
+ * DiagnosticsPortBuilder.
  */
 
 #if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _IpcStreamFactoryDiagnosticPortBuilder {
+struct _DiagnosticsPortBuilder {
 #else
-struct _IpcStreamFactoryDiagnosticPortBuilder_Internal {
+struct _DiagnosticsPortBuilder_Internal {
 #endif
 	ep_char8_t *path;
-	DiagnosticPortSuspendMode suspend_mode;
-	DiagnosticPortType type;
+	DiagnosticsPortSuspendMode suspend_mode;
+	DiagnosticsPortType type;
 };
 
 #if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _IpcStreamFactoryDiagnosticPortBuilder {
-	uint8_t _internal [sizeof (struct _IpcStreamFactoryDiagnosticPortBuilder_Internal)];
+struct _DiagnosticsPortBuilder {
+	uint8_t _internal [sizeof (struct _DiagnosticsPortBuilder_Internal)];
 };
 #endif
 
-IpcStreamFactoryDiagnosticPortBuilder *
-ds_ipc_stream_factory_diagnostic_port_builder_init (IpcStreamFactoryDiagnosticPortBuilder *builder);
+DiagnosticsPortBuilder *
+ds_port_builder_init (DiagnosticsPortBuilder *builder);
 
 void
-ds_ipc_stream_factory_diagnostic_port_builder_fini (IpcStreamFactoryDiagnosticPortBuilder *builder);
+ds_port_builder_fini (DiagnosticsPortBuilder *builder);
 
 void
-ds_ipc_stream_factory_diagnostic_port_builder_set_tag (
-	IpcStreamFactoryDiagnosticPortBuilder *builder,
+ds_port_builder_set_tag (
+	DiagnosticsPortBuilder *builder,
 	ep_char8_t *tag);
+
+/*
+ * DiagnosticsConnectPort.
+ */
+
+#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsConnectPort {
+#else
+struct _DiagnosticsConnectPort_Internal {
+#endif
+	DiagnosticsPort port;
+};
+
+#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsConnectPort {
+	uint8_t _internal [sizeof (struct _DiagnosticsConnectPort_Internal)];
+};
+#endif
+
+DiagnosticsConnectPort *
+ds_connect_port_alloc (
+	DiagnosticsIpc *ipc,
+	DiagnosticsPortBuilder *builder);
+
+void
+ds_connect_port_free (DiagnosticsConnectPort *listen_port);
+
+/*
+ * DiagnosticsListenPort.
+ */
+
+#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsListenPort {
+#else
+struct _DiagnosticsListenPort_Internal {
+#endif
+	DiagnosticsPort port;
+};
+
+#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsListenPort {
+	uint8_t _internal [sizeof (struct _DiagnosticsListenPort_Internal)];
+};
+#endif
+
+DiagnosticsListenPort *
+ds_listen_port_alloc (
+	DiagnosticsIpc *ipc,
+	DiagnosticsPortBuilder *builder);
+
+void
+ds_listen_port_free (DiagnosticsListenPort *listen_port);
 
 #endif /* ENABLE_PERFTRACING */
 #endif /** __DIAGNOSTICS_IPC_H__ **/

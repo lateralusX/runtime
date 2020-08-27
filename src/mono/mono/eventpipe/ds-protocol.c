@@ -76,14 +76,14 @@ ipc_message_flatten_blitable_type (
 
 static
 bool
-ipc_message_initialize_header_uint32_t_payload (
+ipc_message_init_header_uint32_t_payload (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcHeader *header,
 	uint32_t payload);
 
 static
 bool
-ipc_message_initialize_header_uint64_t_payload (
+ipc_message_init_header_uint64_t_payload (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcHeader *header,
 	uint64_t payload);
@@ -141,7 +141,7 @@ ipc_message_flatten (
 
 static
 bool
-ipc_message_initialize_buffer (
+ipc_message_init_buffer (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcHeader *header,
 	void *payload,
@@ -192,19 +192,19 @@ collect_tracing2_command_try_parse_payload (
 
 static
 void
-eventpipe_protocol_helper_stop_tracing (
+protocol_helper_stop_tracing (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream);
 
 static
 void
-eventpipe_protocol_helper_collect_tracing (
+protocol_helper_collect_tracing (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream);
 
 static
 void
-eventpipe_protocol_helper_collect_tracing_2 (
+protocol_helper_collect_tracing_2 (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream);
 
@@ -903,7 +903,7 @@ collect_tracing_command_try_parse_payload (
 	uint8_t * buffer_cursor = buffer;
 	uint32_t buffer_cursor_len = buffer_len;
 
-	EventPipeCollectTracingCommandPayload * instance = ds_collect_tracing_command_payload_alloc ();
+	EventPipeCollectTracingCommandPayload * instance = ep_collect_tracing_command_payload_alloc ();
 	ep_raise_error_if_nok (instance != NULL);
 
 	instance->incoming_buffer = buffer;
@@ -917,19 +917,19 @@ ep_on_exit:
 	return (uint8_t *)instance;
 
 ep_on_error:
-	ds_collect_tracing_command_payload_free (instance);
+	ep_collect_tracing_command_payload_free (instance);
 	instance = NULL;
 	ep_exit_error_handler ();
 }
 
 EventPipeCollectTracingCommandPayload *
-ds_collect_tracing_command_payload_alloc (void)
+ep_collect_tracing_command_payload_alloc (void)
 {
 	return ep_rt_object_alloc (EventPipeCollectTracingCommandPayload);
 }
 
 void
-ds_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayload *payload)
+ep_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayload *payload)
 {
 	ep_return_void_if_nok (payload != NULL);
 	ep_rt_byte_array_free (payload->incoming_buffer);
@@ -960,7 +960,7 @@ collect_tracing2_command_try_parse_payload (
 	uint8_t * buffer_cursor = buffer;
 	uint32_t buffer_cursor_len = buffer_len;
 
-	EventPipeCollectTracing2CommandPayload * instance = ds_collect_tracing2_command_payload_alloc ();
+	EventPipeCollectTracing2CommandPayload * instance = ep_collect_tracing2_command_payload_alloc ();
 	ep_raise_error_if_nok (instance != NULL);
 
 	instance->incoming_buffer = buffer;
@@ -975,19 +975,19 @@ ep_on_exit:
 	return (uint8_t *)instance;
 
 ep_on_error:
-	ds_collect_tracing2_command_payload_free (instance);
+	ep_collect_tracing2_command_payload_free (instance);
 	instance = NULL;
 	ep_exit_error_handler ();
 }
 
 EventPipeCollectTracing2CommandPayload *
-ds_collect_tracing2_command_payload_alloc (void)
+ep_collect_tracing2_command_payload_alloc (void)
 {
 	return ep_rt_object_alloc (EventPipeCollectTracing2CommandPayload);
 }
 
 void
-ds_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload *payload)
+ep_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload *payload)
 {
 	ep_return_void_if_nok (payload != NULL);
 	ep_rt_byte_array_free (payload->incoming_buffer);
@@ -1008,7 +1008,7 @@ ds_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload
 
 static
 void
-eventpipe_protocol_helper_stop_tracing (
+protocol_helper_stop_tracing (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream)
 {
@@ -1028,7 +1028,7 @@ eventpipe_protocol_helper_stop_tracing (
 	ep_ipc_stream_flush (stream);
 
 ep_on_exit:
-	ds_stop_tracing_command_payload_free (payload);
+	ep_stop_tracing_command_payload_free (payload);
 	ep_ipc_stream_free (stream);
 	return;
 
@@ -1038,7 +1038,7 @@ ep_on_error:
 
 static
 void
-eventpipe_protocol_helper_collect_tracing (
+protocol_helper_collect_tracing (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream)
 {
@@ -1072,7 +1072,7 @@ eventpipe_protocol_helper_collect_tracing (
 	}
 
 ep_on_exit:
-	ds_collect_tracing_command_payload_free (payload);
+	ep_collect_tracing_command_payload_free (payload);
 	return;
 
 ep_on_error:
@@ -1082,7 +1082,7 @@ ep_on_error:
 
 static
 void
-eventpipe_protocol_helper_collect_tracing_2 (
+protocol_helper_collect_tracing_2 (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream)
 {
@@ -1116,7 +1116,7 @@ eventpipe_protocol_helper_collect_tracing_2 (
 	}
 
 ep_on_exit:
-	ds_collect_tracing2_command_payload_free (payload);
+	ep_collect_tracing2_command_payload_free (payload);
 	return;
 
 ep_on_error:
@@ -1125,28 +1125,28 @@ ep_on_error:
 }
 
 void
-ds_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payload)
+ep_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payload)
 {
 	ep_return_void_if_nok (payload != NULL);
 	ep_rt_byte_array_free ((uint8_t *)payload);
 }
 
 void
-ds_eventpipe_protocol_helper_handle_ipc_message (
+ep_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream)
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
 	switch ((EventPipeCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_cref (message))) {
-	case DS_COMMANDID_COLLECT_TRACING:
-		eventpipe_protocol_helper_collect_tracing (message, stream);
+	case EP_COMMANDID_COLLECT_TRACING:
+		protocol_helper_collect_tracing (message, stream);
 		break;
-	case DS_COMMANDID_COLLECT_TRACING_2:
-		eventpipe_protocol_helper_collect_tracing_2 (message, stream);
+	case EP_COMMANDID_COLLECT_TRACING_2:
+		protocol_helper_collect_tracing_2 (message, stream);
 		break;
-	case DS_COMMANDID_STOP_TRACING:
-		eventpipe_protocol_helper_stop_tracing (message, stream);
+	case EP_COMMANDID_STOP_TRACING:
+		protocol_helper_stop_tracing (message, stream);
 		break;
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_cref (message)));

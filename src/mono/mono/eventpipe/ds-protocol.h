@@ -150,10 +150,10 @@ struct _EventPipeCollectTracingCommandPayload {
 #endif
 
 EventPipeCollectTracingCommandPayload *
-ds_collect_tracing_command_payload_alloc (void);
+ep_collect_tracing_command_payload_alloc (void);
 
 void
-ds_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayload *payload);
+ep_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayload *payload);
 
 /*
 * EventPipeCollectTracing2CommandPayload
@@ -188,10 +188,10 @@ struct _EventPipeCollectTracing2CommandPayload {
 #endif
 
 EventPipeCollectTracing2CommandPayload *
-ds_collect_tracing2_command_payload_alloc (void);
+ep_collect_tracing2_command_payload_alloc (void);
 
 void
-ds_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload *payload);
+ep_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload *payload);
 
 /*
 * EventPipeStopTracingCommandPayload
@@ -213,7 +213,7 @@ struct _EventPipeStopTracingCommandPayload {
 #endif
 
 void
-ds_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payload);
+ep_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payload);
 
 /*
 * DiagnosticsProcessInfoPayload
@@ -266,7 +266,7 @@ ds_process_info_payload_fini (DiagnosticsProcessInfoPayload *payload);
 */
 
 void
-ds_eventpipe_protocol_helper_handle_ipc_message (
+ep_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	IpcStream *stream);
 

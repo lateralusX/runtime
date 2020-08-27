@@ -8,11 +8,11 @@
 #include "ds-rt-config.h"
 #include "ep-rt-types-mono.h"
 
-typedef struct _rt_mono_array_internal_t ds_rt_diagnostic_port_array_t;
-typedef struct _rt_mono_array_iterator_internal_t ds_rt_diagnostic_port_array_iterator_t;
+typedef struct _rt_mono_array_internal_t ds_rt_port_array_t;
+typedef struct _rt_mono_array_iterator_internal_t ds_rt_port_array_iterator_t;
 
-typedef struct _rt_mono_array_internal_t ds_rt_diagnostic_port_config_array_t;
-typedef struct _rt_mono_array_iterator_internal_t ds_rt_diagnostic_port_config_array_iterator_t;
+typedef struct _rt_mono_array_internal_t ds_rt_port_config_array_t;
+typedef struct _rt_mono_array_iterator_internal_t ds_rt_port_config_array_iterator_t;
 
 typedef struct _rt_mono_array_internal_t ds_rt_ipc_poll_handle_array_t;
 typedef struct _rt_mono_array_iterator_internal_t ds_rt_ipc_poll_handle_array_iterator_t;

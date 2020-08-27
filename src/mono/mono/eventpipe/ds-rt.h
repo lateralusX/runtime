@@ -33,15 +33,15 @@
 
 static
 bool
-ds_rt_config_value_get_diagnostic_enable (void);
+ds_rt_config_value_get_enable (void);
 
 static
 ep_char8_t *
-ds_rt_config_value_get_diagnostic_ports (void);
+ds_rt_config_value_get_ports (void);
 
 static
 int32_t
-ds_rt_config_value_get_default_diagnostic_port_suspend (void);
+ds_rt_config_value_get_default_port_suspend (void);
 
 /*
  * DiagnosticsIpcPollHandle.
@@ -51,14 +51,14 @@ DS_RT_DECLARE_ARRAY (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt
 DS_RT_DECLARE_ARRAY_ITERATOR (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_ipc_poll_handle_array_iterator_t, DiagnosticsIpcPollHandle)
 
 /*
- * IpcStreamFactoryDiagnosticPort.
+ * DiagnosticsPort.
  */
 
-DS_RT_DECLARE_ARRAY (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
-DS_RT_DECLARE_ARRAY_ITERATOR (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
+DS_RT_DECLARE_ARRAY (port_array, ds_rt_port_array_t, ds_rt_port_array_iterator_t, DiagnosticsPort *)
+DS_RT_DECLARE_ARRAY_ITERATOR (port_array, ds_rt_port_array_t, ds_rt_port_array_iterator_t, DiagnosticsPort *)
 
-DS_RT_DECLARE_ARRAY (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
-DS_RT_DECLARE_ARRAY_ITERATOR (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
+DS_RT_DECLARE_ARRAY (port_config_array, ds_rt_port_config_array_t, ds_rt_port_array_iterator_t, ep_char8_t *)
+DS_RT_DECLARE_ARRAY_ITERATOR (port_config_array, ds_rt_port_config_array_t, ds_rt_port_array_iterator_t, ep_char8_t *)
 
 #include "ds-rt-mono.h"
 

@@ -25,9 +25,11 @@ typedef struct _DiagnosticsProcessInfoPayload DiagnosticsProcessInfoPayload;
 typedef struct _EventPipeCollectTracingCommandPayload EventPipeCollectTracingCommandPayload;
 typedef struct _EventPipeCollectTracing2CommandPayload EventPipeCollectTracing2CommandPayload;
 typedef struct _EventPipeStopTracingCommandPayload EventPipeStopTracingCommandPayload;
-typedef struct _IpcStreamFactoryDiagnosticPort IpcStreamFactoryDiagnosticPort;
-typedef struct _IpcStreamFactoryDiagnosticPortBuilder IpcStreamFactoryDiagnosticPortBuilder;
-typedef struct _IpcStreamFactoryDiagnosticPortVtable IpcStreamFactoryDiagnosticPortVtable;
+typedef struct _DiagnosticsPort DiagnosticsPort;
+typedef struct _DiagnosticsPortBuilder DiagnosticsPortBuilder;
+typedef struct _DiagnosticsConnectPort DiagnosticsConnectPort;
+typedef struct _DiagnosticsListenPort DiagnosticsListenPort;
+typedef struct _DiagnosticsPortVtable DiagnosticsPortVtable;
 
 /*
  * Diagnostics Enums.
@@ -66,9 +68,9 @@ typedef enum {
 // The event pipe command set is 0x02
 // see ds-ipc.h and ds-server.h for more details
 typedef enum {
-	DS_COMMANDID_STOP_TRACING = 0x01,
-	DS_COMMANDID_COLLECT_TRACING  = 0x02,
-	DS_COMMANDID_COLLECT_TRACING_2 = 0x03,
+	EP_COMMANDID_STOP_TRACING = 0x01,
+	EP_COMMANDID_COLLECT_TRACING  = 0x02,
+	EP_COMMANDID_COLLECT_TRACING_2 = 0x03,
 	// future
 } EventPipeCommandId;
 
@@ -88,12 +90,12 @@ typedef enum {
 typedef enum {
 	DS_PORT_TYPE_LISTEN = 0,
 	DS_PORT_TYPE_CONNECT = 1
-} DiagnosticPortType;
+} DiagnosticsPortType;
 
 typedef enum {
 	DS_PORT_SUSPEND_MODE_NOSUSPEND = 0,
 	DS_PORT_SUSPEND_MODE_SUSPEND = 1
-} DiagnosticPortSuspendMode;
+} DiagnosticsPortSuspendMode;
 
 #define DOTNET_IPC_V1_MAGIC "DOTNET_IPC_V1"
 #define DOTNET_IPC_V1_ADVERTISE_MAGIC "ADVR_V1"

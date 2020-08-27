@@ -56,7 +56,7 @@
 static
 inline
 bool
-ds_rt_config_value_get_diagnostic_enable (void)
+ds_rt_config_value_get_enable (void)
 {
 	bool enable = false;
 	gchar *value = g_getenv ("COMPlus_EnableDiagnostics");
@@ -69,7 +69,7 @@ ds_rt_config_value_get_diagnostic_enable (void)
 static
 inline
 ep_char8_t *
-ds_rt_config_value_get_diagnostic_ports (void)
+ds_rt_config_value_get_ports (void)
 {
 	return g_getenv ("DOTNET_DiagnosticPorts");
 }
@@ -77,7 +77,7 @@ ds_rt_config_value_get_diagnostic_ports (void)
 static
 inline
 int32_t
-ds_rt_config_value_get_default_diagnostic_port_suspend (void)
+ds_rt_config_value_get_default_port_suspend (void)
 {
 	int32_t value_int32_t = 0;
 	gchar *value = g_getenv ("DOTNET_DefaultDiagnosticPortSuspend");
@@ -95,14 +95,14 @@ DS_RT_DEFINE_ARRAY (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_
 DS_RT_DEFINE_ARRAY_ITERATOR (ipc_poll_handle_array, ds_rt_ipc_poll_handle_array_t, ds_rt_ipc_poll_handle_array_iterator_t, DiagnosticsIpcPollHandle)
 
 /*
- * IpcStreamFactoryDiagnosticPort.
+ * DiagnosticsPort.
  */
 
-DS_RT_DEFINE_ARRAY (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
-DS_RT_DEFINE_ARRAY_ITERATOR (diagnostic_port_array, ds_rt_diagnostic_port_array_t, ds_rt_diagnostic_port_array_iterator_t, IpcStreamFactoryDiagnosticPort *)
+DS_RT_DEFINE_ARRAY (port_array, ds_rt_port_array_t, ds_rt_port_array_iterator_t, DiagnosticsPort *)
+DS_RT_DEFINE_ARRAY_ITERATOR (port_array, ds_rt_port_array_t, ds_rt_port_array_iterator_t, DiagnosticsPort *)
 
-DS_RT_DEFINE_ARRAY (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
-DS_RT_DEFINE_ARRAY_ITERATOR (diagnostic_port_config_array, ds_rt_diagnostic_port_config_array_t, ds_rt_diagnostic_port_array_iterator_t, ep_char8_t *)
+DS_RT_DEFINE_ARRAY (port_config_array, ds_rt_port_config_array_t, ds_rt_port_config_array_iterator_t, ep_char8_t *)
+DS_RT_DEFINE_ARRAY_ITERATOR (port_config_array, ds_rt_port_config_array_t, ds_rt_port_config_array_iterator_t, ep_char8_t *)
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */

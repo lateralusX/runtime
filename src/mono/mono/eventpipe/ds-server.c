@@ -132,7 +132,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 
 		switch ((DiagnosticsServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
 		case DS_SERVER_COMMANDSET_EVENTPIPE:
-			ds_eventpipe_protocol_helper_handle_ipc_message (&message, stream);
+			ep_protocol_helper_handle_ipc_message (&message, stream);
 			break;
 		case DS_SERVER_COMMANDSET_PROCESS:
 			ds_process_protocol_helper_handle_ipc_message (&message, stream);
@@ -157,7 +157,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 bool
 ds_server_init (void)
 {
-	if (!ds_rt_config_value_get_diagnostic_enable ())
+	if (!ds_rt_config_value_get_enable ())
 		return true;
 
 	bool success = false;
@@ -225,9 +225,9 @@ ds_server_pause_for_diagnostics_monitor (void)
 		EP_ASSERT (ep_rt_wait_event_is_valid (&_server_resume_runtime_startup_event));
 		DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command.");
 		if (ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, 5000, false) != 0) {
-			ports = ds_rt_config_value_get_diagnostic_ports ();
+			ports = ds_rt_config_value_get_ports ();
 			ports_wcs = ports ? ep_rt_utf8_to_wcs_string (ports, -1) : NULL;
-			port_suspended = ds_rt_config_value_get_default_diagnostic_port_suspend ();
+			port_suspended = ds_rt_config_value_get_default_port_suspend ();
 			printf ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a Diagnostic Port.\n");
 			printf ("DOTNET_DiagnosticPorts=\"%ls\"\n", ports_wcs == NULL ? L"" : ports_wcs);
 			printf("DOTNET_DefaultDiagnosticPortSuspend=%d\n", port_suspended);
