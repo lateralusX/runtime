@@ -119,8 +119,6 @@ typedef MonoThreadHandle ep_rt_thread_handle_t;
 
 typedef gpointer ep_rt_file_handle_t;
 
-typedef gpointer ep_rt_ipc_handle_t;
-
 typedef MonoMethod ep_rt_method_desc_t;
 
 typedef struct _rt_mono_event_internal_t ep_rt_wait_event_handle_t;

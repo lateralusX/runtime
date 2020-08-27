@@ -274,7 +274,7 @@ ds_icp_advertise_v1_send (IpcStream *stream)
 	memset (buffer, 0, sizeof (uint16_t));
 
 	uint32_t bytes_written = 0;
-	ep_raise_error_if_nok (ep_ipc_stream_write (stream, advertise_buffer, sizeof (advertise_buffer), &bytes_written, 100 /*ms*/) == true);
+	ep_raise_error_if_nok (ep_ipc_stream_write_vcall (stream, advertise_buffer, sizeof (advertise_buffer), &bytes_written, 100 /*ms*/) == true);
 
 	EP_ASSERT (bytes_written == sizeof (advertise_buffer));
 	result = (bytes_written == sizeof (advertise_buffer));
@@ -441,11 +441,11 @@ ipc_message_try_send_string_utf16_t (
 	uint32_t total_written = 0;
 	uint32_t written = 0;
 
-	bool success = ep_ipc_stream_write (stream, (const uint8_t *)&string_len, (uint32_t)sizeof (string_len), &written, EP_INFINITE_WAIT);
+	bool success = ep_ipc_stream_write_vcall (stream, (const uint8_t *)&string_len, (uint32_t)sizeof (string_len), &written, EP_INFINITE_WAIT);
 	total_written += written;
 
 	if (success) {
-		success &= ep_ipc_stream_write (stream, (const uint8_t *)value, string_bytes, &written, EP_INFINITE_WAIT);
+		success &= ep_ipc_stream_write_vcall (stream, (const uint8_t *)value, string_bytes, &written, EP_INFINITE_WAIT);
 		total_written += written;
 	}
 
@@ -543,7 +543,7 @@ ipc_message_try_parse (
 
 	// Read out header first
 	uint32_t bytes_read;
-	success = ep_ipc_stream_read (stream, (uint8_t *)&message->header, sizeof (message->header), &bytes_read, EP_INFINITE_WAIT);
+	success = ep_ipc_stream_read_vcall (stream, (uint8_t *)&message->header, sizeof (message->header), &bytes_read, EP_INFINITE_WAIT);
 	if (!success || (bytes_read < sizeof (message->header)))
 		ep_raise_error ();
 
@@ -558,7 +558,7 @@ ipc_message_try_parse (
 		uint8_t *buffer = ep_rt_byte_array_alloc (payload_len);
 		ep_raise_error_if_nok (buffer != NULL);
 
-		success = ep_ipc_stream_read (stream, buffer, payload_len, &bytes_read, EP_INFINITE_WAIT);
+		success = ep_ipc_stream_read_vcall (stream, buffer, payload_len, &bytes_read, EP_INFINITE_WAIT);
 		if (!success || (bytes_read < payload_len))
 			ep_raise_error ();
 
@@ -607,7 +607,7 @@ ipc_message_send (
 	EP_ASSERT (stream != NULL);
 
 	uint32_t bytes_written;
-	bool success = ep_ipc_stream_write (stream, message->data, message->size, &bytes_written, EP_INFINITE_WAIT);
+	bool success = ep_ipc_stream_write_vcall (stream, message->data, message->size, &bytes_written, EP_INFINITE_WAIT);
 	return (bytes_written == message->size) && success;
 }
 
@@ -1025,11 +1025,11 @@ protocol_helper_stop_tracing (
 	ep_disable (payload->session_id);
 
 	ipc_message_send_stop_tracing_success (stream, payload->session_id);
-	ep_ipc_stream_flush (stream);
+	ep_ipc_stream_flush_vcall (stream);
 
 ep_on_exit:
 	ep_stop_tracing_command_payload_free (payload);
-	ep_ipc_stream_free (stream);
+	ep_ipc_stream_free_vcall (stream);
 	return;
 
 ep_on_error:
@@ -1076,7 +1076,7 @@ ep_on_exit:
 	return;
 
 ep_on_error:
-	ep_ipc_stream_free (stream);
+	ep_ipc_stream_free_vcall (stream);
 	ep_exit_error_handler ();
 }
 
@@ -1120,7 +1120,7 @@ ep_on_exit:
 	return;
 
 ep_on_error:
-	ep_ipc_stream_free (stream);
+	ep_ipc_stream_free_vcall (stream);
 	ep_exit_error_handler ();
 }
 
@@ -1151,7 +1151,7 @@ ep_protocol_helper_handle_ipc_message (
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_cref (message)));
 		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-		ep_ipc_stream_free (stream);
+		ep_ipc_stream_free_vcall (stream);
 		break;
 	}
 }
@@ -1319,7 +1319,7 @@ ep_on_exit:
 	ep_rt_utf16_string_free (arch_info);
 	ep_rt_utf16_string_free (os_info);
 	ep_rt_utf16_string_free (command_line);
-	ep_ipc_stream_free (stream);
+	ep_ipc_stream_free_vcall (stream);
 	return;
 
 ep_on_error:
@@ -1344,7 +1344,7 @@ ds_process_protocol_helper_resume_runtime_startup (
 		DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
 	}
 
-	ep_ipc_stream_free (stream);
+	ep_ipc_stream_free_vcall (stream);
 }
 
 void
@@ -1362,7 +1362,7 @@ ds_process_protocol_helper_handle_ipc_message (
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
 		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-		ep_ipc_stream_free (stream);
+		ep_ipc_stream_free_vcall (stream);
 		break;
 	}
 }

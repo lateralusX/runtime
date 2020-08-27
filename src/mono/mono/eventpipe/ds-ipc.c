@@ -7,6 +7,7 @@
 #define DS_IMPL_IPC_GETTER_SETTER
 #include "ds-ipc.h"
 #include "ds-protocol.h"
+#include "ep-stream.h"
 
 /*
  * Globals and volatile access functions.
@@ -108,16 +109,16 @@ ipc_stream_factory_build_and_add_port (
 	DiagnosticsIpc *ipc = NULL;
 
 	if (builder->type == DS_PORT_TYPE_LISTEN) {
-		ipc = ds_ipc_create (builder->path, DS_IPC_CONNECTION_MODE_LISTEN, callback);
+		ipc = ds_ipc_alloc (builder->path, DS_IPC_CONNECTION_MODE_LISTEN, callback);
 		ep_raise_error_if_nok (ipc != NULL);
 		ep_raise_error_if_nok (ds_ipc_listen (ipc, callback) == true);
-		ds_rt_port_array_append (&_ds_port_array, ds_listen_port_alloc (ipc, builder));
+		ds_rt_port_array_append (&_ds_port_array, (DiagnosticsPort *)ds_listen_port_alloc (ipc, builder));
 		success = true;
 	} else if (builder->type == DS_PORT_TYPE_LISTEN) {
-		ipc = ds_ipc_create (builder->path, DS_IPC_CONNECTION_MODE_CONNECT, callback);
+		ipc = ds_ipc_alloc (builder->path, DS_IPC_CONNECTION_MODE_CONNECT, callback);
 		ep_raise_error_if_nok (ipc != NULL);
 		ep_raise_error_if_nok (ds_ipc_listen (ipc, callback) == true);
-		ds_rt_port_array_append (&_ds_port_array, ds_connect_port_alloc (ipc, builder));
+		ds_rt_port_array_append (&_ds_port_array, (DiagnosticsPort *)ds_connect_port_alloc (ipc, builder));
 		success = true;
 	}
 
@@ -389,8 +390,12 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback)
 	ds_rt_port_array_iterator_begin (&_ds_port_array, &iterator);
 	while (!ds_rt_port_array_iterator_end (&_ds_port_array, &iterator)) {
 		ds_port_close (ds_rt_port_array_iterator_value (&iterator), true, callback);
+		ds_port_free_vcall (ds_rt_port_array_iterator_value (&iterator));
 		ds_rt_port_array_iterator_next (&_ds_port_array, &iterator);
 	}
+
+	_ds_current_port = NULL;
+	ds_rt_port_array_free (&_ds_port_array);
 }
 
 /*
@@ -428,9 +433,9 @@ ds_port_fini (DiagnosticsPort *port)
 void
 ds_port_free_vcall (DiagnosticsPort *port)
 {
-	EP_ASSERT (port != NULL);
-	EP_ASSERT (port->vtable != NULL);
+	ep_return_void_if_nok (port != NULL);
 
+	EP_ASSERT (port->vtable != NULL);
 	DiagnosticsPortVtable *vtable = port->vtable;
 
 	EP_ASSERT (vtable->free_func != NULL);
@@ -488,9 +493,9 @@ ds_port_close (
 {
 	EP_ASSERT (port != NULL);
 	if (port->ipc)
-		ds_ipc_close (is_shutdown, callback);
+		ds_ipc_close (port->ipc, is_shutdown, callback);
 	if (port->stream && !is_shutdown)
-		ep_ipc_stream_close (callback); //TODO: Move ipc stream into ds.
+		ep_ipc_stream_close_vcall (port->stream);
 }
 
 DiagnosticsPortBuilder *
@@ -597,7 +602,7 @@ ep_on_exit:
 	return success;
 
 ep_on_error:
-	ep_ipc_stream_free (connection);
+	ep_ipc_stream_free_vcall (connection);
 	success = false;
 	ep_exit_error_handler ();
 }
@@ -625,7 +630,7 @@ connect_port_reset (
 	EP_ASSERT (object != NULL);
 
 	DiagnosticsConnectPort *connect_port = (DiagnosticsConnectPort *)object;
-	ep_ipc_stream_free (connect_port->port.stream);
+	ep_ipc_stream_free_vcall (connect_port->port.stream);
 	connect_port->port.stream = NULL;
 }
 
@@ -644,7 +649,7 @@ ds_connect_port_alloc (
 	ep_raise_error_if_nok (instance != NULL);
 
 	ep_raise_error_if_nok (ds_port_init (
-		instance,
+		(DiagnosticsPort *)instance,
 		&connect_port_vtable,
 		ipc,
 		builder) != NULL);
@@ -735,7 +740,7 @@ ds_listen_port_alloc (
 	ep_raise_error_if_nok (instance != NULL);
 
 	ep_raise_error_if_nok (ds_port_init (
-		instance,
+		(DiagnosticsPort *)instance,
 		&listen_port_vtable,
 		ipc,
 		builder) != NULL);

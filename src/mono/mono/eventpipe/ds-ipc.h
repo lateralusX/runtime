@@ -15,31 +15,6 @@
 #include "ds-getter-setter.h"
 
 /*
- * DiagnosticsIpc.
- */
-
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
-//TODO: Implement.
-struct _DiagnosticsIpc {
-#else
-struct _DiagnosticsIpc_Internal {
-#endif
-	uint8_t dummy;
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _DiagnosticsIpc {
-	uint8_t _internal [sizeof (struct _DiagnosticsIpc_Internal)];
-};
-#endif
-
-int32_t
-ds_ipc_poll (
-	ds_rt_ipc_poll_handle_array_t *poll_handles,
-	uint32_t timeout_ms,
-	ds_ipc_error_callback_func callback);
-
-/*
  * IpcStreamFactory.
  */
 
@@ -228,6 +203,103 @@ ds_listen_port_alloc (
 
 void
 ds_listen_port_free (DiagnosticsListenPort *listen_port);
+
+
+//PAL
+//TODO: Move into corresponding ds-ipc-win32 and ds-ipc-unix.
+
+/*
+ * DiagnosticsIpc.
+ */
+
+#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
+//TODO: Implement.
+struct _DiagnosticsIpc {
+#else
+struct _DiagnosticsIpc_Internal {
+#endif
+	uint8_t dummy;
+};
+
+#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsIpc {
+	uint8_t _internal [sizeof (struct _DiagnosticsIpc_Internal)];
+};
+#endif
+
+DiagnosticsIpc *
+ds_ipc_alloc (
+	const ep_char8_t * const ipc_name,
+	DiagnosticsIpcConnectionMode mode,
+	ds_ipc_error_callback_func callback);
+
+void
+ds_ipc_free (DiagnosticsIpc *ipc);
+
+bool
+ds_ipc_read (
+	DiagnosticsIpc *ipc,
+	uint8_t *buffer,
+	uint32_t bytes_to_read,
+	uint32_t *bytes_read,
+	uint32_t timeout);
+
+bool
+ds_ipc_write (
+	DiagnosticsIpc *ipc,
+	const uint8_t *buffer,
+	uint32_t bytes_to_write,
+	uint32_t *bytes_written,
+	uint32_t timeout);
+
+bool
+ds_ipc_flush (DiagnosticsIpc *ipc);
+
+// Poll
+// Parameters:
+// - IpcPollHandle * poll_handles: Array of IpcPollHandles to poll
+// - int32_t timeout_ms: The timeout in milliseconds for the poll (-1 == infinite)
+// Returns:
+// int32_t: -1 on error, 0 on timeout, >0 on successful poll
+// Remarks:
+// Check the events returned in revents for each IpcPollHandle to find the signaled handle.
+// Signaled DiagnosticsIpcs can call accept() without blocking.
+// Signaled IpcStreams can call read(...) without blocking.
+// The caller is responsible for cleaning up "hung up" connections.
+int32_t
+ds_ipc_poll (
+	ds_rt_ipc_poll_handle_array_t *poll_handles,
+	uint32_t timeout_ms,
+	ds_ipc_error_callback_func callback);
+
+// puts the DiagnosticsIpc into Listening Mode
+// Re-entrant safe
+bool
+ds_ipc_listen (
+	DiagnosticsIpc *ipc,
+	ds_ipc_error_callback_func callback);
+
+// produces a connected stream from a server-mode DiagnosticsIpc.
+// Blocks until a connection is available.
+IpcStream *
+ds_ipc_accept (
+	DiagnosticsIpc *ipc,
+	ds_ipc_error_callback_func callback);
+
+// Connect to a server and returns a connected stream
+IpcStream *
+ds_ipc_connect (
+	DiagnosticsIpc *ipc,
+	ds_ipc_error_callback_func callback);
+
+// Closes an open IPC.
+// Only attempts minimal cleanup if is_shutdown==true, i.e.,
+// unlinks Unix Domain Socket on Linux, no-op on Windows
+void
+ds_ipc_close (
+	DiagnosticsIpc *ipc,
+	bool is_shutdown,
+	ds_ipc_error_callback_func callback);
 
 #endif /* ENABLE_PERFTRACING */
 #endif /** __DIAGNOSTICS_IPC_H__ **/
