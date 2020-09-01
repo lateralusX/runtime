@@ -92,7 +92,7 @@ static
 bool
 ipc_message_try_parse (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 static
 const uint8_t *
@@ -110,25 +110,25 @@ ipc_message_try_write_string_utf16_t (
 static
 bool
 ipc_message_try_send_string_utf16_t (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	const ep_char16_t *value);
 
 static
 bool
 ipc_message_send (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 static
 bool
 ipc_message_send_stop_tracing_success (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id);
 
 static
 bool
 ipc_message_send_start_tracing_success (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id);
 
 static
@@ -194,19 +194,19 @@ static
 void
 protocol_helper_stop_tracing (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 static
 void
 protocol_helper_collect_tracing (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 static
 void
 protocol_helper_collect_tracing_2 (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 static
 uint16_t
@@ -250,7 +250,7 @@ ds_ipc_advertise_cookie_v1_init (void)
 * 2 bytes  - unused 2 byte field for futureproofing
 */
 bool
-ds_icp_advertise_v1_send (IpcStream *stream)
+ds_icp_advertise_v1_send (DiagnosticsIpcStream *stream)
 {
 	uint8_t advertise_buffer [DOTNET_IPC_V1_ADVERTISE_SIZE];
 	uint8_t *cookie = ds_ipc_advertise_cookie_v1_get ();
@@ -274,7 +274,7 @@ ds_icp_advertise_v1_send (IpcStream *stream)
 	memset (buffer, 0, sizeof (uint16_t));
 
 	uint32_t bytes_written = 0;
-	ep_raise_error_if_nok (ep_ipc_stream_write_vcall (stream, advertise_buffer, sizeof (advertise_buffer), &bytes_written, 100 /*ms*/) == true);
+	ep_raise_error_if_nok (ds_ipc_stream_write (stream, advertise_buffer, sizeof (advertise_buffer), &bytes_written, 100 /*ms*/) == true);
 
 	EP_ASSERT (bytes_written == sizeof (advertise_buffer));
 	result = (bytes_written == sizeof (advertise_buffer));
@@ -431,7 +431,7 @@ ep_on_error:
 static
 bool
 ipc_message_try_send_string_utf16_t (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	const ep_char16_t *value)
 {
 	uint32_t string_len = (uint32_t)(ep_rt_utf16_string_len (value) + 1);
@@ -441,11 +441,11 @@ ipc_message_try_send_string_utf16_t (
 	uint32_t total_written = 0;
 	uint32_t written = 0;
 
-	bool success = ep_ipc_stream_write_vcall (stream, (const uint8_t *)&string_len, (uint32_t)sizeof (string_len), &written, EP_INFINITE_WAIT);
+	bool success = ds_ipc_stream_write (stream, (const uint8_t *)&string_len, (uint32_t)sizeof (string_len), &written, EP_INFINITE_WAIT);
 	total_written += written;
 
 	if (success) {
-		success &= ep_ipc_stream_write_vcall (stream, (const uint8_t *)value, string_bytes, &written, EP_INFINITE_WAIT);
+		success &= ds_ipc_stream_write (stream, (const uint8_t *)value, string_bytes, &written, EP_INFINITE_WAIT);
 		total_written += written;
 	}
 
@@ -533,7 +533,7 @@ static
 bool
 ipc_message_try_parse (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
@@ -543,7 +543,7 @@ ipc_message_try_parse (
 
 	// Read out header first
 	uint32_t bytes_read;
-	success = ep_ipc_stream_read_vcall (stream, (uint8_t *)&message->header, sizeof (message->header), &bytes_read, EP_INFINITE_WAIT);
+	success = ds_ipc_stream_read (stream, (uint8_t *)&message->header, sizeof (message->header), &bytes_read, EP_INFINITE_WAIT);
 	if (!success || (bytes_read < sizeof (message->header)))
 		ep_raise_error ();
 
@@ -558,7 +558,7 @@ ipc_message_try_parse (
 		uint8_t *buffer = ep_rt_byte_array_alloc (payload_len);
 		ep_raise_error_if_nok (buffer != NULL);
 
-		success = ep_ipc_stream_read_vcall (stream, buffer, payload_len, &bytes_read, EP_INFINITE_WAIT);
+		success = ds_ipc_stream_read (stream, buffer, payload_len, &bytes_read, EP_INFINITE_WAIT);
 		if (!success || (bytes_read < payload_len))
 			ep_raise_error ();
 
@@ -600,21 +600,21 @@ static
 bool
 ipc_message_send (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (message->data != NULL);
 	EP_ASSERT (stream != NULL);
 
 	uint32_t bytes_written;
-	bool success = ep_ipc_stream_write_vcall (stream, message->data, message->size, &bytes_written, EP_INFINITE_WAIT);
+	bool success = ds_ipc_stream_write (stream, message->data, message->size, &bytes_written, EP_INFINITE_WAIT);
 	return (bytes_written == message->size) && success;
 }
 
 static
 bool
 ipc_message_send_stop_tracing_success (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id)
 {
 	EP_ASSERT (stream != NULL);
@@ -631,7 +631,7 @@ ipc_message_send_stop_tracing_success (
 static
 bool
 ipc_message_send_start_tracing_success (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id)
 {
 	EP_ASSERT (stream != NULL);
@@ -733,14 +733,14 @@ ds_ipc_message_fini (DiagnosticsIpcMessage *message)
 bool
 ds_ipc_message_initialize_stream (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	return ipc_message_try_parse (message, stream);
 }
 
 bool
 ds_ipc_message_send_error (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	uint32_t error)
 {
 	ep_return_false_if_nok (stream != NULL);
@@ -756,7 +756,7 @@ ds_ipc_message_send_error (
 
 bool
 ds_ipc_message_send_success (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	uint32_t code)
 {
 	ep_return_false_if_nok (stream != NULL);
@@ -1010,7 +1010,7 @@ static
 void
 protocol_helper_stop_tracing (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
@@ -1025,11 +1025,11 @@ protocol_helper_stop_tracing (
 	ep_disable (payload->session_id);
 
 	ipc_message_send_stop_tracing_success (stream, payload->session_id);
-	ep_ipc_stream_flush_vcall (stream);
+	ds_ipc_stream_flush (stream);
 
 ep_on_exit:
 	ep_stop_tracing_command_payload_free (payload);
-	ep_ipc_stream_free_vcall (stream);
+	ds_ipc_stream_free (stream);
 	return;
 
 ep_on_error:
@@ -1040,7 +1040,7 @@ static
 void
 protocol_helper_collect_tracing (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
@@ -1060,7 +1060,7 @@ protocol_helper_collect_tracing (
 		EP_SESSION_TYPE_IPCSTREAM,
 		payload->serialization_format,
 		true,
-		stream,
+		&stream->stream,
 		NULL);
 
 	if (session_id == 0) {
@@ -1076,7 +1076,7 @@ ep_on_exit:
 	return;
 
 ep_on_error:
-	ep_ipc_stream_free_vcall (stream);
+	ds_ipc_stream_free (stream);
 	ep_exit_error_handler ();
 }
 
@@ -1084,7 +1084,7 @@ static
 void
 protocol_helper_collect_tracing_2 (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
@@ -1104,7 +1104,7 @@ protocol_helper_collect_tracing_2 (
 		EP_SESSION_TYPE_IPCSTREAM,
 		payload->serialization_format,
 		payload->rundown_requested,
-		stream,
+		&stream->stream,
 		NULL);
 
 	if (session_id == 0) {
@@ -1120,7 +1120,7 @@ ep_on_exit:
 	return;
 
 ep_on_error:
-	ep_ipc_stream_free_vcall (stream);
+	ds_ipc_stream_free (stream);
 	ep_exit_error_handler ();
 }
 
@@ -1134,7 +1134,7 @@ ep_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payloa
 void
 ep_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
@@ -1151,7 +1151,7 @@ ep_protocol_helper_handle_ipc_message (
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_cref (message)));
 		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-		ep_ipc_stream_free_vcall (stream);
+		ds_ipc_stream_free (stream);
 		break;
 	}
 }
@@ -1275,7 +1275,7 @@ ds_process_info_payload_fini (DiagnosticsProcessInfoPayload *payload)
 void
 ds_process_protocol_helper_get_process_info (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
@@ -1319,7 +1319,7 @@ ep_on_exit:
 	ep_rt_utf16_string_free (arch_info);
 	ep_rt_utf16_string_free (os_info);
 	ep_rt_utf16_string_free (command_line);
-	ep_ipc_stream_free_vcall (stream);
+	ds_ipc_stream_free (stream);
 	return;
 
 ep_on_error:
@@ -1331,7 +1331,7 @@ ep_on_error:
 void
 ds_process_protocol_helper_resume_runtime_startup (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
@@ -1344,13 +1344,13 @@ ds_process_protocol_helper_resume_runtime_startup (
 		DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
 	}
 
-	ep_ipc_stream_free_vcall (stream);
+	ds_ipc_stream_free (stream);
 }
 
 void
 ds_process_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream)
+	DiagnosticsIpcStream *stream)
 {
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
@@ -1362,7 +1362,7 @@ ds_process_protocol_helper_handle_ipc_message (
 	default:
 		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
 		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-		ep_ipc_stream_free_vcall (stream);
+		ds_ipc_stream_free (stream);
 		break;
 	}
 }

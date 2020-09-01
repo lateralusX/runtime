@@ -463,7 +463,7 @@ ep_ipc_stream_read_vcall (
 	uint8_t *buffer,
 	uint32_t bytes_to_read,
 	uint32_t *bytes_read,
-	uint32_t timeout)
+	uint32_t timeout_ms)
 {
 	EP_ASSERT (ipc_stream != NULL);
 
@@ -471,7 +471,7 @@ ep_ipc_stream_read_vcall (
 	IpcStreamVtable *vtable = ipc_stream->vtable;
 
 	EP_ASSERT (vtable->read_func != NULL);
-	return vtable->read_func (ipc_stream, buffer, bytes_to_read, bytes_read, timeout);
+	return vtable->read_func (ipc_stream, buffer, bytes_to_read, bytes_read, timeout_ms);
 }
 
 bool
@@ -480,7 +480,7 @@ ep_ipc_stream_write_vcall (
 	const uint8_t *buffer,
 	uint32_t bytes_to_write,
 	uint32_t *bytes_written,
-	uint32_t timeout)
+	uint32_t timeout_ms)
 {
 	EP_ASSERT (ipc_stream != NULL);
 
@@ -488,7 +488,7 @@ ep_ipc_stream_write_vcall (
 	IpcStreamVtable *vtable = ipc_stream->vtable;
 
 	EP_ASSERT (vtable->write_func != NULL);
-	return vtable->write_func (ipc_stream, buffer, bytes_to_write, bytes_written, timeout);
+	return vtable->write_func (ipc_stream, buffer, bytes_to_write, bytes_written, timeout_ms);
 }
 
 bool

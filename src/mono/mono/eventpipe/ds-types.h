@@ -21,6 +21,7 @@ typedef struct _DiagnosticsIpc DiagnosticsIpc;
 typedef struct _DiagnosticsIpcHeader DiagnosticsIpcHeader;
 typedef struct _DiagnosticsIpcMessage DiagnosticsIpcMessage;
 typedef struct _DiagnosticsIpcPollHandle DiagnosticsIpcPollHandle;
+typedef struct _DiagnosticsIpcStream DiagnosticsIpcStream;
 typedef struct _DiagnosticsProcessInfoPayload DiagnosticsProcessInfoPayload;
 typedef struct _EventPipeCollectTracingCommandPayload EventPipeCollectTracingCommandPayload;
 typedef struct _EventPipeCollectTracing2CommandPayload EventPipeCollectTracing2CommandPayload;
@@ -148,7 +149,7 @@ struct _DiagnosticsIpcPollHandle_Internal {
 #endif
 	// Only one of these will be non-null, treat as a union
 	DiagnosticsIpc *ipc;
-	IpcStream *stream;
+	DiagnosticsIpcStream *stream;
 
 	// contains some set of PollEvents
 	// will be set by Poll

@@ -105,7 +105,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 	}
 
 	while (!server_volatile_load_shutting_down_state ()) {
-		IpcStream *stream = ds_ipc_stream_factory_get_next_available_stream (server_warning_callback);
+		DiagnosticsIpcStream *stream = ds_ipc_stream_factory_get_next_available_stream (server_warning_callback);
 		if (!stream)
 			continue;
 
@@ -113,7 +113,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 		ds_ipc_message_init (&message);
 		if (!ds_ipc_message_initialize_stream (&message, stream)) {
 			ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
-			ep_ipc_stream_free_vcall (stream);
+			ds_ipc_stream_free (stream);
 			ds_ipc_message_fini (&message);
 			continue;
 		}
@@ -123,7 +123,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 			(const ep_char8_t *)DOTNET_IPC_V1_MAGIC) != 0) {
 
 			ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_MAGIC);
-			ep_ipc_stream_free_vcall (stream);
+			ds_ipc_stream_free (stream);
 			ds_ipc_message_fini (&message);
 			continue;
 		}
@@ -144,7 +144,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 		default:
 			DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
 			ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-			ep_ipc_stream_free_vcall (stream);
+			ds_ipc_stream_free (stream);
 			break;
 		}
 

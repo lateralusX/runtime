@@ -529,6 +529,11 @@ ep_rt_utf8_string_strtok (
 	const ep_char8_t *delimiter,
 	ep_char8_t **context);
 
+#define ep_rt_utf8_string_snprintf( \
+	str, \
+	str_len, \
+	format, ...) ep_redefine
+
 static
 ep_char16_t *
 ep_rt_utf8_to_utf16_string (

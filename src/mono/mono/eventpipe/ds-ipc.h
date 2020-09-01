@@ -6,6 +6,7 @@
 #ifdef ENABLE_PERFTRACING
 #include "ds-rt-config.h"
 #include "ds-types.h"
+#include "ep-stream.h"
 #include "ds-rt.h"
 
 #undef DS_IMPL_GETTER_SETTER
@@ -27,7 +28,7 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback);
 bool
 ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback);
 
-IpcStream *
+DiagnosticsIpcStream *
 ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func callback);
 
 void
@@ -51,7 +52,7 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback);
 
 typedef void (*DiagnosticsPortFreeFunc)(void *object);
 typedef bool (*DiagnosticsPortGetIPCPollHandleFunc)(void *object, DiagnosticsIpcPollHandle *handle, ds_ipc_error_callback_func callback);
-typedef IpcStream *(*DiagnosticsPortGetConnectedStreamFunc)(void *object, ds_ipc_error_callback_func callback);
+typedef DiagnosticsIpcStream *(*DiagnosticsPortGetConnectedStreamFunc)(void *object, ds_ipc_error_callback_func callback);
 typedef void (*DiagnosticsPortResetFunc)(void *object, ds_ipc_error_callback_func callback);
 
 struct _DiagnosticsPortVtable {
@@ -68,7 +69,7 @@ struct _DiagnosticsPort_Internal {
 #endif
 	DiagnosticsPortVtable *vtable;
 	DiagnosticsIpc *ipc;
-	IpcStream *stream;
+	DiagnosticsIpcStream *stream;
 	bool has_resumed_runtime;
 	DiagnosticsPortSuspendMode suspend_mode;
 	DiagnosticsPortType type;
@@ -102,7 +103,7 @@ ds_port_get_ipc_poll_handle_vcall (
 	ds_ipc_error_callback_func callback);
 
 // Returns the signaled stream in a usable state
-IpcStream *
+DiagnosticsIpcStream *
 ds_port_get_connected_stream_vcall (
 	DiagnosticsPort * port,
 	ds_ipc_error_callback_func callback);
@@ -212,13 +213,20 @@ ds_listen_port_free (DiagnosticsListenPort *listen_port);
  * DiagnosticsIpc.
  */
 
+#define DS_IPC_WIN32_MAX_NAMED_PIPE_LEN 256
+#define DS_IPC_WIN32_INFINITE_TIMEOUT INFINITE
+
 #if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
 //TODO: Implement.
 struct _DiagnosticsIpc {
 #else
 struct _DiagnosticsIpc_Internal {
 #endif
-	uint8_t dummy;
+	ep_char8_t pipe_name [DS_IPC_WIN32_MAX_NAMED_PIPE_LEN];
+	OVERLAPPED overlap;
+	HANDLE pipe;
+	bool is_listening;
+	DiagnosticsIpcConnectionMode mode;
 };
 
 #if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
@@ -229,36 +237,17 @@ struct _DiagnosticsIpc {
 
 DiagnosticsIpc *
 ds_ipc_alloc (
-	const ep_char8_t * const ipc_name,
+	const ep_char8_t *ipc_name,
 	DiagnosticsIpcConnectionMode mode,
 	ds_ipc_error_callback_func callback);
 
 void
 ds_ipc_free (DiagnosticsIpc *ipc);
 
-bool
-ds_ipc_read (
-	DiagnosticsIpc *ipc,
-	uint8_t *buffer,
-	uint32_t bytes_to_read,
-	uint32_t *bytes_read,
-	uint32_t timeout);
-
-bool
-ds_ipc_write (
-	DiagnosticsIpc *ipc,
-	const uint8_t *buffer,
-	uint32_t bytes_to_write,
-	uint32_t *bytes_written,
-	uint32_t timeout);
-
-bool
-ds_ipc_flush (DiagnosticsIpc *ipc);
-
 // Poll
 // Parameters:
 // - IpcPollHandle * poll_handles: Array of IpcPollHandles to poll
-// - int32_t timeout_ms: The timeout in milliseconds for the poll (-1 == infinite)
+// - uint32_t timeout_ms: The timeout in milliseconds for the poll (-1 == infinite)
 // Returns:
 // int32_t: -1 on error, 0 on timeout, >0 on successful poll
 // Remarks:
@@ -281,13 +270,13 @@ ds_ipc_listen (
 
 // produces a connected stream from a server-mode DiagnosticsIpc.
 // Blocks until a connection is available.
-IpcStream *
+DiagnosticsIpcStream *
 ds_ipc_accept (
 	DiagnosticsIpc *ipc,
 	ds_ipc_error_callback_func callback);
 
 // Connect to a server and returns a connected stream
-IpcStream *
+DiagnosticsIpcStream *
 ds_ipc_connect (
 	DiagnosticsIpc *ipc,
 	ds_ipc_error_callback_func callback);
@@ -299,6 +288,60 @@ void
 ds_ipc_close (
 	DiagnosticsIpc *ipc,
 	bool is_shutdown,
+	ds_ipc_error_callback_func callback);
+
+/*
+ * DiagnosticsIpcStream.
+ */
+
+#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsIpcStream {
+#else
+struct _DiagnosticsIpcStream_Internal {
+#endif
+	IpcStream stream;
+	OVERLAPPED overlap;
+	HANDLE pipe;
+	bool is_test_reading;
+	DiagnosticsIpcConnectionMode mode;
+};
+
+#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
+struct _DiagnosticsIpcStream {
+	uint8_t _internal [sizeof (struct _DiagnosticsIpcStream_Internal)];
+};
+#endif
+
+DiagnosticsIpcStream *
+ds_ipc_stream_alloc (
+	HANDLE pipe,
+	DiagnosticsIpcConnectionMode mode);
+
+void
+ds_ipc_stream_free (DiagnosticsIpcStream *ipc_stream);
+
+bool
+ds_ipc_stream_read (
+	DiagnosticsIpcStream *ipc_stream,
+	uint8_t *buffer,
+	uint32_t bytes_to_read,
+	uint32_t *bytes_read,
+	uint32_t timeout_ms);
+
+bool
+ds_ipc_stream_write (
+	DiagnosticsIpcStream *ipc_stream,
+	const uint8_t *buffer,
+	uint32_t bytes_to_write,
+	uint32_t *bytes_written,
+	uint32_t timeout_ms);
+
+bool
+ds_ipc_stream_flush (const DiagnosticsIpcStream *ipc_stream);
+
+bool
+ds_ipc_stream_close (
+	DiagnosticsIpcStream *ipc_stream,
 	ds_ipc_error_callback_func callback);
 
 #endif /* ENABLE_PERFTRACING */

@@ -287,8 +287,8 @@ ep_file_stream_writer_write (
  */
 
 typedef void (*IpcStreamFreeFunc)(void *object);
-typedef bool (*IpcStreamReadFunc)(void *object, uint8_t *buffer, uint32_t bytes_to_read, uint32_t *bytes_aread, uint32_t timeout);
-typedef bool (*IpcStreamWriteFunc)(void *object, const uint8_t *buffer, uint32_t bytes_to_write, uint32_t *bytes_written, uint32_t timeout);
+typedef bool (*IpcStreamReadFunc)(void *object, uint8_t *buffer, uint32_t bytes_to_read, uint32_t *bytes_read, uint32_t timeout_ms);
+typedef bool (*IpcStreamWriteFunc)(void *object, const uint8_t *buffer, uint32_t bytes_to_write, uint32_t *bytes_written, uint32_t timeout_ms);
 typedef bool (*IpcStreamFlushFunc)(void *object);
 typedef bool (*IpcStreamCloseFunc)(void *object);
 
@@ -331,7 +331,7 @@ ep_ipc_stream_read_vcall (
 	uint8_t *buffer,
 	uint32_t bytes_to_read,
 	uint32_t *bytes_read,
-	uint32_t timeout);
+	uint32_t timeout_ms);
 
 bool
 ep_ipc_stream_write_vcall (
@@ -339,7 +339,7 @@ ep_ipc_stream_write_vcall (
 	const uint8_t *buffer,
 	uint32_t bytes_to_write,
 	uint32_t *bytes_written,
-	uint32_t timeout);
+	uint32_t timeout_ms);
 
 bool
 ep_ipc_stream_flush_vcall (IpcStream *ipc_stream);

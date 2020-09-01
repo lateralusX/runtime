@@ -6,6 +6,7 @@
 #ifdef ENABLE_PERFTRACING
 #include "ds-rt-config.h"
 #include "ds-types.h"
+#include "ds-ipc.h"
 #include "ds-rt.h"
 
 #undef DS_IMPL_GETTER_SETTER
@@ -25,7 +26,7 @@ void
 ds_ipc_advertise_cookie_v1_init (void);
 
 bool
-ds_icp_advertise_v1_send (IpcStream *stream);
+ds_icp_advertise_v1_send (DiagnosticsIpcStream *stream);
 
 /*
 * DiagnosticsIpcHeader
@@ -100,7 +101,7 @@ ds_ipc_message_fini (DiagnosticsIpcMessage *message);
 bool
 ds_ipc_message_initialize_stream (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 // Send an Error message across the pipe.
 // Will return false on failure of any step (init or send).
@@ -110,12 +111,12 @@ ds_ipc_message_initialize_stream (
 // after handling error cases.
 bool
 ds_ipc_message_send_error (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	uint32_t error);
 
 bool
 ds_ipc_message_send_success (
-	IpcStream *stream,
+	DiagnosticsIpcStream *stream,
 	uint32_t code);
 
 /*
@@ -268,7 +269,7 @@ ds_process_info_payload_fini (DiagnosticsProcessInfoPayload *payload);
 void
 ep_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 /*
  * DiagnosticsProcessProtocolHelper.
@@ -277,17 +278,17 @@ ep_protocol_helper_handle_ipc_message (
 void
 ds_process_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 void
 ds_process_protocol_helper_get_process_info (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 void
 ds_process_protocol_helper_resume_runtime_startup (
 	DiagnosticsIpcMessage *message,
-	IpcStream *stream);
+	DiagnosticsIpcStream *stream);
 
 
 #endif /* ENABLE_PERFTRACING */

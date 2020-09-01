@@ -1270,6 +1270,13 @@ ep_rt_utf8_string_strtok (
 	return strtok_r (str, delimiter, context);
 }
 
+#undef ep_rt_utf8_string_snprintf
+#define ep_rt_utf8_string_snprintf( \
+	str, \
+	str_len, \
+	format, ...) \
+g_snprintf ((gchar *)str, (gulong)str_len, (const gchar *)format, __VA_ARGS__)
+
 static
 inline
 void
