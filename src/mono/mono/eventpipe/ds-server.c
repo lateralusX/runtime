@@ -16,6 +16,10 @@
 #include "ep-stream.h"
 #endif
 
+#ifdef FEATURE_AUTO_TRACE
+#include "ds-autotrace.h"
+#endif
+
 /*
  * Globals and volatile access functions.
  */
@@ -109,6 +113,10 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 		if (!stream)
 			continue;
 
+#ifdef FEATURE_AUTO_TRACE
+		auto_trace_signal();
+#endif
+
 		DiagnosticsIpcMessage message;
 		ds_ipc_message_init (&message);
 		if (!ds_ipc_message_initialize_stream (&message, stream)) {
@@ -176,10 +184,10 @@ ds_server_init (void)
 		ep_rt_wait_event_alloc (&_server_resume_runtime_startup_event, true, false);
 
 	if (ds_ipc_stream_factory_has_active_ports ()) {
-//#ifdef FEATURE_AUTO_TRACE
-//		auto_trace_init();
-	//	auto_trace_launch();
-//#endif
+#ifdef FEATURE_AUTO_TRACE
+		auto_trace_init();
+		auto_trace_launch();
+#endif
 		ep_rt_thread_id_t thread_id = 0;
 
 		if (!ep_rt_thread_create (server_thread, NULL, &thread_id)) {
@@ -188,9 +196,9 @@ ds_server_init (void)
 			DS_LOG_ERROR_1 ("Failed to create diagnostic server thread (%d).\n", ep_rt_get_last_error ());
 			ep_raise_error ();
 		} else {
-//#ifdef FEATURE_AUTO_TRACE
-//			auto_trace_wait();
-//#endif
+#ifdef FEATURE_AUTO_TRACE
+			auto_trace_wait();
+#endif
 			success = true;
 		}
 	}
@@ -231,10 +239,12 @@ ds_server_pause_for_diagnostics_monitor (void)
 			ports = ds_rt_config_value_get_ports ();
 			ports_wcs = ports ? ep_rt_utf8_to_wcs_string (ports, -1) : NULL;
 			port_suspended = ds_rt_config_value_get_default_port_suspend ();
+
 			printf ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a Diagnostic Port.\n");
 			printf ("DOTNET_DiagnosticPorts=\"%ls\"\n", ports_wcs == NULL ? L"" : ports_wcs);
 			printf("DOTNET_DefaultDiagnosticPortSuspend=%d\n", port_suspended);
 			fflush (stdout);
+
 			DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command and has waited 5 seconds.");
 			ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, EP_INFINITE_WAIT, false);
 		}

@@ -36,7 +36,7 @@
 #endif
 
 #ifndef DS_DEFINE_NOINLINE_SETTER
-#define DS_DEFINE_NOINLINE_SETTER(prefix_name, instance_type, instance_type_name, instance_field_type, instance_field_name) \
+#define DS_DEFINE_NOINLINE_SETTER(instance_type, instance_type_name, instance_field_type, instance_field_name) \
 	EP_DEFINE_NOINLINE_SETTER_PREFIX(ds, instance_type, instance_type_name, instance_field_type, instance_field_name)
 #endif
 

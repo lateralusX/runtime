@@ -1060,7 +1060,7 @@ protocol_helper_collect_tracing (
 		EP_SESSION_TYPE_IPCSTREAM,
 		payload->serialization_format,
 		true,
-		&stream->stream,
+		ds_ipc_stream_get_stream_ref (stream),
 		NULL);
 
 	if (session_id == 0) {
@@ -1104,7 +1104,7 @@ protocol_helper_collect_tracing_2 (
 		EP_SESSION_TYPE_IPCSTREAM,
 		payload->serialization_format,
 		payload->rundown_requested,
-		&stream->stream,
+		ds_ipc_stream_get_stream_ref (stream),
 		NULL);
 
 	if (session_id == 0) {

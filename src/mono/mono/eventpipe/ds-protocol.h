@@ -7,7 +7,6 @@
 #include "ds-rt-config.h"
 #include "ds-types.h"
 #include "ds-ipc.h"
-#include "ds-rt.h"
 
 #undef DS_IMPL_GETTER_SETTER
 #ifdef DS_IMPL_PROTOCOL_GETTER_SETTER
@@ -222,11 +221,10 @@ ep_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payloa
 
 // command = 0x0400
 #if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _DiagnosticsProcessInfoPayload
+struct _DiagnosticsProcessInfoPayload {
 #else
 struct _DiagnosticsProcessInfoPayload_Internal {
 #endif
-{
 	// The protocol buffer is defined as:
 	// X, Y, Z means encode bytes for X followed by bytes for Y followed by bytes for Z
 	// uint = 4 little endian bytes

@@ -6,8 +6,6 @@
 #ifdef ENABLE_PERFTRACING
 #include "ds-rt-config.h"
 #include "ds-types.h"
-#include "ep-stream.h"
-#include "ds-rt.h"
 
 #undef DS_IMPL_GETTER_SETTER
 #ifdef DS_IMPL_IPC_GETTER_SETTER
@@ -24,9 +22,6 @@ ds_ipc_stream_factory_init (void);
 
 void
 ds_ipc_stream_factory_fini (void);
-
-void
-ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback);
 
 bool
 ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback);
@@ -208,35 +203,11 @@ ds_listen_port_alloc (
 void
 ds_listen_port_free (DiagnosticsListenPort *listen_port);
 
-
-//PAL
-//TODO: Move into corresponding ds-ipc-win32 and ds-ipc-unix.
+// PAL.
 
 /*
  * DiagnosticsIpc.
  */
-
-#define DS_IPC_WIN32_MAX_NAMED_PIPE_LEN 256
-#define DS_IPC_WIN32_INFINITE_TIMEOUT INFINITE
-
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
-//TODO: Implement.
-struct _DiagnosticsIpc {
-#else
-struct _DiagnosticsIpc_Internal {
-#endif
-	ep_char8_t pipe_name [DS_IPC_WIN32_MAX_NAMED_PIPE_LEN];
-	OVERLAPPED overlap;
-	HANDLE pipe;
-	bool is_listening;
-	DiagnosticsIpcConnectionMode mode;
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _DiagnosticsIpc {
-	uint8_t _internal [sizeof (struct _DiagnosticsIpc_Internal)];
-};
-#endif
 
 DiagnosticsIpc *
 ds_ipc_alloc (
@@ -293,32 +264,13 @@ ds_ipc_close (
 	bool is_shutdown,
 	ds_ipc_error_callback_func callback);
 
+
 /*
  * DiagnosticsIpcStream.
  */
 
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _DiagnosticsIpcStream {
-#else
-struct _DiagnosticsIpcStream_Internal {
-#endif
-	IpcStream stream;
-	OVERLAPPED overlap;
-	HANDLE pipe;
-	bool is_test_reading;
-	DiagnosticsIpcConnectionMode mode;
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_GETTER_SETTER)
-struct _DiagnosticsIpcStream {
-	uint8_t _internal [sizeof (struct _DiagnosticsIpcStream_Internal)];
-};
-#endif
-
-DiagnosticsIpcStream *
-ds_ipc_stream_alloc (
-	HANDLE pipe,
-	DiagnosticsIpcConnectionMode mode);
+IpcStream *
+ds_ipc_stream_get_stream_ref (DiagnosticsIpcStream *ipc_stream);
 
 void
 ds_ipc_stream_free (DiagnosticsIpcStream *ipc_stream);
@@ -340,7 +292,7 @@ ds_ipc_stream_write (
 	uint32_t timeout_ms);
 
 bool
-ds_ipc_stream_flush (const DiagnosticsIpcStream *ipc_stream);
+ds_ipc_stream_flush (DiagnosticsIpcStream *ipc_stream);
 
 bool
 ds_ipc_stream_close (

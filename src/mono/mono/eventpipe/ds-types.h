@@ -17,20 +17,20 @@
  * Diagnostic Structs.
  */
 
+typedef struct _DiagnosticsConnectPort DiagnosticsConnectPort;
 typedef struct _DiagnosticsIpc DiagnosticsIpc;
 typedef struct _DiagnosticsIpcHeader DiagnosticsIpcHeader;
 typedef struct _DiagnosticsIpcMessage DiagnosticsIpcMessage;
 typedef struct _DiagnosticsIpcPollHandle DiagnosticsIpcPollHandle;
 typedef struct _DiagnosticsIpcStream DiagnosticsIpcStream;
+typedef struct _DiagnosticsListenPort DiagnosticsListenPort;
+typedef struct _DiagnosticsPort DiagnosticsPort;
+typedef struct _DiagnosticsPortBuilder DiagnosticsPortBuilder;
+typedef struct _DiagnosticsPortVtable DiagnosticsPortVtable;
 typedef struct _DiagnosticsProcessInfoPayload DiagnosticsProcessInfoPayload;
 typedef struct _EventPipeCollectTracingCommandPayload EventPipeCollectTracingCommandPayload;
 typedef struct _EventPipeCollectTracing2CommandPayload EventPipeCollectTracing2CommandPayload;
 typedef struct _EventPipeStopTracingCommandPayload EventPipeStopTracingCommandPayload;
-typedef struct _DiagnosticsPort DiagnosticsPort;
-typedef struct _DiagnosticsPortBuilder DiagnosticsPortBuilder;
-typedef struct _DiagnosticsConnectPort DiagnosticsConnectPort;
-typedef struct _DiagnosticsListenPort DiagnosticsListenPort;
-typedef struct _DiagnosticsPortVtable DiagnosticsPortVtable;
 
 /*
  * Diagnostics Enums.
@@ -166,8 +166,12 @@ struct _DiagnosticsIpcPollHandle {
 };
 #endif
 
+DS_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, DiagnosticsIpc *, ipc)
+DS_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, DiagnosticsIpcStream *, stream)
 DS_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, uint8_t, events)
+DS_DEFINE_SETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, uint8_t, events)
 DS_DEFINE_GETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, void *, user_data)
+DS_DEFINE_SETTER(DiagnosticsIpcPollHandle *, ipc_poll_handle, void *, user_data)
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_TYPES_H__ */
