@@ -137,16 +137,22 @@ ds_ipc_stream_factory_init (void)
 	ds_rt_port_array_alloc (&_ds_port_array);
 }
 
+void
+ds_ipc_stream_factory_fini (void)
+{
+	ds_rt_port_array_free (&_ds_port_array);
+}
+
 bool
 ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 {
 	bool success = true;
 
-	ds_rt_port_config_array_t port_configs;
-	ds_rt_port_config_array_t port_config_parts;
-
 	ep_char8_t *ports = ds_rt_config_value_get_ports ();
 	if (ports) {
+		ds_rt_port_config_array_t port_configs;
+		ds_rt_port_config_array_t port_config_parts;
+
 		ds_rt_port_array_alloc (&port_configs);
 		ds_rt_port_array_alloc (&port_config_parts);
 
@@ -190,10 +196,14 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 				}
 			}
 		}
+
+		ds_rt_port_array_free (&port_config_parts);
+		ds_rt_port_array_free (&port_configs);
 	}
 
 	// create the default listen port
 	int32_t port_suspend = ds_rt_config_value_get_default_port_suspend ();
+
 	DiagnosticsPortBuilder default_port_builder;
 	ds_port_builder_init (&default_port_builder);
 
@@ -204,9 +214,6 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 	success &= ipc_stream_factory_build_and_add_port (&default_port_builder, callback);
 
 	ds_port_builder_fini (&default_port_builder);
-
-	ds_rt_port_array_free (&port_config_parts);
-	ds_rt_port_array_free (&port_configs);
 
 	ep_rt_utf8_string_free (ports);
 
@@ -395,7 +402,6 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback)
 	}
 
 	_ds_current_port = NULL;
-	ds_rt_port_array_free (&_ds_port_array);
 }
 
 /*

@@ -23,6 +23,9 @@ void
 ds_ipc_stream_factory_init (void);
 
 void
+ds_ipc_stream_factory_fini (void);
+
+void
 ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback);
 
 bool

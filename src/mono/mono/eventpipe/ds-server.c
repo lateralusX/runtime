@@ -157,6 +157,8 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 bool
 ds_server_init (void)
 {
+	ds_ipc_stream_factory_init ();
+
 	if (!ds_rt_config_value_get_enable ())
 		return true;
 
@@ -166,7 +168,7 @@ ds_server_init (void)
 	ds_ipc_advertise_cookie_v1_init ();
 
 	// Ports can fail to be configured
-	bool any_errors = ds_ipc_stream_factory_configure (server_error_callback_create);
+	bool any_errors = !ds_ipc_stream_factory_configure (server_error_callback_create);
 	if (any_errors)
 		DS_LOG_ERROR_0 ("At least one Diagnostic Port failed to be configured.\n");
 
@@ -209,6 +211,7 @@ ds_server_shutdown (void)
 	if (ds_ipc_stream_factory_has_active_ports ())
 		ds_ipc_stream_factory_shutdown (server_error_callback_close);
 
+	ds_ipc_stream_factory_fini ();
 	return true;
 }
 

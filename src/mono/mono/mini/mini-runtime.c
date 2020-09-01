@@ -76,6 +76,7 @@
 
 #ifdef ENABLE_PERFTRACING
 #include <mono/eventpipe/ep.h>
+#include <mono/eventpipe/ds-server.h>
 #endif
 
 #include "mini.h"
@@ -4555,6 +4556,8 @@ mini_init (const char *filename, const char *runtime_version)
 
 #if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
 	ep_init ();
+	ds_server_init ();
+	ds_server_pause_for_diagnostics_monitor ();
 	ep_finish_init ();
 #endif
 
@@ -5005,6 +5008,7 @@ mini_cleanup (MonoDomain *domain)
 	mini_get_interp_callbacks ()->cleanup ();
 #if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
 	ep_shutdown ();
+	ds_server_shutdown ();
 #endif
 }
 #else
