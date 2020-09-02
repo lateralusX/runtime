@@ -352,7 +352,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 				case DS_IPC_POLL_EVENTS_HANGUP:
 					EP_ASSERT (port != NULL);
 					ds_port_reset_vcall (port, callback);
-					DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - HUP :: Poll attempt: %d, connection %d hung up.\n", nPollAttempts, connection_id);
+					DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - HUP :: Poll attempt: %d, connection %d hung up. Connect is reset.\n", nPollAttempts, connection_id);
 					poll_timeout_ms = DS_IPC_POLL_TIMEOUT_MIN_MS;
 					break;
 				case DS_IPC_POLL_EVENTS_SIGNALED:
@@ -364,7 +364,8 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 					DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - SIG :: Poll attempt: %d, connection %d signalled.\n", nPollAttempts, connection_id);
 					break;
 				case DS_IPC_POLL_EVENTS_ERR:
-					DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - ERR :: Poll attempt: %d, connection %d errored.\n", nPollAttempts, connection_id);
+					ds_port_reset_vcall ((DiagnosticsPort *)ipc_poll_handle.user_data, callback);
+					DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - ERR :: Poll attempt: %d, connection %d errored. Connection is reset.\n", nPollAttempts, connection_id);
 					saw_error = true;
 					break;
 				case DS_IPC_POLL_EVENTS_NONE:
