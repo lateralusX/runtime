@@ -336,13 +336,13 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 				port = (DiagnosticsPort *)ipc_poll_handle.user_data;
 				switch (ipc_poll_handle.events) {
 				case DS_IPC_POLL_EVENTS_HANGUP:
-					EP_ASSERT (state != NULL);
+					EP_ASSERT (port != NULL);
 					ds_port_reset_vcall (port, callback);
 					DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - HUP :: Poll attempt: %d, connection %d hung up.\n", nPollAttempts, connection_id);
 					poll_timeout_ms = DS_IPC_POLL_TIMEOUT_MIN_MS;
 					break;
 				case DS_IPC_POLL_EVENTS_SIGNALED:
-					EP_ASSERT (state != NULL);
+					EP_ASSERT (port != NULL);
 					if (!stream) {  // only use first signaled stream; will get others on subsequent calls
 						stream = ds_port_get_connected_stream_vcall (port, callback);
 						_ds_current_port = port;
@@ -817,7 +817,7 @@ ds_listen_port_free (DiagnosticsListenPort *listen_port)
 #endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */
 #endif /* ENABLE_PERFTRACING */
 
-#ifndef EP_INCLUDE_SOURCE_FILES
+#ifndef DS_INCLUDE_SOURCE_FILES
 extern const char quiet_linker_empty_file_warning_diagnostics_ipc;
 const char quiet_linker_empty_file_warning_diagnostics_ipc = 0;
 #endif

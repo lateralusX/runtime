@@ -388,7 +388,7 @@ ds_ipc_message_try_parse_string_utf16_t (
 	uint32_t *buffer_len,
 	ep_char16_t **value)
 {
-	EP_ASSERT (buffer_cursor != NULL);
+	EP_ASSERT (buffer != NULL);
 	EP_ASSERT (buffer_len != NULL);
 	EP_ASSERT (value != NULL);
 
@@ -563,10 +563,10 @@ ds_ipc_message_send_success (
 	return success;
 }
 
-#endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */
+#endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */
 #endif /* ENABLE_PERFTRACING */
 
-#ifndef EP_INCLUDE_SOURCE_FILES
+#ifndef DS_INCLUDE_SOURCE_FILES
 extern const char quiet_linker_empty_file_warning_diagnostics_protocol;
 const char quiet_linker_empty_file_warning_diagnostics_protocol = 0;
 #endif

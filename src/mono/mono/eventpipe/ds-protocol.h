@@ -201,4 +201,4 @@ ds_ipc_header_get_generic_error (void)
 }
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __DIAGNOSTICS_PROTOCOL_H__ **/
+#endif /* __DIAGNOSTICS_PROTOCOL_H__ */

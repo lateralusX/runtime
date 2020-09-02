@@ -68,16 +68,5 @@ ds_process_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
-void
-ds_process_protocol_helper_get_process_info (
-	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcStream *stream);
-
-void
-ds_process_protocol_helper_resume_runtime_startup (
-	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcStream *stream);
-
-
 #endif /* ENABLE_PERFTRACING */
-#endif /** __DIAGNOSTICS_PROCESS_PROTOCOL_H__ **/
+#endif /* __DIAGNOSTICS_PROCESS_PROTOCOL_H__ */

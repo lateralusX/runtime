@@ -16,40 +16,40 @@
 
 static
 bool
-protocol_helper_send_stop_tracing_success (
+eventpipe_protocol_helper_send_stop_tracing_success (
 	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id);
 
 static
 bool
-protocol_helper_send_start_tracing_success (
+eventpipe_protocol_helper_send_start_tracing_success (
 	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id);
 
 static
 bool
-collect_tracing_command_try_parse_serialization_format (
+eventpipe_collect_tracing_command_try_parse_serialization_format (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	EventPipeSerializationFormat *format);
 
 static
 bool
-collect_tracing_command_try_parse_circular_buffer_size (
+eventpipe_collect_tracing_command_try_parse_circular_buffer_size (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	uint32_t *circular_buffer);
 
 static
 bool
-collect_tracing_command_try_parse_rundown_requested (
+eventpipe_collect_tracing_command_try_parse_rundown_requested (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	bool *rundown_requested);
 
 static
 bool
-collect_tracing_command_try_parse_config (
+eventpipe_collect_tracing_command_try_parse_config (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	ep_rt_provider_config_array_t *result);
@@ -57,32 +57,38 @@ collect_tracing_command_try_parse_config (
 static
 const
 uint8_t *
-collect_tracing_command_try_parse_payload (
+eventpipe_collect_tracing_command_try_parse_payload (
 	uint8_t *buffer,
 	uint16_t buffer_len);
 
 static
 const
 uint8_t *
-collect_tracing2_command_try_parse_payload (
+eventpipe_collect_tracing2_command_try_parse_payload (
 	uint8_t *buffer,
 	uint16_t buffer_len);
 
 static
 void
-protocol_helper_stop_tracing (
+eventpipe_protocol_helper_stop_tracing (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
 static
 void
-protocol_helper_collect_tracing (
+eventpipe_protocol_helper_collect_tracing (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
 static
 void
-protocol_helper_collect_tracing_2 (
+eventpipe_protocol_helper_collect_tracing_2 (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream);
+
+static
+void
+eventpipe_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
@@ -93,7 +99,7 @@ protocol_helper_collect_tracing_2 (
 static
 inline
 bool
-collect_tracing_command_try_parse_serialization_format (
+eventpipe_collect_tracing_command_try_parse_serialization_format (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	EventPipeSerializationFormat *format)
@@ -112,7 +118,7 @@ collect_tracing_command_try_parse_serialization_format (
 static
 inline
 bool
-collect_tracing_command_try_parse_circular_buffer_size (
+eventpipe_collect_tracing_command_try_parse_circular_buffer_size (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	uint32_t *circular_buffer)
@@ -128,7 +134,7 @@ collect_tracing_command_try_parse_circular_buffer_size (
 static
 inline
 bool
-collect_tracing_command_try_parse_rundown_requested (
+eventpipe_collect_tracing_command_try_parse_rundown_requested (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	bool *rundown_requested)
@@ -142,7 +148,7 @@ collect_tracing_command_try_parse_rundown_requested (
 
 static
 bool
-collect_tracing_command_try_parse_config (
+eventpipe_collect_tracing_command_try_parse_config (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
 	ep_rt_provider_config_array_t *result)
@@ -210,7 +216,7 @@ ep_on_error:
 static
 const
 uint8_t *
-collect_tracing_command_try_parse_payload (
+eventpipe_collect_tracing_command_try_parse_payload (
 	uint8_t *buffer,
 	uint16_t buffer_len)
 {
@@ -219,33 +225,33 @@ collect_tracing_command_try_parse_payload (
 	uint8_t * buffer_cursor = buffer;
 	uint32_t buffer_cursor_len = buffer_len;
 
-	EventPipeCollectTracingCommandPayload * instance = ds_ep_collect_tracing_command_payload_alloc ();
+	EventPipeCollectTracingCommandPayload * instance = ds_eventpipe_collect_tracing_command_payload_alloc ();
 	ep_raise_error_if_nok (instance != NULL);
 
 	instance->incoming_buffer = buffer;
 
-	if (!collect_tracing_command_try_parse_circular_buffer_size (&buffer_cursor, &buffer_cursor_len, &instance->circular_buffer_size_in_mb ) ||
-		!collect_tracing_command_try_parse_serialization_format (&buffer_cursor, &buffer_cursor_len, &instance->serialization_format) ||
-		!collect_tracing_command_try_parse_config (&buffer_cursor, &buffer_cursor_len, &instance->provider_configs))
+	if (!eventpipe_collect_tracing_command_try_parse_circular_buffer_size (&buffer_cursor, &buffer_cursor_len, &instance->circular_buffer_size_in_mb ) ||
+		!eventpipe_collect_tracing_command_try_parse_serialization_format (&buffer_cursor, &buffer_cursor_len, &instance->serialization_format) ||
+		!eventpipe_collect_tracing_command_try_parse_config (&buffer_cursor, &buffer_cursor_len, &instance->provider_configs))
 		ep_raise_error ();
 
 ep_on_exit:
 	return (uint8_t *)instance;
 
 ep_on_error:
-	ds_ep_collect_tracing_command_payload_free (instance);
+	ds_eventpipe_collect_tracing_command_payload_free (instance);
 	instance = NULL;
 	ep_exit_error_handler ();
 }
 
 EventPipeCollectTracingCommandPayload *
-ds_ep_collect_tracing_command_payload_alloc (void)
+ds_eventpipe_collect_tracing_command_payload_alloc (void)
 {
 	return ep_rt_object_alloc (EventPipeCollectTracingCommandPayload);
 }
 
 void
-ds_ep_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayload *payload)
+ds_eventpipe_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayload *payload)
 {
 	ep_return_void_if_nok (payload != NULL);
 	ep_rt_byte_array_free (payload->incoming_buffer);
@@ -267,7 +273,7 @@ ds_ep_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayloa
 static
 const
 uint8_t *
-collect_tracing2_command_try_parse_payload (
+eventpipe_collect_tracing2_command_try_parse_payload (
 	uint8_t *buffer,
 	uint16_t buffer_len)
 {
@@ -276,34 +282,34 @@ collect_tracing2_command_try_parse_payload (
 	uint8_t * buffer_cursor = buffer;
 	uint32_t buffer_cursor_len = buffer_len;
 
-	EventPipeCollectTracing2CommandPayload * instance = ds_ep_collect_tracing2_command_payload_alloc ();
+	EventPipeCollectTracing2CommandPayload *instance = ds_eventpipe_collect_tracing2_command_payload_alloc ();
 	ep_raise_error_if_nok (instance != NULL);
 
 	instance->incoming_buffer = buffer;
 
-	if (!collect_tracing_command_try_parse_circular_buffer_size (&buffer_cursor, &buffer_cursor_len, &instance->circular_buffer_size_in_mb ) ||
-		!collect_tracing_command_try_parse_serialization_format (&buffer_cursor, &buffer_cursor_len, &instance->serialization_format) ||
-		!collect_tracing_command_try_parse_rundown_requested (&buffer_cursor, &buffer_cursor_len, &instance->rundown_requested) ||
-		!collect_tracing_command_try_parse_config (&buffer_cursor, &buffer_cursor_len, &instance->provider_configs))
+	if (!eventpipe_collect_tracing_command_try_parse_circular_buffer_size (&buffer_cursor, &buffer_cursor_len, &instance->circular_buffer_size_in_mb ) ||
+		!eventpipe_collect_tracing_command_try_parse_serialization_format (&buffer_cursor, &buffer_cursor_len, &instance->serialization_format) ||
+		!eventpipe_collect_tracing_command_try_parse_rundown_requested (&buffer_cursor, &buffer_cursor_len, &instance->rundown_requested) ||
+		!eventpipe_collect_tracing_command_try_parse_config (&buffer_cursor, &buffer_cursor_len, &instance->provider_configs))
 		ep_raise_error ();
 
 ep_on_exit:
 	return (uint8_t *)instance;
 
 ep_on_error:
-	ds_ep_collect_tracing2_command_payload_free (instance);
+	ds_eventpipe_collect_tracing2_command_payload_free (instance);
 	instance = NULL;
 	ep_exit_error_handler ();
 }
 
 EventPipeCollectTracing2CommandPayload *
-ds_ep_collect_tracing2_command_payload_alloc (void)
+ds_eventpipe_collect_tracing2_command_payload_alloc (void)
 {
 	return ep_rt_object_alloc (EventPipeCollectTracing2CommandPayload);
 }
 
 void
-ds_ep_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload *payload)
+ds_eventpipe_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload *payload)
 {
 	ep_return_void_if_nok (payload != NULL);
 	ep_rt_byte_array_free (payload->incoming_buffer);
@@ -324,7 +330,7 @@ ds_ep_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayl
 
 static
 bool
-protocol_helper_send_stop_tracing_success (
+eventpipe_protocol_helper_send_stop_tracing_success (
 	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id)
 {
@@ -341,7 +347,7 @@ protocol_helper_send_stop_tracing_success (
 
 static
 bool
-protocol_helper_send_start_tracing_success (
+eventpipe_protocol_helper_send_start_tracing_success (
 	DiagnosticsIpcStream *stream,
 	EventPipeSessionID session_id)
 {
@@ -358,7 +364,7 @@ protocol_helper_send_start_tracing_success (
 
 static
 void
-protocol_helper_stop_tracing (
+eventpipe_protocol_helper_stop_tracing (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
@@ -374,11 +380,11 @@ protocol_helper_stop_tracing (
 
 	ep_disable (payload->session_id);
 
-	protocol_helper_send_stop_tracing_success (stream, payload->session_id);
+	eventpipe_protocol_helper_send_stop_tracing_success (stream, payload->session_id);
 	ds_ipc_stream_flush (stream);
 
 ep_on_exit:
-	ds_ep_stop_tracing_command_payload_free (payload);
+	ds_eventpipe_stop_tracing_command_payload_free (payload);
 	ds_ipc_stream_free (stream);
 	return;
 
@@ -388,14 +394,14 @@ ep_on_error:
 
 static
 void
-protocol_helper_collect_tracing (
+eventpipe_protocol_helper_collect_tracing (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
 	const EventPipeCollectTracingCommandPayload *payload;
-	payload = (const EventPipeCollectTracingCommandPayload *)ds_ipc_message_try_parse_payload (message, collect_tracing_command_try_parse_payload);
+	payload = (const EventPipeCollectTracingCommandPayload *)ds_ipc_message_try_parse_payload (message, eventpipe_collect_tracing_command_try_parse_payload);
 
 	if (!payload) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
@@ -417,12 +423,12 @@ protocol_helper_collect_tracing (
 		ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
 		ep_raise_error ();
 	} else {
-		protocol_helper_send_start_tracing_success (stream, session_id);
+		eventpipe_protocol_helper_send_start_tracing_success (stream, session_id);
 		ep_start_streaming (session_id);
 	}
 
 ep_on_exit:
-	ds_ep_collect_tracing_command_payload_free (payload);
+	ds_eventpipe_collect_tracing_command_payload_free (payload);
 	return;
 
 ep_on_error:
@@ -432,14 +438,14 @@ ep_on_error:
 
 static
 void
-protocol_helper_collect_tracing_2 (
+eventpipe_protocol_helper_collect_tracing_2 (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
 	const EventPipeCollectTracing2CommandPayload *payload;
-	payload = (const EventPipeCollectTracing2CommandPayload *)ds_ipc_message_try_parse_payload (message, collect_tracing2_command_try_parse_payload);
+	payload = (const EventPipeCollectTracing2CommandPayload *)ds_ipc_message_try_parse_payload (message, eventpipe_collect_tracing2_command_try_parse_payload);
 
 	if (!payload) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
@@ -461,12 +467,12 @@ protocol_helper_collect_tracing_2 (
 		ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
 		ep_raise_error ();
 	} else {
-		protocol_helper_send_start_tracing_success (stream, session_id);
+		eventpipe_protocol_helper_send_start_tracing_success (stream, session_id);
 		ep_start_streaming (session_id);
 	}
 
 ep_on_exit:
-	ds_ep_collect_tracing2_command_payload_free (payload);
+	ds_eventpipe_collect_tracing2_command_payload_free (payload);
 	return;
 
 ep_on_error:
@@ -474,19 +480,26 @@ ep_on_error:
 	ep_exit_error_handler ();
 }
 
+static
 void
-ds_ep_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payload)
+eventpipe_protocol_helper_unknown_command (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream)
+{
+	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_cref (message)));
+	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
+	ds_ipc_stream_free (stream);
+}
+
+void
+ds_eventpipe_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payload)
 {
 	ep_return_void_if_nok (payload != NULL);
 	ep_rt_byte_array_free ((uint8_t *)payload);
 }
 
-/*
-* EventPipeProtocolHelper
-*/
-
 void
-ds_ep_protocol_helper_handle_ipc_message (
+ds_eventpipe_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
@@ -494,26 +507,24 @@ ds_ep_protocol_helper_handle_ipc_message (
 
 	switch ((EventPipeCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_cref (message))) {
 	case EP_COMMANDID_COLLECT_TRACING:
-		protocol_helper_collect_tracing (message, stream);
+		eventpipe_protocol_helper_collect_tracing (message, stream);
 		break;
 	case EP_COMMANDID_COLLECT_TRACING_2:
-		protocol_helper_collect_tracing_2 (message, stream);
+		eventpipe_protocol_helper_collect_tracing_2 (message, stream);
 		break;
 	case EP_COMMANDID_STOP_TRACING:
-		protocol_helper_stop_tracing (message, stream);
+		eventpipe_protocol_helper_stop_tracing (message, stream);
 		break;
 	default:
-		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_cref (message)));
-		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-		ds_ipc_stream_free (stream);
+		eventpipe_protocol_helper_unknown_command (message, stream);
 		break;
 	}
 }
 
-#endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */
+#endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */
 #endif /* ENABLE_PERFTRACING */
 
-#ifndef EP_INCLUDE_SOURCE_FILES
+#ifndef DS_INCLUDE_SOURCE_FILES
 extern const char quiet_linker_empty_file_warning_diagnostics_eventpipe_protocol;
 const char quiet_linker_empty_file_warning_diagnostics_eventpipe_protocol = 0;
 #endif

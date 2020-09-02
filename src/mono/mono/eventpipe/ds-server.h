@@ -33,4 +33,4 @@ void
 ds_server_resume_runtime_startup (void);
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __DIAGNOSTICS_SERVER_H__ **/
+#endif /* __DIAGNOSTICS_SERVER_H__ */

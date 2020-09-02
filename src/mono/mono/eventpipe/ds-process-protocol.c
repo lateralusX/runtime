@@ -27,6 +27,30 @@ process_info_payload_flatten (
 	uint8_t **buffer,
 	uint16_t *size);
 
+static
+void
+process_protocol_helper_get_process_info (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream);
+
+static
+void
+process_protocol_helper_get_process_env (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream);
+
+static
+void
+process_protocol_helper_resume_runtime_startup (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream);
+
+static
+void
+process_protocol_helper_unknown_command (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream);
+
 /*
  * DiagnosticsProcessInfoPayload.
  */
@@ -143,8 +167,9 @@ ds_process_info_payload_fini (DiagnosticsProcessInfoPayload *payload)
  * DiagnosticsProcessProtocolHelper.
  */
 
+static
 void
-ds_process_protocol_helper_get_process_info (
+process_protocol_helper_get_process_info (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
@@ -199,8 +224,25 @@ ep_on_error:
 	ep_exit_error_handler ();
 }
 
+static
 void
-ds_process_protocol_helper_resume_runtime_startup (
+process_protocol_helper_get_process_env (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream)
+{
+	EP_ASSERT (message != NULL);
+	EP_ASSERT (stream != NULL);
+
+	// TODO: Implement.
+	ds_ipc_message_send_error (stream, DS_IPC_E_NOTSUPPORTED);
+	DS_LOG_WARNING_0 ("Get Process Environmnet not implemented\n");
+
+	ds_ipc_stream_free (stream);
+}
+
+static
+void
+process_protocol_helper_resume_runtime_startup (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
@@ -218,6 +260,17 @@ ds_process_protocol_helper_resume_runtime_startup (
 	ds_ipc_stream_free (stream);
 }
 
+static
+void
+process_protocol_helper_unknown_command (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream)
+{
+	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
+	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
+	ds_ipc_stream_free (stream);
+}
+
 void
 ds_process_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
@@ -228,20 +281,24 @@ ds_process_protocol_helper_handle_ipc_message (
 
 	switch ((DiagnosticsProcessCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
 	case DS_PROCESS_COMMANDID_GET_PROCESS_INFO:
-		ds_process_protocol_helper_get_process_info (message, stream);
+		process_protocol_helper_get_process_info (message, stream);
+		break;
+	case DS_PROCESS_COMMANDID_RESUME_RUNTIME:
+		process_protocol_helper_resume_runtime_startup (message, stream);
+		break;
+	case DS_PROCESS_COMMANDID_GET_PROCESS_ENV:
+		process_protocol_helper_get_process_env (message, stream);
 		break;
 	default:
-		DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
-		ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-		ds_ipc_stream_free (stream);
+		process_protocol_helper_unknown_command (message, stream);
 		break;
 	}
 }
 
-#endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */
+#endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */
 #endif /* ENABLE_PERFTRACING */
 
-#ifndef EP_INCLUDE_SOURCE_FILES
+#ifndef DS_INCLUDE_SOURCE_FILES
 extern const char quiet_linker_empty_file_warning_diagnostics_process_protocol;
 const char quiet_linker_empty_file_warning_diagnostics_process_protocol = 0;
 #endif

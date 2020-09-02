@@ -385,4 +385,4 @@ ep_ipc_stream_writer_write (
 	uint32_t *bytes_written);
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __EVENTPIPE_STREAM_H__ **/
+#endif /* __EVENTPIPE_STREAM_H__ */

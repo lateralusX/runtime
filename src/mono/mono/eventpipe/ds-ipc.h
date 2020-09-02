@@ -300,4 +300,4 @@ ds_ipc_stream_close (
 	ds_ipc_error_callback_func callback);
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __DIAGNOSTICS_IPC_H__ **/
+#endif /* __DIAGNOSTICS_IPC_H__ */

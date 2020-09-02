@@ -68,4 +68,4 @@ struct _DiagnosticsIpcStream {
 
 #endif /* HOST_WIN32 */
 #endif /* ENABLE_PERFTRACING */
-#endif /** __DIAGNOSTICS_IPC_WIN32_H__ **/
+#endif /* __DIAGNOSTICS_IPC_WIN32_H__ */

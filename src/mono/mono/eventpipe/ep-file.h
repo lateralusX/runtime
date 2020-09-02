@@ -169,4 +169,4 @@ void
 ep_stack_hash_entry_free (StackHashEntry *stack_hash_entry);
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __EVENTPIPE_FILE_H__ **/
+#endif /* __EVENTPIPE_FILE_H__ */

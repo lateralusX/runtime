@@ -81,4 +81,4 @@ ep_event_source_get (void)
 }
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __EVENTPIPE_EVENT_SOURCE_H__ **/
+#endif /* __EVENTPIPE_EVENT_SOURCE_H__ */

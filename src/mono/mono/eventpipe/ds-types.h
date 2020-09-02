@@ -55,6 +55,7 @@ typedef enum {
 typedef enum {
 	DS_PROCESS_COMMANDID_GET_PROCESS_INFO = 0x00,
 	DS_PROCESS_COMMANDID_RESUME_RUNTIME = 0x01,
+	DS_PROCESS_COMMANDID_GET_PROCESS_ENV = 0x02,
 	// future
 } DiagnosticsProcessCommandId;
 
@@ -117,6 +118,7 @@ typedef enum {
 #define DS_IPC_E_BAD_ENCODING (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1384)))
 #define DS_IPC_E_UNKNOWN_COMMAND (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1385)))
 #define DS_IPC_E_UNKNOWN_MAGIC (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1386)))
+#define DS_IPC_E_NOTSUPPORTED (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1515)))
 #define DS_IPC_E_FAIL (uint32_t)(0x80004005L)
 
 // Polling timeout semantics

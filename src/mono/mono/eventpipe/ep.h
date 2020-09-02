@@ -303,4 +303,4 @@ ep_shutdown (void)
 }
 
 #endif /* ENABLE_PERFTRACING */
-#endif /** __EVENTPIPE_H__ **/
+#endif /* __EVENTPIPE_H__ */

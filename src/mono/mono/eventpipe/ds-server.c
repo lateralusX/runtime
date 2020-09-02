@@ -1,13 +1,18 @@
 #include <config.h>
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
+#include "ds-rt-config.h"
 
 // Option to include all internal source files into ds-server.c.
 #ifdef DS_INCLUDE_SOURCE_FILES
 #define DS_FORCE_INCLUDE_SOURCE_FILES
 #include "ds-ipc.c"
+#include "ds-ipc-win32.c"
 #include "ds-protocol.c"
+#include "ds-eventpipe-protocol.c"
+#include "ds-process-protocol.c"
+#include "ds-dump-protocol.c"
+#include "ds-profiler-protocol.c"
 #else
 #define DS_IMPL_SERVER_GETTER_SETTER
 #include "ds-server.h"
@@ -15,10 +20,13 @@
 #include "ds-protocol.h"
 #include "ds-process-protocol.h"
 #include "ds-eventpipe-protocol.h"
+#include "ds-dump-protocol.h"
+#include "ds-profiler-protocol.h"
 #include "ep-stream.h"
 #endif
 
 #ifdef FEATURE_AUTO_TRACE
+// TODO: Implement
 #include "ds-autotrace.h"
 #endif
 
@@ -67,6 +75,12 @@ server_warning_callback (
 	const ep_char8_t *message,
 	uint32_t code);
 
+static
+void
+server_protocol_helper_unknown_command (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream);
+
 /*
  * DiagnosticServer.
  */
@@ -89,6 +103,17 @@ server_error_callback_close (
 {
 	EP_ASSERT (message != NULL);
 	DS_LOG_ERROR_2 ("Failed to close diagnostic IPC: error (%d): %s.\n", code, message);
+}
+
+static
+void
+server_protocol_helper_unknown_command (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream)
+{
+	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
+	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
+	ds_ipc_stream_free (stream);
 }
 
 static
@@ -116,6 +141,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 			continue;
 
 #ifdef FEATURE_AUTO_TRACE
+		// TODO: Implement
 		auto_trace_signal();
 #endif
 
@@ -142,19 +168,21 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 
 		switch ((DiagnosticsServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
 		case DS_SERVER_COMMANDSET_EVENTPIPE:
-			ds_ep_protocol_helper_handle_ipc_message (&message, stream);
+			ds_eventpipe_protocol_helper_handle_ipc_message (&message, stream);
+			break;
+		case DS_SERVER_COMMANDSET_DUMP:
+			ds_dump_protocol_helper_handle_ipc_message (&message, stream);
 			break;
 		case DS_SERVER_COMMANDSET_PROCESS:
 			ds_process_protocol_helper_handle_ipc_message (&message, stream);
 			break;
-		case DS_SERVER_COMMANDSET_DUMP:
 #ifdef FEATURE_PROFAPI_ATTACH_DETACH
-		case DS_SERVER_COMMAND_SET_PROFILER:
+		case DS_SERVER_COMMANDSET_PROFILER:
+			ds_profiler_protocol_helper_handle_ipc_message (&message, stream);
+			break;
 #endif // FEATURE_PROFAPI_ATTACH_DETACH
 		default:
-			DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
-			ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
-			ds_ipc_stream_free (stream);
+			server_protocol_helper_unknown_command (&message, stream);
 			break;
 		}
 
@@ -187,6 +215,7 @@ ds_server_init (void)
 
 	if (ds_ipc_stream_factory_has_active_ports ()) {
 #ifdef FEATURE_AUTO_TRACE
+		// TODO: Implement.
 		auto_trace_init();
 		auto_trace_launch();
 #endif
@@ -199,6 +228,7 @@ ds_server_init (void)
 			ep_raise_error ();
 		} else {
 #ifdef FEATURE_AUTO_TRACE
+			// TODO: Implement.
 			auto_trace_wait();
 #endif
 			success = true;

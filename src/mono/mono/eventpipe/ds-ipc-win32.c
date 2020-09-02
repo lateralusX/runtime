@@ -753,7 +753,7 @@ ds_ipc_stream_close (
 #endif /* HOST_WIN32 */
 #endif /* ENABLE_PERFTRACING */
 
-#ifndef EP_INCLUDE_SOURCE_FILES
+#ifndef DS_INCLUDE_SOURCE_FILES
 extern const char quiet_linker_empty_file_warning_diagnostics_ipc_win32;
 const char quiet_linker_empty_file_warning_diagnostics_ipc_win32 = 0;
 #endif
