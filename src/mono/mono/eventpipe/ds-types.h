@@ -14,7 +14,7 @@
 #include "ds-getter-setter.h"
 
 /*
- * Diagnostic Structs.
+ * Diagnostics Structs.
  */
 
 typedef struct _DiagnosticsConnectPort DiagnosticsConnectPort;
@@ -113,13 +113,12 @@ typedef enum {
 #define DS_VAL64(x) x
 #endif // BIGENDIAN
 
-//TODO: Convert into hex.
-#define DS_IPC_S_OK ((uint32_t)0L)
-#define DS_IPC_E_BAD_ENCODING (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1384)))
-#define DS_IPC_E_UNKNOWN_COMMAND (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1385)))
-#define DS_IPC_E_UNKNOWN_MAGIC (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1386)))
-#define DS_IPC_E_NOTSUPPORTED (((uint32_t)(1)<<31) | ((uint32_t)(19)<<16) | ((uint32_t)(0x1515)))
-#define DS_IPC_E_FAIL (uint32_t)(0x80004005L)
+#define DS_IPC_S_OK ((uint32_t)(0L))
+#define DS_IPC_E_BAD_ENCODING ((uint32_t)(0x80131384L))
+#define DS_IPC_E_UNKNOWN_COMMAND ((uint32_t)(0x80131385L))
+#define DS_IPC_E_UNKNOWN_MAGIC ((uint32_t)(0x80131386L))
+#define DS_IPC_E_NOTSUPPORTED ((uint32_t)(0x80131515L))
+#define DS_IPC_E_FAIL ((uint32_t)(0x80004005L))
 
 // Polling timeout semantics
 // If client connection is opted in
@@ -144,7 +143,6 @@ typedef void (*ds_ipc_error_callback_func)(
 
 // The bookeeping struct used for polling on server and client structs
 #if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_GETTER_SETTER)
-//TODO: Implement.
 struct _DiagnosticsIpcPollHandle {
 #else
 struct _DiagnosticsIpcPollHandle_Internal {

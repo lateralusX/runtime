@@ -496,7 +496,7 @@ inline
 bool
 ep_rt_walk_managed_stack_for_current_thread (EventPipeStackContents *stack_contents)
 {
-	//TODO: Implement.
+	// TODO: Implement.
 	return true;
 }
 
@@ -633,7 +633,7 @@ inline
 void
 ep_rt_sample_profiler_init (EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
 {
-	//TODO: Not supported.
+	// TODO: Not supported.
 }
 
 static
@@ -641,7 +641,7 @@ inline
 void
 ep_rt_sample_profiler_enable (void)
 {
-	//TODO: Not supported.
+	// TODO: Not supported.
 }
 
 static
@@ -649,7 +649,7 @@ inline
 void
 ep_rt_sample_profiler_disable (void)
 {
-	//TODO: Not supported.
+	// TODO: Not supported.
 }
 
 static
@@ -657,7 +657,7 @@ inline
 uint32_t
 ep_rt_sample_profiler_get_sampling_rate (void)
 {
-	//TODO: Not supported.
+	// TODO: Not supported.
 	return 0;
 }
 
@@ -666,21 +666,21 @@ inline
 void
 ep_rt_sample_profiler_set_sampling_rate (uint32_t nanoseconds)
 {
-	//TODO: Not supported.
+	// TODO: Not supported.
 }
 
 static
 void
 ep_rt_sample_profiler_can_start_sampling (void)
 {
-	//TODO: Not supported.
+	// TODO: Not supported.
 }
 
 static
 void
 ep_rt_notify_profiler_provider_created (EventPipeProvider *provider)
 {
-	//TODO: Not supported.
+	// TODO: Not supported.
 }
 
 /*
@@ -1044,7 +1044,7 @@ inline
 const ep_char8_t *
 ep_rt_command_line_get (void)
 {
-	//TODO: Implement.
+	// TODO: Implement.
 	return "";
 }
 
@@ -1349,7 +1349,7 @@ inline
 const ep_char8_t *
 ep_rt_managed_command_line_get (void)
 {
-	//TODO: Implement.
+	// TODO: Implement.
 	return "";
 }
 

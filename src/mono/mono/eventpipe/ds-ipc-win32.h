@@ -26,7 +26,6 @@
 #define DS_IPC_WIN32_INFINITE_TIMEOUT INFINITE
 
 #if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_IPC_WIN32_GETTER_SETTER)
-//TODO: Implement.
 struct _DiagnosticsIpc {
 #else
 struct _DiagnosticsIpc_Internal {
