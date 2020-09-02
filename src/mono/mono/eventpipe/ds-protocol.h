@@ -14,6 +14,9 @@
 #endif
 #include "ds-getter-setter.h"
 
+typedef bool (ds_ipc_flatten_payload_func)(void *payload, uint8_t **buffer, uint16_t *buffer_len);
+typedef const uint8_t * (*ds_ipc_parse_payload_func)(uint8_t *buffer, uint16_t buffer_len);
+
 /*
 * DiagnosticsIpc
 */
@@ -102,6 +105,67 @@ ds_ipc_message_initialize_stream (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
+bool
+ds_ipc_message_try_parse_value (
+	uint8_t **buffer,
+	uint32_t *buffer_len,
+	uint8_t *value,
+	size_t value_len);
+
+bool
+ds_ipc_message_try_parse_uint64_t (
+	uint8_t **buffer,
+	uint32_t *buffer_len,
+	uint64_t *value);
+
+bool
+ds_ipc_message_try_parse_uint32_t (
+	uint8_t **buffer,
+	uint32_t *buffer_len,
+	uint32_t *value);
+
+bool
+ds_ipc_message_try_parse_string_utf16_t (
+	uint8_t **buffer,
+	uint32_t *buffer_len,
+	ep_char16_t **value);
+
+bool
+ds_ipc_message_initialize_header_uint32_t_payload (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcHeader *header,
+	uint32_t payload);
+
+bool
+ds_ipc_message_initialize_header_uint64_t_payload (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcHeader *header,
+	uint64_t payload);
+
+bool
+ds_ipc_message_initialize_buffer (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcHeader *header,
+	void *payload,
+	uint16_t payload_len,
+	ds_ipc_flatten_payload_func flatten_payload);
+
+const uint8_t *
+ds_ipc_message_try_parse_payload (
+	DiagnosticsIpcMessage *message,
+	ds_ipc_parse_payload_func parse_func);
+
+bool
+ds_ipc_message_try_write_string_utf16_t (
+	uint8_t **buffer,
+	uint16_t *buffer_len,
+	const ep_char16_t *value);
+
+bool
+ds_ipc_message_send (
+	DiagnosticsIpcMessage *message,
+	DiagnosticsIpcStream *stream);
+
 // Send an Error message across the pipe.
 // Will return false on failure of any step (init or send).
 // Regardless of success of this function, the spec
@@ -118,176 +182,23 @@ ds_ipc_message_send_success (
 	DiagnosticsIpcStream *stream,
 	uint32_t code);
 
-/*
-* EventPipeCollectTracingCommandPayload
-*/
+static
+inline
+DiagnosticsIpcHeader *
+ds_ipc_header_get_generic_success (void)
+{
+	extern DiagnosticsIpcHeader _ds_ipc_generic_success_header;
+	return &_ds_ipc_generic_success_header;
+}
 
-// Command = 0x0202
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _EventPipeCollectTracingCommandPayload {
-#else
-struct _EventPipeCollectTracingCommandPayload_Internal {
-#endif
-	// The protocol buffer is defined as:
-	// X, Y, Z means encode bytes for X followed by bytes for Y followed by bytes for Z
-	// message = uint circularBufferMB, uint format, array<provider_config> providers
-	// uint = 4 little endian bytes
-	// wchar = 2 little endian bytes, UTF16 encoding
-	// array<T> = uint length, length # of Ts
-	// string = (array<char> where the last char must = 0) or (length = 0)
-	// provider_config = ulong keywords, uint logLevel, string provider_name, string filter_data
-
-	uint8_t *incoming_buffer;
-	ep_rt_provider_config_array_t provider_configs;
-	uint32_t circular_buffer_size_in_mb;
-	EventPipeSerializationFormat serialization_format;
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _EventPipeCollectTracingCommandPayload {
-	uint8_t _internal [sizeof (struct _EventPipeCollectTracingCommandPayload_Internal)];
-};
-#endif
-
-EventPipeCollectTracingCommandPayload *
-ep_collect_tracing_command_payload_alloc (void);
-
-void
-ep_collect_tracing_command_payload_free (EventPipeCollectTracingCommandPayload *payload);
-
-/*
-* EventPipeCollectTracing2CommandPayload
-*/
-
-// Command = 0x0202
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _EventPipeCollectTracing2CommandPayload {
-#else
-struct _EventPipeCollectTracing2CommandPayload_Internal {
-#endif
-	// The protocol buffer is defined as:
-	// X, Y, Z means encode bytes for X followed by bytes for Y followed by bytes for Z
-	// message = uint circularBufferMB, uint format, array<provider_config> providers
-	// uint = 4 little endian bytes
-	// wchar = 2 little endian bytes, UTF16 encoding
-	// array<T> = uint length, length # of Ts
-	// string = (array<char> where the last char must = 0) or (length = 0)
-	// provider_config = ulong keywords, uint logLevel, string provider_name, string filter_data
-
-	uint8_t *incoming_buffer;
-	ep_rt_provider_config_array_t provider_configs;
-	uint32_t circular_buffer_size_in_mb;
-	EventPipeSerializationFormat serialization_format;
-	bool rundown_requested;
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _EventPipeCollectTracing2CommandPayload {
-	uint8_t _internal [sizeof (struct _EventPipeCollectTracing2CommandPayload_Internal)];
-};
-#endif
-
-EventPipeCollectTracing2CommandPayload *
-ep_collect_tracing2_command_payload_alloc (void);
-
-void
-ep_collect_tracing2_command_payload_free (EventPipeCollectTracing2CommandPayload *payload);
-
-/*
-* EventPipeStopTracingCommandPayload
-*/
-
-// Command = 0x0201
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _EventPipeStopTracingCommandPayload {
-#else
-struct _EventPipeStopTracingCommandPayload_Internal {
-#endif
-	EventPipeSessionID session_id;
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _EventPipeStopTracingCommandPayload {
-	uint8_t _internal [sizeof (struct _EventPipeStopTracingCommandPayload_Internal)];
-};
-#endif
-
-void
-ep_stop_tracing_command_payload_free (EventPipeStopTracingCommandPayload *payload);
-
-/*
-* DiagnosticsProcessInfoPayload
-*/
-
-// command = 0x0400
-#if defined(DS_INLINE_GETTER_SETTER) || defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _DiagnosticsProcessInfoPayload {
-#else
-struct _DiagnosticsProcessInfoPayload_Internal {
-#endif
-	// The protocol buffer is defined as:
-	// X, Y, Z means encode bytes for X followed by bytes for Y followed by bytes for Z
-	// uint = 4 little endian bytes
-	// long = 8 little endian bytes
-	// GUID = 16 little endian bytes
-	// wchar = 2 little endian bytes, UTF16 encoding
-	// array<T> = uint length, length # of Ts
-	// string = (array<char> where the last char must = 0) or (length = 0)
-
-	// ProcessInfo = long pid, string cmdline, string OS, string arch, GUID runtimeCookie
-	uint64_t process_id;
-	const ep_char16_t *command_line;
-	const ep_char16_t *os;
-	const ep_char16_t *arch;
-	uint8_t runtime_cookie [EP_ACTIVITY_ID_SIZE];
-};
-
-#if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_PROTOCOL_GETTER_SETTER)
-struct _DiagnosticsProcessInfoPayload {
-	uint8_t _internal [sizeof (struct _DiagnosticsProcessInfoPayload_Internal)];
-};
-#endif
-
-DiagnosticsProcessInfoPayload *
-ds_process_info_payload_init (
-	DiagnosticsProcessInfoPayload *payload,
-	const ep_char16_t *command_line,
-	const ep_char16_t *os,
-	const ep_char16_t *arch,
-	uint32_t process_id,
-	const uint8_t *runtime_cookie);
-
-void
-ds_process_info_payload_fini (DiagnosticsProcessInfoPayload *payload);
-
-/*
-* EventPipeProtocolHelper
-*/
-
-void
-ep_protocol_helper_handle_ipc_message (
-	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcStream *stream);
-
-/*
- * DiagnosticsProcessProtocolHelper.
- */
-
-void
-ds_process_protocol_helper_handle_ipc_message (
-	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcStream *stream);
-
-void
-ds_process_protocol_helper_get_process_info (
-	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcStream *stream);
-
-void
-ds_process_protocol_helper_resume_runtime_startup (
-	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcStream *stream);
-
+static
+inline
+DiagnosticsIpcHeader *
+ds_ipc_header_get_generic_error (void)
+{
+	extern DiagnosticsIpcHeader _ds_ipc_generic_error_header;
+	return &_ds_ipc_generic_error_header;
+}
 
 #endif /* ENABLE_PERFTRACING */
 #endif /** __DIAGNOSTICS_PROTOCOL_H__ **/

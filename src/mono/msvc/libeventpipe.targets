@@ -5,6 +5,10 @@
     <ExcludeEventPipeFromBuild Condition="'$(MONO_ENABLE_PERFTRACING)'=='' Or '$(MONO_ENABLE_PERFTRACING)'!='true'">true</ExcludeEventPipeFromBuild>
   </PropertyGroup>
   <ItemGroup Label="libeventpipe">
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-eventpipe-protocol.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-eventpipe-protocol.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-getter-setter.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
@@ -14,6 +18,10 @@
     </ClCompile>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc-win32.h"/>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-process-protocol.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-process-protocol.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-protocol.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>

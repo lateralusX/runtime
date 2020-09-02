@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="libeventpipe">
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-eventpipe-protocol.c">
+      <Filter>Source Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-eventpipe-protocol.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-getter-setter.h">
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
@@ -14,6 +20,12 @@
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc-win32.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-process-protocol.c">
+      <Filter>Source Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-process-protocol.h">
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-protocol.c">

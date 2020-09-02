@@ -10,6 +10,10 @@
 #include "ds-protocol.h"
 #include "ds-rt.h"
 
+/*
+ * Forward declares of all static functions.
+ */
+
 static
 void
 ipc_stream_free_func (void *object);

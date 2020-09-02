@@ -57,6 +57,52 @@ ipc_stream_factory_build_and_add_port (
 	DiagnosticsPortBuilder *builder,
 	ds_ipc_error_callback_func callback);
 
+static
+void
+connect_port_free_func (void *object);
+
+static
+bool
+connect_port_get_ipc_poll_handle_func (
+	void *object,
+	DiagnosticsIpcPollHandle *handle,
+	ds_ipc_error_callback_func callback);
+
+static
+DiagnosticsIpcStream *
+connect_port_get_connected_stream_func (
+	void *object,
+	ds_ipc_error_callback_func callback);
+
+static
+void
+connect_port_reset (
+	void *object,
+	ds_ipc_error_callback_func callback);
+
+static
+void
+listen_port_free_func (void *object);
+
+static
+bool
+listen_port_get_ipc_poll_handle_func (
+	void *object,
+	DiagnosticsIpcPollHandle *handle,
+	ds_ipc_error_callback_func callback);
+
+static
+DiagnosticsIpcStream *
+listen_port_get_connected_stream_func (
+	void *object,
+	ds_ipc_error_callback_func callback);
+
+static
+void
+listen_port_reset (
+	void *object,
+	ds_ipc_error_callback_func callback);
+
 /*
  * IpcStreamFactory.
  */

@@ -13,6 +13,8 @@
 #include "ds-server.h"
 #include "ds-ipc.h"
 #include "ds-protocol.h"
+#include "ds-process-protocol.h"
+#include "ds-eventpipe-protocol.h"
 #include "ep-stream.h"
 #endif
 
@@ -140,7 +142,7 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 
 		switch ((DiagnosticsServerCommandSet)ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (&message))) {
 		case DS_SERVER_COMMANDSET_EVENTPIPE:
-			ep_protocol_helper_handle_ipc_message (&message, stream);
+			ds_ep_protocol_helper_handle_ipc_message (&message, stream);
 			break;
 		case DS_SERVER_COMMANDSET_PROCESS:
 			ds_process_protocol_helper_handle_ipc_message (&message, stream);
