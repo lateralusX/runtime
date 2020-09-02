@@ -8,9 +8,17 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/mono $(GLIB_CFLAGS) $(SHARED_CFLAG
 noinst_LTLIBRARIES = libeventpipe.la
 
 eventpipe_sources = \
+	ds-dump-protocol.c	\
+	ds-dump-protocol.h	\
+	ds-eventpipe-protocol.c	\
+	ds-eventpipe-protocol.h	\
 	ds-getter-setter.h	\
 	ds-ipc.c	\
 	ds-ipc.h	\
+	ds-process-protocol.c	\
+	ds-process-protocol.h	\
+	ds-profiler-protocol.c	\
+	ds-profiler-protocol.h	\
 	ds-protocol.c	\
 	ds-protocol.h	\
 	ds-rt.h	\

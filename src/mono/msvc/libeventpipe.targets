@@ -17,10 +17,10 @@
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc-win32.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>
-    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-ipc-win32.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-process-protocol.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
