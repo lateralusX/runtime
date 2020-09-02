@@ -555,7 +555,7 @@ buffer_manager_move_next_event_any_thread (
 	ep_rt_buffer_array_t buffer_array;
 	ep_rt_buffer_list_array_t buffer_list_array;
 
-	//TODO: Init on stack instead of alloc?
+	// TODO: Init on stack instead of alloc?
 	ep_rt_buffer_array_alloc (&buffer_array);
 	ep_rt_buffer_list_array_alloc (&buffer_list_array);
 

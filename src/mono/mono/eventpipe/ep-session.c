@@ -35,7 +35,7 @@ static
 void
 session_create_ipc_streaming_thread (EventPipeSession *session)
 {
-	//TODO: Implement.
+	// TODO: Implement.
 }
 
 static
@@ -240,7 +240,7 @@ ep_session_enable_rundown (EventPipeSession *session)
 void
 ep_session_execute_rundown (EventPipeSession *session)
 {
-	//TODO: Implement. This is mainly runtime specific implementation
+	// TODO: Implement. This is mainly runtime specific implementation
 	//since it will emit native trace events into the pipe (using CoreCLR's ETW support).
 }
 

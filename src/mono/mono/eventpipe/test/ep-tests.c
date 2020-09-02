@@ -844,8 +844,8 @@ test_session_write_get_next_event (void)
 
 	ep_start_streaming (session_id);
 
-	//Starts as signaled.
-	//TODO: Is this expected behavior, just a way to notify observer that we are up and running?
+	// Starts as signaled.
+	// TODO: Is this expected behavior, just a way to notify observer that we are up and running?
 	uint32_t test = ep_rt_wait_event_wait ((ep_rt_wait_event_handle_t *)ep_session_get_wait_event ((EventPipeSession *)session_id), 0, false);
 	ep_raise_error_if_nok (test == 0);
 
@@ -860,8 +860,8 @@ test_session_write_get_next_event (void)
 
 	test_location = 6;
 
-	//TODO: Is this really the correct behavior, first write signals event, meaning that buffer will converted to read only
-	//with just one event in it.
+	// TODO: Is this really the correct behavior, first write signals event, meaning that buffer will converted to read only
+	// with just one event in it.
 	test = ep_rt_wait_event_wait ((ep_rt_wait_event_handle_t *)ep_session_get_wait_event ((EventPipeSession *)session_id), 0, false);
 	ep_raise_error_if_nok (test == 0);
 
@@ -944,9 +944,9 @@ ep_on_error:
 	ep_exit_error_handler ();
 }
 
-//TODO: Add test setting rundown and write events.
+// TODO: Add test setting rundown and write events.
 
-//TODO: Suspend write and write events.
+// TODO: Suspend write and write events.
 
 static RESULT
 test_write_event (void)
@@ -1091,8 +1091,8 @@ test_write_wait_get_next_event (void)
 
 	ep_start_streaming (session_id);
 
-	//Starts as signaled.
-	//TODO: Is this expected behavior, just a way to notify observer that we are up and running?
+	// Starts as signaled.
+	// TODO: Is this expected behavior, just a way to notify observer that we are up and running?
 	uint32_t test = ep_rt_wait_event_wait ((ep_rt_wait_event_handle_t *)ep_get_wait_handle (session_id), 0, false);
 	ep_raise_error_if_nok (test == 0);
 
@@ -1189,7 +1189,7 @@ test_write_event_perf (void)
 	float events_written_per_sec = (float)events_written / (accumulted_write_time_sec ? accumulted_write_time_sec : 1.0);
 
 	// Measured number of events/second for one thread.
-	//TODO: Setup acceptable pass/failure metrics.
+	// TODO: Setup acceptable pass/failure metrics.
 	printf ("\n\tPerformance stats:\n");
 	printf ("\t\tTotal number of events: %i\n", events_written);
 	printf ("\t\tTotal time in sec: %.2f\n\t\tTotal number of events written per sec/core: %.2f\n\t", accumulted_write_time_sec, events_written_per_sec);
@@ -1206,9 +1206,9 @@ ep_on_error:
 	ep_exit_error_handler ();
 }
 
-//TODO: Add multithreaded test writing into private/shared sessions.
+// TODO: Add multithreaded test writing into private/shared sessions.
 
-//TODO: Add consumer thread test, flushing file buffers/session, acting on signal.
+// TODO: Add consumer thread test, flushing file buffers/session, acting on signal.
 
 static RESULT
 test_eventpipe_teardown (void)

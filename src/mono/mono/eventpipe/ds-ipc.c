@@ -59,6 +59,10 @@ ipc_stream_factory_build_and_add_port (
 
 static
 void
+ipc_log_poll_handles (ds_rt_ipc_poll_handle_array_t *ipc_poll_handles);
+
+static
+void
 connect_port_free_func (void *object);
 
 static
@@ -175,6 +179,33 @@ ep_on_error:
 	ds_ipc_free (ipc);
 	success = false;
 	ep_exit_error_handler ();
+}
+
+static
+void
+ipc_log_poll_handles (ds_rt_ipc_poll_handle_array_t *ipc_poll_handles)
+{
+	// TODO: Should this be debug only?
+	ds_rt_ipc_poll_handle_array_iterator_t ipc_poll_handles_iterator;
+	DiagnosticsIpcPollHandle ipc_poll_handle;
+	ep_char8_t buffer [DS_IPC_MAX_TO_STRING_LEN];
+	uint32_t connection_id = 0;
+
+	ds_rt_ipc_poll_handle_array_iterator_begin (ipc_poll_handles, &ipc_poll_handles_iterator);
+	while (!ds_rt_ipc_poll_handle_array_iterator_end (ipc_poll_handles, &ipc_poll_handles_iterator)) {
+		ipc_poll_handle = ds_rt_ipc_poll_handle_array_iterator_value (&ipc_poll_handles_iterator);
+		if (ipc_poll_handle.ipc) {
+			if (!(ds_ipc_to_string (ipc_poll_handle.ipc, buffer, EP_ARRAY_SIZE (buffer)) > 0))
+				buffer [0] = '\0';
+			DS_LOG_INFO_2 ("\tSERVER IpcPollHandle[%d] = %s\n", connection_id, buffer);
+		} else {
+			if (!(ds_ipc_stream_to_string (ipc_poll_handle.stream, buffer, EP_ARRAY_SIZE (buffer)) > 0))
+				buffer [0] = '\0';
+			DS_LOG_INFO_2 ("\tCLIENT IpcPollHandle[%d] = %s\n", connection_id, buffer);
+		}
+		ds_rt_ipc_poll_handle_array_iterator_next (ipc_poll_handles, &ipc_poll_handles_iterator);
+		connection_id++;
+	}
 }
 
 void
@@ -304,26 +335,9 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 
 		poll_attempts++;
 		DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - Poll attempt: %d, timeout: %dms.\n", poll_attempts, poll_timeout_ms);
-//TODO: FIX when having PAL.
-//		for (uint32_t i = 0; i < rgIpcPollHandles.Size(); i++)
-//		{
-//			if (rgIpcPollHandles[i].pIpc != nullptr)
-//			{
-//#ifdef TARGET_UNIX
-//				STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tSERVER IpcPollHandle[%d] = { _serverSocket = %d }\n", i, rgIpcPollHandles[i].pIpc->_serverSocket);
-//#else
-//				STRESS_LOG3(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tSERVER IpcPollHandle[%d] = { _hPipe = %d, _oOverlap.hEvent = %d }\n", i, rgIpcPollHandles[i].pIpc->_hPipe, rgIpcPollHandles[i].pIpc->_oOverlap.hEvent);
-//#endif
-//			}
-//			else
-//			{
-//#ifdef TARGET_UNIX
-//				STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tCLIENT IpcPollHandle[%d] = { _clientSocket = %d }\n", i, rgIpcPollHandles[i].pStream->_clientSocket);
-//#else
-//				STRESS_LOG3(LF_DIAGNOSTICS_PORT, LL_INFO10, "\tCLIENT IpcPollHandle[%d] = { _hPipe = %d, _oOverlap.hEvent = %d }\n", i, rgIpcPollHandles[i].pStream->_hPipe, rgIpcPollHandles[i].pStream->_oOverlap.hEvent);
-//#endif
-//			}
-//		}
+
+		ipc_log_poll_handles (&ipc_poll_handles);
+
 		int32_t ret_val = ds_ipc_poll (&ipc_poll_handles, poll_timeout_ms, callback);
 		bool saw_error = false;
 
@@ -377,14 +391,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 	}
 
 ep_on_exit:
-
-//TODO: FIX when having PAL.
-//#ifdef TARGET_UNIX
-//	STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "ds_ipc_stream_factory_get_next_available_stream - EXIT :: Poll attempt: %d, stream using handle %d.\n", nPollAttempts, pStream->_clientSocket);
-//#else
-//	STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "ds_ipc_stream_factory_get_next_available_stream - EXIT :: Poll attempt: %d, stream using handle %d.\n", nPollAttempts, pStream->_hPipe);
-//#endif
-
+	DS_LOG_INFO_2 ("ds_ipc_stream_factory_get_next_available_stream - EXIT :: Poll attempt: %d, stream using handle %d.\n", poll_attempts, ds_ipc_stream_get_handle_int32_t (stream));
 	return stream;
 
 ep_on_error:
@@ -625,12 +632,12 @@ connect_port_get_ipc_poll_handle_func (
 				callback("Failed to connect to client connection", -1);
 			ep_raise_error ();
 		}
-	//TODO: Fix in PAL.
-	//#ifdef TARGET_UNIX
-	//	STRESS_LOG1(LF_DIAGNOSTICS_PORT, LL_INFO10, "IpcStreamFactory::ClientConnectionState::GetIpcPollHandle - returned connection { _clientSocket = %d }\n", pConnection->_clientSocket);
-	//#else
-	//	STRESS_LOG2(LF_DIAGNOSTICS_PORT, LL_INFO10, "IpcStreamFactory::ClientConnectionState::GetIpcPollHandle - returned connection { _hPipe = %d, _oOverlap.hEvent = %d }\n", pConnection->_hPipe, pConnection->_oOverlap.hEvent);
-	//#endif
+
+		ep_char8_t buffer [DS_IPC_MAX_TO_STRING_LEN];
+		if (!(ds_ipc_stream_to_string (connection, buffer, EP_ARRAY_SIZE (buffer) > 0)))
+			buffer [0] = '\0';
+		DS_LOG_INFO_1 ("connect_port_get_ipc_poll_handle - returned connection %s\n", buffer);
+
 		if (!ds_icp_advertise_v1_send (connection)) {
 			if (callback)
 				callback("Failed to send advertise message", -1);

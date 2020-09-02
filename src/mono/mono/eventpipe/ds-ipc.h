@@ -13,6 +13,8 @@
 #endif
 #include "ds-getter-setter.h"
 
+#define DS_IPC_MAX_TO_STRING_LEN 128
+
 /*
  * IpcStreamFactory.
  */
@@ -209,6 +211,9 @@ ds_listen_port_free (DiagnosticsListenPort *listen_port);
  * DiagnosticsIpc.
  */
 
+int32_t
+ds_ipc_get_handle_int32_t (DiagnosticsIpc *ipc);
+
 DiagnosticsIpc *
 ds_ipc_alloc (
 	const ep_char8_t *ipc_name,
@@ -264,10 +269,17 @@ ds_ipc_close (
 	bool is_shutdown,
 	ds_ipc_error_callback_func callback);
 
-
+int32_t
+ds_ipc_to_string (
+	DiagnosticsIpc *ipc,
+	ep_char8_t *buffer,
+	uint32_t buffer_len);
 /*
  * DiagnosticsIpcStream.
  */
+
+int32_t
+ds_ipc_stream_get_handle_int32_t (DiagnosticsIpcStream *ipc_stream);
 
 IpcStream *
 ds_ipc_stream_get_stream_ref (DiagnosticsIpcStream *ipc_stream);
@@ -298,6 +310,12 @@ bool
 ds_ipc_stream_close (
 	DiagnosticsIpcStream *ipc_stream,
 	ds_ipc_error_callback_func callback);
+
+int32_t
+ds_ipc_stream_to_string (
+	DiagnosticsIpcStream *ipc_stream,
+	ep_char8_t *buffer,
+	uint32_t buffer_len);
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_IPC_H__ */

@@ -467,6 +467,18 @@ ds_ipc_close (
 	}
 }
 
+int32_t
+ds_ipc_to_string (
+	DiagnosticsIpc *ipc,
+	ep_char8_t *buffer,
+	uint32_t buffer_len)
+{
+	EP_ASSERT (ipc != NULL);
+	EP_ASSERT (buffer != NULL);
+	EP_ASSERT (buffer_len <= DS_IPC_MAX_TO_STRING_LEN);
+	return ep_rt_utf8_string_snprintf (buffer, buffer_len, "{ _hPipe = %d, _oOverlap.hEvent = %d }", ipc->pipe, ipc->overlap.hEvent);
+}
+
 /*
  * DiagnosticsIpcStream.
  */
@@ -614,7 +626,7 @@ ipc_stream_flush_func (void *object)
 	DiagnosticsIpcStream *ipc_stream = (DiagnosticsIpcStream *)object;
 	const bool success = FlushFileBuffers (ipc_stream->pipe) != 0;
 
-	//TODO: Add error handling.
+	// TODO: Add error handling.
 	return success;
 
 }
@@ -747,6 +759,18 @@ ds_ipc_stream_close (
 	ipc_stream->is_test_reading = false;
 
 	return true;
+}
+
+int32_t
+ds_ipc_stream_to_string (
+	DiagnosticsIpcStream *ipc_stream,
+	ep_char8_t *buffer,
+	uint32_t buffer_len)
+{
+	EP_ASSERT (ipc_stream != NULL);
+	EP_ASSERT (buffer != NULL);
+	EP_ASSERT (buffer_len <= DS_IPC_MAX_TO_STRING_LEN);
+	return ep_rt_utf8_string_snprintf (buffer, buffer_len, "{ _hPipe = %d, _oOverlap.hEvent = %d }", ipc_stream->pipe, ipc_stream->overlap.hEvent);
 }
 
 #endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */

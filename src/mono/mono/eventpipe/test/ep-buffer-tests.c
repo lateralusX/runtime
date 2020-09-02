@@ -622,7 +622,7 @@ test_check_buffer_perf (void)
 
 	// Measured number of events/second for one thread.
 	// Only measure loading data into pre-allocated buffer.
-	//TODO: Setup acceptable pass/failure metrics.
+	// TODO: Setup acceptable pass/failure metrics.
 	printf ("\n\tPerformance stats:\n");
 	printf ("\t\tTotal number of events: %i\n", total_events_written);
 	printf ("\t\tTotal time in sec: %.2f\n", accumulted_time_sec);
