@@ -435,7 +435,7 @@ ep_rt_system_get_alloc_granularity (void);
 
 static
 const ep_char8_t *
-ep_rt_command_line_get (void);
+ep_rt_os_command_line_get (void);
 
 static
 ep_rt_file_handle_t

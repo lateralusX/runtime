@@ -720,7 +720,7 @@ ds_ipc_stream_write (
 	uint32_t *bytes_written,
 	uint32_t timeout_ms)
 {
-	return ipc_stream_read_func (
+	return ipc_stream_write_func (
 		ipc_stream,
 		buffer,
 		bytes_to_write,

@@ -185,8 +185,8 @@ process_protocol_helper_get_process_info (
 
 	// Checkout https://github.com/dotnet/coreclr/pull/24433 for more information about this fall back.
 	if (!command_line)
-		// Use the result from ep_rt_command_line_get() instead
-		command_line = ep_rt_utf8_to_utf16_string (ep_rt_command_line_get (), -1);
+		// Use the result from ep_rt_os_command_line_get() instead
+		command_line = ep_rt_utf8_to_utf16_string (ep_rt_os_command_line_get (), -1);
 
 	// get OS + Arch info
 	os_info = ep_rt_utf8_to_utf16_string (ep_event_source_get_os_info (), -1);

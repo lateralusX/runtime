@@ -19,6 +19,9 @@
 #include <mono/utils/mono-rand.h>
 #include <mono/metadata/w32file.h>
 #include <mono/metadata/w32event.h>
+#include <mono/utils/mono-lazy-init.h>
+#include <mono/metadata/object-internals.h>
+#include <mono/mini/mini.h>
 
 #undef EP_ARRAY_SIZE
 #define EP_ARRAY_SIZE(expr) G_N_ELEMENTS(expr)
@@ -172,6 +175,15 @@
 #define EP_RT_DEFINE_HASH_MAP_ITERATOR(hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
 	EP_RT_DEFINE_HASH_MAP_ITERATOR_PREFIX(ep, hash_map_name, hash_map_type, iterator_type, key_type, value_type)
 
+typedef MonoThreadStart ep_rt_thread_start_func;
+typedef mono_thread_start_return_t ep_rt_thread_start_func_return_t;
+typedef MonoNativeThreadId ep_rt_thread_id_t;
+
+typedef EventPipeThreadHolder * (*ep_rt_thread_holder_alloc_func)(void);
+typedef void (*ep_rt_thread_holder_free_func)(EventPipeThreadHolder *thread_holder);
+
+#define EP_RT_DEFINE_THREAD_FUNC(name) static mono_thread_start_return_t WINAPI name (gpointer data)
+
 typedef gint64 (*ep_rt_mono_100ns_ticks_func)(void);
 typedef gint64 (*ep_rt_mono_100ns_datetime_func)(void);
 typedef int (*ep_rt_mono_cpu_count_func)(void);
@@ -195,6 +207,9 @@ typedef MonoW32HandleWaitRet (*ep_rt_mono_w32handle_wait_one_func)(gpointer hand
 typedef void* (*ep_rt_mono_valloc_func)(void *addr, size_t length, int flags, MonoMemAccountType type);
 typedef int (*ep_rt_mono_vfree_func)(void *addr, size_t length, MonoMemAccountType type);
 typedef int (*ep_rt_mono_valloc_granule_func)(void);
+typedef gboolean (*ep_rt_mono_platform_create_thread_func)(ep_rt_thread_start_func thread_func, gpointer thread_data, gsize * const stack_size, ep_rt_thread_id_t *thread_id);
+typedef char* (*ep_rt_mono_get_os_cmd_line_func)(void);
+typedef char* (*ep_rt_mono_get_managed_cmd_line_func)(void);
 
 typedef struct _EventPipeMonoFuncTable {
 	ep_rt_mono_100ns_ticks_func ep_rt_mono_100ns_ticks;
@@ -220,25 +235,10 @@ typedef struct _EventPipeMonoFuncTable {
 	ep_rt_mono_valloc_func ep_rt_mono_valloc;
 	ep_rt_mono_vfree_func ep_rt_mono_vfree;
 	ep_rt_mono_valloc_granule_func ep_rt_mono_valloc_granule;
+	ep_rt_mono_platform_create_thread_func ep_rt_mono_platform_create_thread;
+	ep_rt_mono_get_os_cmd_line_func ep_rt_mono_get_os_cmd_line;
+	ep_rt_mono_get_managed_cmd_line_func ep_rt_mono_get_managed_cmd_line;
 } EventPipeMonoFuncTable;
-
-typedef EventPipeThreadHolder * (*ep_rt_thread_holder_alloc_func)(void);
-typedef void (*ep_rt_thread_holder_free_func)(EventPipeThreadHolder *thread_holder);
-
-typedef MonoThreadStart ep_rt_thread_start_func;
-typedef mono_thread_start_return_t ep_rt_thread_start_func_return_t;
-typedef MonoNativeThreadId ep_rt_thread_id_t;
-
-#define EP_RT_DEFINE_THREAD_FUNC(name) static mono_thread_start_return_t WINAPI name (gpointer data)
-
-static
-inline
-ep_rt_spin_lock_handle_t *
-ep_rt_mono_config_lock_get (void)
-{
-	extern ep_rt_spin_lock_handle_t _ep_rt_mono_config_lock;
-	return &_ep_rt_mono_config_lock;
-}
 
 #ifndef EP_RT_MONO_USE_STATIC_RUNTIME
 static
@@ -250,6 +250,111 @@ ep_rt_mono_func_table_get (void)
 	return &_ep_rt_mono_func_table;
 }
 #endif
+
+static
+inline
+char *
+os_command_line_get (void)
+{
+#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
+	return mono_get_os_cmd_line ();
+#else
+	return ep_rt_mono_func_table_get ()->ep_rt_mono_get_os_cmd_line ();
+#endif
+}
+
+static
+inline
+char **
+os_command_line_get_ref (void)
+{
+	extern char *_ep_rt_mono_os_cmd_line;
+	return &_ep_rt_mono_os_cmd_line;
+}
+
+static
+inline
+mono_lazy_init_t *
+os_command_line_get_init (void)
+{
+	extern mono_lazy_init_t _ep_rt_mono_os_cmd_line_init;
+	return &_ep_rt_mono_os_cmd_line_init;
+}
+
+static
+inline
+void
+os_command_line_lazy_init (void)
+{
+	if (!*os_command_line_get_ref ())
+		*os_command_line_get_ref () = os_command_line_get ();
+}
+
+static
+inline
+void
+os_command_line_lazy_clean (void)
+{
+	g_free (*os_command_line_get_ref ());
+	*os_command_line_get_ref () = NULL;
+}
+
+static
+inline
+char *
+managed_command_line_get (void)
+{
+#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
+	return mono_runtime_get_managed_cmd_line ();
+#else
+	return ep_rt_mono_func_table_get ()->ep_rt_mono_get_managed_cmd_line ();
+#endif
+}
+
+static
+inline
+char **
+managed_command_line_get_ref (void)
+{
+	extern char *_ep_rt_mono_managed_cmd_line;
+	return &_ep_rt_mono_managed_cmd_line;
+}
+
+static
+inline
+mono_lazy_init_t *
+managed_command_line_get_init (void)
+{
+	extern mono_lazy_init_t _ep_rt_mono_managed_cmd_line_init;
+	return &_ep_rt_mono_managed_cmd_line_init;
+}
+
+static
+inline
+void
+managed_command_line_lazy_init (void)
+{
+	if (!*managed_command_line_get_ref ())
+		*managed_command_line_get_ref () = managed_command_line_get ();
+}
+
+static
+inline
+void
+managed_command_line_lazy_clean (void)
+{
+	g_free (*managed_command_line_get_ref ());
+	*managed_command_line_get_ref () = NULL;
+}
+
+static
+inline
+ep_rt_spin_lock_handle_t *
+ep_rt_mono_config_lock_get (void)
+{
+	extern ep_rt_spin_lock_handle_t _ep_rt_mono_config_lock;
+	return &_ep_rt_mono_config_lock;
+}
 
 MONO_PROFILER_API
 void
@@ -452,6 +557,9 @@ inline
 void
 ep_rt_shutdown (void)
 {
+	mono_lazy_cleanup (managed_command_line_get_init (), managed_command_line_lazy_clean);
+	mono_lazy_cleanup (os_command_line_get_init (), os_command_line_lazy_clean);
+
 	ep_rt_spin_lock_free (ep_rt_mono_config_lock_get ());
 	mono_eventpipe_fini ();
 }
@@ -946,7 +1054,7 @@ ep_rt_thread_create (
 #ifdef EP_RT_MONO_USE_STATIC_RUNTIME
 	return (bool)mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
 #else
-	return (bool)ep_rt_mono_func_table_get ()->ep_rt_mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
+	return (bool)ep_rt_mono_func_table_get ()->ep_rt_mono_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
 #endif
 }
 
@@ -1042,10 +1150,18 @@ ep_rt_system_get_alloc_granularity (void)
 static
 inline
 const ep_char8_t *
-ep_rt_command_line_get (void)
+ep_rt_os_command_line_get (void)
 {
-	// TODO: Implement.
-	return "";
+	if (!mono_lazy_is_initialized (os_command_line_get_init ())) {
+		char *cmd_line = os_command_line_get ();
+		if (!cmd_line)
+			return NULL;
+		g_free (cmd_line);
+	}
+
+	mono_lazy_initialize (os_command_line_get_init (), os_command_line_lazy_init);
+	EP_ASSERT (*os_command_line_get_ref () != NULL;)
+	return *os_command_line_get_ref ();
 }
 
 static
@@ -1349,8 +1465,16 @@ inline
 const ep_char8_t *
 ep_rt_managed_command_line_get (void)
 {
-	// TODO: Implement.
-	return "";
+	if (!mono_lazy_is_initialized (managed_command_line_get_init ())) {
+		char *cmd_line = managed_command_line_get ();
+		if (!cmd_line)
+			return NULL;
+		g_free (cmd_line);
+	}
+
+	mono_lazy_initialize (managed_command_line_get_init (), managed_command_line_lazy_init);
+	EP_ASSERT (*managed_command_line_get_ref () != NULL;)
+	return *managed_command_line_get_ref ();
 }
 
 /*

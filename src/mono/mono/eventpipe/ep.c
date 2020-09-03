@@ -495,7 +495,7 @@ log_process_info_event (EventPipeEventSource *event_source)
 	const ep_char8_t *cmd_line = ep_rt_managed_command_line_get ();
 
 	if (cmd_line == NULL)
-		cmd_line = ep_rt_command_line_get ();
+		cmd_line = ep_rt_os_command_line_get ();
 
 	// Log the process information event.
 	ep_event_source_send_process_info (event_source, cmd_line);

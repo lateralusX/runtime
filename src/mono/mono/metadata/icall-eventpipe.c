@@ -144,6 +144,9 @@ mono_eventpipe_init (
 		table->ep_rt_mono_valloc = mono_valloc;
 		table->ep_rt_mono_vfree = mono_vfree;
 		table->ep_rt_mono_valloc_granule = mono_valloc_granule;
+		table->ep_rt_mono_platform_create_thread = mono_thread_platform_create_thread;
+		table->ep_rt_mono_get_os_cmd_line = mono_get_os_cmd_line;
+		table->ep_rt_mono_get_managed_cmd_line = mono_runtime_get_managed_cmd_line;
 	}
 
 	thread_holder_alloc_callback_func = thread_holder_alloc_func;

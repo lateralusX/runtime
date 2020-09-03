@@ -58,10 +58,10 @@ inline
 bool
 ds_rt_config_value_get_enable (void)
 {
-	bool enable = false;
+	bool enable = true;
 	gchar *value = g_getenv ("COMPlus_EnableDiagnostics");
-	if (value && atoi (value) == 1)
-		enable = true;
+	if (value && atoi (value) == 0)
+		enable = false;
 	g_free (value);
 	return enable;
 }

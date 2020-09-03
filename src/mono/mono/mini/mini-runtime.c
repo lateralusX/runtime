@@ -5311,3 +5311,19 @@ mono_runtime_install_custom_handlers_usage (void)
 		 "No handlers supported on current platform.\n");
 }
 #endif /* HOST_WIN32 */
+
+static int mini_argc = 0;
+static char **mini_argv = NULL;
+
+void
+mono_set_os_args (int argc, char **argv)
+{
+	mini_argc = argc;
+	mini_argv = argv;
+}
+
+char *
+mono_get_os_cmd_line (void)
+{
+	return mono_runtime_get_cmd_line (mini_argc, mini_argv);
+}
