@@ -4556,9 +4556,6 @@ mini_init (const char *filename, const char *runtime_version)
 
 #if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
 	ep_init ();
-	ds_server_init ();
-	ds_server_pause_for_diagnostics_monitor ();
-	ep_finish_init ();
 #endif
 
 	if (mono_aot_only) {
@@ -4629,6 +4626,10 @@ mini_init (const char *filename, const char *runtime_version)
 	MONO_PROFILER_RAISE (thread_name, (MONO_NATIVE_THREAD_ID_TO_UINT (mono_native_thread_id_get ()), "Main"));
 #endif
 	mono_threads_set_runtime_startup_finished ();
+
+#if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
+	ep_finish_init ();
+#endif
 
 #ifdef ENABLE_EXPERIMENT_TIERED
 	if (!mono_compile_aot) {

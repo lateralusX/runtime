@@ -20,6 +20,10 @@ static _CrtMemState eventpipe_memory_diff_snapshot;
 static RESULT
 test_eventpipe_setup (void)
 {
+	// Lazy initialized, force now to not show up as leak.
+	ep_rt_os_command_line_get ();
+	ep_rt_managed_command_line_get ();
+
 #ifdef _CRTDBG_MAP_ALLOC
 	_CrtMemCheckpoint (&eventpipe_memory_start_snapshot);
 #endif
@@ -177,7 +181,7 @@ test_enable_disable (void)
 
 	EventPipeSessionID session_id = 0;
 	EventPipeProviderConfiguration provider_config;
-	EventPipeProviderConfiguration *current_provider_config =ep_provider_config_init (&provider_config, TEST_PROVIDER_NAME, 1, EP_EVENT_LEVEL_LOG_ALWAYS, "");
+	EventPipeProviderConfiguration *current_provider_config = ep_provider_config_init (&provider_config, TEST_PROVIDER_NAME, 1, EP_EVENT_LEVEL_LOG_ALWAYS, "");
 	ep_raise_error_if_nok (current_provider_config != NULL);
 
 	test_location = 1;

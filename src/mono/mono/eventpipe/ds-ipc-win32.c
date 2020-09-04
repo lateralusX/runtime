@@ -90,7 +90,7 @@ ds_ipc_alloc (
 
 	if (characters_written == -1) {
 		if (callback)
-			callback("Failed to generate the named pipe name", characters_written);
+			callback ("Failed to generate the named pipe name", characters_written);
 		ep_raise_error ();
 	}
 
@@ -144,7 +144,7 @@ ds_ipc_poll (
 					NULL,                                                                 // null buffer
 					0,                                                                    // read 0 bytesd
 					&bytes_read,                                                          // dummy variable
-					&ds_ipc_poll_handle_get_stream (&poll_handles_data [i])->overlap);                              // overlap object to use
+					&ds_ipc_poll_handle_get_stream (&poll_handles_data [i])->overlap);    // overlap object to use
 
 				ds_ipc_poll_handle_get_stream (&poll_handles_data [i])->is_test_reading = true;
 				if (!success) {
@@ -159,7 +159,7 @@ ds_ipc_poll (
 						ep_raise_error ();
 					default:
 						if (callback)
-							callback("0 byte async read on client connection failed", error);
+							callback ("0 byte async read on client connection failed", error);
 						result = -1;
 						ep_raise_error ();
 					}
@@ -174,11 +174,14 @@ ds_ipc_poll (
 	}
 
 	// call wait for multiple obj
-	DWORD wait = WaitForMultipleObjects (
+	DWORD wait = WAIT_FAILED;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	wait = WaitForMultipleObjects (
 		poll_handles_data_len,      // count
 		handles,                    // handles
 		false,                      // don't wait all
 		timeout_ms);
+	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	if (wait == WAIT_TIMEOUT) {
 		// we timed out
@@ -216,12 +219,24 @@ ds_ipc_poll (
 	if (!ds_ipc_poll_handle_get_ipc (&poll_handles_data [index])) {
 		// CLIENT
 		// check if the connection got hung up
+		// Start with quick none blocking completion check.
 		DWORD dummy = 0;
 		BOOL success = GetOverlappedResult(
 			ds_ipc_poll_handle_get_stream(&poll_handles_data [index])->pipe,
 			&ds_ipc_poll_handle_get_stream(&poll_handles_data [index])->overlap,
 			&dummy,
-			true);
+			false);
+		if (!success && GetLastError () == ERROR_IO_INCOMPLETE) {
+			// IO still incomplete, wait for completion.
+			dummy = 0;
+			DS_ENTER_BLOCKING_PAL_SECTION;
+			success = GetOverlappedResult(
+				ds_ipc_poll_handle_get_stream(&poll_handles_data [index])->pipe,
+				&ds_ipc_poll_handle_get_stream(&poll_handles_data [index])->overlap,
+				&dummy,
+				true);
+			DS_EXIT_BLOCKING_PAL_SECTION;
+		}
 		ds_ipc_poll_handle_get_stream(&poll_handles_data [index])->is_test_reading = false;
 		if (!success) {
 			DWORD error = GetLastError();
@@ -260,7 +275,6 @@ ds_ipc_listen (
 	DiagnosticsIpc *ipc,
 	ds_ipc_error_callback_func callback)
 {
-
 	bool result = false;
 
 	EP_ASSERT (ipc != NULL);
@@ -278,6 +292,8 @@ ds_ipc_listen (
 
 	const uint32_t in_buffer_size = 16 * 1024;
 	const uint32_t out_buffer_size = 16 * 1024;
+
+	DS_ENTER_BLOCKING_PAL_SECTION;
 	ipc->pipe = CreateNamedPipeA (
 		ipc->pipe_name,                                             // pipe name
 		PIPE_ACCESS_DUPLEX |                                        // read/write access
@@ -288,6 +304,7 @@ ds_ipc_listen (
 		in_buffer_size,                                             // input buffer size
 		0,                                                          // default client time-out
 		NULL);                                                      // default security attribute
+	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	if (ipc->pipe == INVALID_HANDLE_VALUE) {
 		if (callback)
@@ -344,12 +361,25 @@ ds_ipc_accept (
 
 	DiagnosticsIpcStream *stream = NULL;
 
+	// Start with quick none blocking completion check.
 	DWORD dummy = 0;
 	BOOL success = GetOverlappedResult (
 		ipc->pipe,      // handle
 		&ipc->overlap,  // overlapped
 		&dummy,         // throw-away dword
-		true);          // wait till event signals
+		false);         // wait till event signals
+
+	if (!success && GetLastError () == ERROR_IO_INCOMPLETE) {
+		// IO still incomplete, wait for completion.
+		dummy = 0;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		success = GetOverlappedResult (
+			ipc->pipe,      // handle
+			&ipc->overlap,  // overlapped
+			&dummy,         // throw-away dword
+			true);          // wait till event signals
+		DS_EXIT_BLOCKING_PAL_SECTION;
+	}
 
 	if (!success) {
 		if (callback)
@@ -396,6 +426,7 @@ ds_ipc_connect (
 		ep_raise_error ();
 	}
 
+	DS_ENTER_BLOCKING_PAL_SECTION;
 	pipe = CreateFileA(
 		ipc->pipe_name,         // pipe name
 		PIPE_ACCESS_DUPLEX,     // read/write access
@@ -404,6 +435,7 @@ ds_ipc_connect (
 		OPEN_EXISTING,          // opens existing pipe
 		FILE_FLAG_OVERLAPPED,   // overlapped
 		NULL);                  // no template file
+	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	if (pipe == INVALID_HANDLE_VALUE) {
 		if (callback)
@@ -447,7 +479,10 @@ ds_ipc_close (
 
 	if (ipc->pipe != INVALID_HANDLE_VALUE) {
 		if (ipc->mode == DS_IPC_CONNECTION_MODE_LISTEN) {
-			const bool success_disconnect = DisconnectNamedPipe (ipc->pipe);
+			BOOL success_disconnect = FALSE;
+			DS_ENTER_BLOCKING_PAL_SECTION;
+			success_disconnect = DisconnectNamedPipe (ipc->pipe);
+			DS_EXIT_BLOCKING_PAL_SECTION;
 			if (success_disconnect != TRUE && callback)
 				callback ("Failed to disconnect NamedPipe", GetLastError());
 		}
@@ -517,6 +552,7 @@ ipc_stream_read_func (
 		overlap) != FALSE;  // overlapped I/O
 
 	if (!success) {
+		DS_ENTER_BLOCKING_PAL_SECTION;
 		// if we're waiting infinitely, only make one syscall
 		if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
 			success = GetOverlappedResult (
@@ -552,6 +588,7 @@ ipc_stream_read_func (
 				}
 			}
 		}
+		DS_EXIT_BLOCKING_PAL_SECTION;
 	}
 
 	*bytes_read = (uint32_t)read;
@@ -583,6 +620,7 @@ ipc_stream_write_func (
 		overlap) != FALSE;  // overlapped I/O
 
 	if (!success) {
+		DS_ENTER_BLOCKING_PAL_SECTION;
 		// if we're waiting infinitely, only make one syscall
 		if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
 			success = GetOverlappedResult (
@@ -618,6 +656,7 @@ ipc_stream_write_func (
 				}
 			}
 		}
+		DS_EXIT_BLOCKING_PAL_SECTION;
 	}
 
 	*bytes_written = (uint32_t)written;
@@ -631,7 +670,11 @@ ipc_stream_flush_func (void *object)
 	EP_ASSERT (object != NULL);
 
 	DiagnosticsIpcStream *ipc_stream = (DiagnosticsIpcStream *)object;
-	const bool success = FlushFileBuffers (ipc_stream->pipe) != FALSE;
+	bool success = false;
+
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	success = FlushFileBuffers (ipc_stream->pipe) != FALSE;
+	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	// TODO: Add error handling.
 	return success;
@@ -744,7 +787,10 @@ ds_ipc_stream_close (
 	if (ipc_stream->pipe != INVALID_HANDLE_VALUE) {
 		ds_ipc_stream_flush (ipc_stream);
 		if (ipc_stream->mode == DS_IPC_CONNECTION_MODE_LISTEN) {
-			const bool success_disconnect = DisconnectNamedPipe (ipc_stream->pipe);
+			BOOL success_disconnect = FALSE;
+			DS_ENTER_BLOCKING_PAL_SECTION;
+			success_disconnect = DisconnectNamedPipe (ipc_stream->pipe);
+			DS_EXIT_BLOCKING_PAL_SECTION;
 			if (success_disconnect != TRUE && callback)
 				callback ("Failed to disconnect NamedPipe", GetLastError());
 		}

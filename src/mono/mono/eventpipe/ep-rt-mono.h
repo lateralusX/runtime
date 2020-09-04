@@ -20,8 +20,6 @@
 #include <mono/metadata/w32file.h>
 #include <mono/metadata/w32event.h>
 #include <mono/utils/mono-lazy-init.h>
-#include <mono/metadata/object-internals.h>
-#include <mono/mini/mini.h>
 
 #undef EP_ARRAY_SIZE
 #define EP_ARRAY_SIZE(expr) G_N_ELEMENTS(expr)
@@ -207,7 +205,9 @@ typedef MonoW32HandleWaitRet (*ep_rt_mono_w32handle_wait_one_func)(gpointer hand
 typedef void* (*ep_rt_mono_valloc_func)(void *addr, size_t length, int flags, MonoMemAccountType type);
 typedef int (*ep_rt_mono_vfree_func)(void *addr, size_t length, MonoMemAccountType type);
 typedef int (*ep_rt_mono_valloc_granule_func)(void);
-typedef gboolean (*ep_rt_mono_platform_create_thread_func)(ep_rt_thread_start_func thread_func, gpointer thread_data, gsize * const stack_size, ep_rt_thread_id_t *thread_id);
+typedef gboolean (*ep_rt_mono_thread_platform_create_thread_func)(ep_rt_thread_start_func thread_func, gpointer thread_data, gsize * const stack_size, ep_rt_thread_id_t *thread_id);
+typedef gpointer (*ep_rt_mono_thread_attach_func)(gboolean);
+typedef void (*ep_rt_mono_thread_detach_func)(gpointer thread);
 typedef char* (*ep_rt_mono_get_os_cmd_line_func)(void);
 typedef char* (*ep_rt_mono_get_managed_cmd_line_func)(void);
 
@@ -235,10 +235,17 @@ typedef struct _EventPipeMonoFuncTable {
 	ep_rt_mono_valloc_func ep_rt_mono_valloc;
 	ep_rt_mono_vfree_func ep_rt_mono_vfree;
 	ep_rt_mono_valloc_granule_func ep_rt_mono_valloc_granule;
-	ep_rt_mono_platform_create_thread_func ep_rt_mono_platform_create_thread;
+	ep_rt_mono_thread_platform_create_thread_func ep_rt_mono_thread_platform_create_thread;
+	ep_rt_mono_thread_attach_func ep_rt_mono_thread_attach;
+	ep_rt_mono_thread_detach_func ep_rt_mono_thread_detach;
 	ep_rt_mono_get_os_cmd_line_func ep_rt_mono_get_os_cmd_line;
 	ep_rt_mono_get_managed_cmd_line_func ep_rt_mono_get_managed_cmd_line;
 } EventPipeMonoFuncTable;
+
+#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
+extern char * mono_get_os_cmd_line (void);
+extern char * mono_get_managed_cmd_line (void);
+#endif
 
 #ifndef EP_RT_MONO_USE_STATIC_RUNTIME
 static
@@ -1054,7 +1061,7 @@ ep_rt_thread_create (
 #ifdef EP_RT_MONO_USE_STATIC_RUNTIME
 	return (bool)mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
 #else
-	return (bool)ep_rt_mono_func_table_get ()->ep_rt_mono_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
+	return (bool)ep_rt_mono_func_table_get ()->ep_rt_mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, params, NULL, (ep_rt_thread_id_t *)id);
 #endif
 }
 
@@ -1483,11 +1490,18 @@ ep_rt_managed_command_line_get (void)
 static
 inline
 void
-ep_rt_thread_setup (void)
+ep_rt_thread_setup (bool background_thread)
 {
+#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
 	// NOTE, under netcore, only root domain exists.
-	if (!mono_thread_current ())
-		mono_thread_attach (mono_get_root_domain ());
+	if (!mono_thread_current ()) {
+		MonoThread *thread = mono_thread_attach (mono_get_root_domain ());
+		if (background_thread)
+			mono_thread_set_state (thread, ThreadState_Background);
+	}
+#else
+	ep_rt_mono_func_table_get ()->ep_rt_mono_thread_attach (background_thread);
+#endif
 }
 
 static

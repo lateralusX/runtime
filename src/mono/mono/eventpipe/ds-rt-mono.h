@@ -43,6 +43,17 @@
 #undef DS_LOG_WARNING_2
 #define DS_LOG_WARNING_2(msg, data1, data2)
 
+#undef DS_ENTER_BLOCKING_PAL_SECTION
+#define DS_ENTER_BLOCKING_PAL_SECTION \
+	MONO_REQ_GC_UNSAFE_MODE \
+	MONO_ENTER_GC_SAFE
+
+#undef DS_EXIT_BLOCKING_PAL_SECTION
+#define DS_EXIT_BLOCKING_PAL_SECTION \
+	MONO_REQ_GC_SAFE_MODE \
+	MONO_EXIT_GC_SAFE \
+	MONO_REQ_GC_UNSAFE_MODE
+
 #define DS_RT_DEFINE_ARRAY(array_name, array_type, iterator_type, item_type) \
 	EP_RT_DEFINE_ARRAY_PREFIX(ds, array_name, array_type, iterator_type, item_type)
 

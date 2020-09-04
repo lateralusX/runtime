@@ -135,6 +135,8 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 		return 1;
 	}
 
+	ep_rt_thread_setup (true);
+
 	while (!server_volatile_load_shutting_down_state ()) {
 		DiagnosticsIpcStream *stream = ds_ipc_stream_factory_get_next_available_stream (server_warning_callback);
 		if (!stream)

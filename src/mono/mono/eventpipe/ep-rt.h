@@ -574,7 +574,7 @@ ep_rt_managed_command_line_get (void);
 
 static
 void
-ep_rt_thread_setup (void);
+ep_rt_thread_setup (bool background_thread);
 
 static
 EventPipeThread *

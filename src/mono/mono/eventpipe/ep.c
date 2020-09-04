@@ -583,7 +583,7 @@ disable (EventPipeSessionID id)
 	ep_requires_lock_not_held ();
 
 	if (_ep_can_start_threads)
-		ep_rt_thread_setup ();
+		ep_rt_thread_setup (false);
 
 	if (id == 0)
 		return;
