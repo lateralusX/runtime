@@ -1169,7 +1169,7 @@ ep_rt_os_command_line_get (void)
 	}
 
 	mono_lazy_initialize (os_command_line_get_init (), os_command_line_lazy_init);
-	EP_ASSERT (*os_command_line_get_ref () != NULL;)
+	EP_ASSERT (*os_command_line_get_ref () != NULL);
 	return *os_command_line_get_ref ();
 }
 
@@ -1471,7 +1471,7 @@ ep_rt_managed_command_line_get (void)
 	}
 
 	mono_lazy_initialize (managed_command_line_get_init (), managed_command_line_lazy_init);
-	EP_ASSERT (*managed_command_line_get_ref () != NULL;)
+	EP_ASSERT (*managed_command_line_get_ref () != NULL);
 	return *managed_command_line_get_ref ();
 }
 

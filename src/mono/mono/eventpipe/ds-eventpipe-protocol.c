@@ -404,7 +404,8 @@ eventpipe_protocol_helper_collect_tracing (
 		ep_raise_error ();
 	}
 
-	EventPipeSessionID session_id = ep_enable (
+	EventPipeSessionID session_id;
+	session_id = ep_enable (
 		NULL,
 		payload->circular_buffer_size_in_mb,
 		ep_rt_provider_config_array_data (&payload->provider_configs),
@@ -448,7 +449,8 @@ eventpipe_protocol_helper_collect_tracing_2 (
 		ep_raise_error ();
 	}
 
-	EventPipeSessionID session_id = ep_enable (
+	EventPipeSessionID session_id;
+	session_id = ep_enable (
 		NULL,
 		payload->circular_buffer_size_in_mb,
 		ep_rt_provider_config_array_data (&payload->provider_configs),

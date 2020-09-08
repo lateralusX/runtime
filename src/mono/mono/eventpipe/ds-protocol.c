@@ -229,7 +229,8 @@ ipc_message_try_parse (
 	message->size = message->header.size;
 
 	// Then read out payload to buffer.
-	uint16_t payload_len = message->header.size - sizeof (message->header);
+	uint16_t payload_len;
+	payload_len = message->header.size - sizeof (message->header);
 	if (payload_len != 0) {
 		uint8_t *buffer = ep_rt_byte_array_alloc (payload_len);
 		ep_raise_error_if_nok (buffer != NULL);
@@ -277,7 +278,8 @@ ipc_message_flatten (
 	buffer = ep_rt_byte_array_alloc (message->size);
 	ep_raise_error_if_nok (buffer != NULL);
 
-	uint8_t * buffer_cursor = buffer;
+	uint8_t * buffer_cursor;
+	buffer_cursor = buffer;
 	message->header.size = message->size;
 
 	memcpy (buffer_cursor, &message->header, sizeof (DiagnosticsIpcHeader));
@@ -466,7 +468,7 @@ ds_ipc_message_try_parse_payload (
 	DiagnosticsIpcMessage *message,
 	ds_ipc_parse_payload_func parse_func)
 {
-	ep_return_false_if_nok (message != NULL);
+	ep_return_null_if_nok (message != NULL);
 
 	EP_ASSERT (message->data);
 

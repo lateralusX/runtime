@@ -227,7 +227,7 @@ ds_server_init (void)
 #endif
 		ep_rt_thread_id_t thread_id = 0;
 
-		if (!ep_rt_thread_create (server_thread, NULL, &thread_id)) {
+		if (!ep_rt_thread_create ((void *)server_thread, NULL, (void *)&thread_id)) {
 			// Failed to create IPC thread.
 			ds_ipc_stream_factory_close_ports (NULL);
 			DS_LOG_ERROR_1 ("Failed to create diagnostic server thread (%d).\n", ep_rt_get_last_error ());
