@@ -9475,7 +9475,7 @@ quote_escape_and_append_string (char *src_str, GString *target_str)
 	char quote_char = '\"';
 	char escape_chars[] = "\"\\";
 #else
-	char quote_chars = '\'';
+	char quote_char = '\'';
 	char escape_chars[] = "\'\\";
 #endif
 

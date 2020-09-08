@@ -386,7 +386,7 @@ bool
 ds_ipc_message_try_parse_string_utf16_t (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
-	ep_char16_t **value)
+	const ep_char16_t **value)
 {
 	EP_ASSERT (buffer != NULL);
 	EP_ASSERT (buffer_len != NULL);
@@ -426,7 +426,7 @@ ep_on_error:
 bool
 ds_ipc_message_initialize_header_uint32_t_payload (
 	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcHeader *header,
+	const DiagnosticsIpcHeader *header,
 	uint32_t payload)
 {
 	EP_ASSERT (message);
@@ -439,7 +439,7 @@ ds_ipc_message_initialize_header_uint32_t_payload (
 bool
 ds_ipc_message_initialize_header_uint64_t_payload (
 	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcHeader *header,
+	const DiagnosticsIpcHeader *header,
 	uint64_t payload)
 {
 	EP_ASSERT (message);
@@ -452,7 +452,7 @@ ds_ipc_message_initialize_header_uint64_t_payload (
 bool
 ds_ipc_message_initialize_buffer (
 	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcHeader *header,
+	const DiagnosticsIpcHeader *header,
 	void *payload,
 	uint16_t payload_len,
 	ds_ipc_flatten_payload_func flatten_payload)
@@ -461,7 +461,7 @@ ds_ipc_message_initialize_buffer (
 	return ipc_message_flatten (message, payload, payload_len, flatten_payload);
 }
 
-const uint8_t *
+uint8_t *
 ds_ipc_message_try_parse_payload (
 	DiagnosticsIpcMessage *message,
 	ds_ipc_parse_payload_func parse_func)

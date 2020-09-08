@@ -15,7 +15,7 @@
 #include "ds-getter-setter.h"
 
 typedef bool (ds_ipc_flatten_payload_func)(void *payload, uint8_t **buffer, uint16_t *buffer_len);
-typedef const uint8_t * (*ds_ipc_parse_payload_func)(uint8_t *buffer, uint16_t buffer_len);
+typedef uint8_t * (*ds_ipc_parse_payload_func)(uint8_t *buffer, uint16_t buffer_len);
 
 /*
 * DiagnosticsIpc
@@ -128,29 +128,29 @@ bool
 ds_ipc_message_try_parse_string_utf16_t (
 	uint8_t **buffer,
 	uint32_t *buffer_len,
-	ep_char16_t **value);
+	const ep_char16_t **value);
 
 bool
 ds_ipc_message_initialize_header_uint32_t_payload (
 	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcHeader *header,
+	const DiagnosticsIpcHeader *header,
 	uint32_t payload);
 
 bool
 ds_ipc_message_initialize_header_uint64_t_payload (
 	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcHeader *header,
+	const DiagnosticsIpcHeader *header,
 	uint64_t payload);
 
 bool
 ds_ipc_message_initialize_buffer (
 	DiagnosticsIpcMessage *message,
-	DiagnosticsIpcHeader *header,
+	const DiagnosticsIpcHeader *header,
 	void *payload,
 	uint16_t payload_len,
 	ds_ipc_flatten_payload_func flatten_payload);
 
-const uint8_t *
+uint8_t *
 ds_ipc_message_try_parse_payload (
 	DiagnosticsIpcMessage *message,
 	ds_ipc_parse_payload_func parse_func);
@@ -184,19 +184,19 @@ ds_ipc_message_send_success (
 
 static
 inline
-DiagnosticsIpcHeader *
+const DiagnosticsIpcHeader *
 ds_ipc_header_get_generic_success (void)
 {
-	extern DiagnosticsIpcHeader _ds_ipc_generic_success_header;
+	extern const DiagnosticsIpcHeader _ds_ipc_generic_success_header;
 	return &_ds_ipc_generic_success_header;
 }
 
 static
 inline
-DiagnosticsIpcHeader *
+const DiagnosticsIpcHeader *
 ds_ipc_header_get_generic_error (void)
 {
-	extern DiagnosticsIpcHeader _ds_ipc_generic_error_header;
+	extern const DiagnosticsIpcHeader _ds_ipc_generic_error_header;
 	return &_ds_ipc_generic_error_header;
 }
 

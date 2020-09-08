@@ -19,81 +19,82 @@
 #define EP_NEVER_INLINE ep_rt_redefine
 #define EP_ALIGN_UP(val,align) ep_rt_redefine
 
-#ifndef EP_EXPAND_PREFIX_NAME
-#define EP_EXPAND_PREFIX_NAME(prefix_name) prefix_name
+#ifndef EP_RT_BUILD_TYPE_FUNC_NAME
+#define EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, type_name, func_name) \
+prefix_name ## _rt_ ## type_name ## _ ## func_name
 #endif
 
 #define EP_RT_DECLARE_LIST_PREFIX(prefix_name, list_name, list_type, item_type) \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _free (list_type *list, void (*callback)(void *)); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _clear (list_type *list, void (*callback)(void *)); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _append (list_type *list, item_type item); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _remove (list_type *list, const item_type item); \
-	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _find (const list_type *list, const item_type item_to_find, item_type *found_item); \
-	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _is_empty (const list_type *list);
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, free) (list_type *list, void (*callback)(void *)); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, clear) (list_type *list, void (*callback)(void *)); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, append) (list_type *list, item_type item); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, remove) (list_type *list, const item_type item); \
+	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, find) (const list_type *list, const item_type item_to_find, item_type *found_item); \
+	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, is_empty) (const list_type *list);
 
 #define EP_RT_DECLARE_LIST(list_name, list_type, item_type) \
 	EP_RT_DECLARE_LIST_PREFIX(ep, list_name, list_type, item_type)
 
 #define EP_RT_DECLARE_LIST_ITERATOR_PREFIX(prefix_name, list_name, list_type, iterator_type, item_type) \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _iterator_begin (const list_type *list, iterator_type *iterator); \
-	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _iterator_end (const list_type *list, const iterator_type *iterator); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _iterator_next (const list_type *list, iterator_type *iterator); \
-	static item_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## list_name ## _iterator_value (const iterator_type *iterator);
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_begin) (const list_type *list, iterator_type *iterator); \
+	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_end) (const list_type *list, const iterator_type *iterator); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_next) (const list_type *list, iterator_type *iterator); \
+	static item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_value) (const iterator_type *iterator);
 
 #define EP_RT_DECLARE_LIST_ITERATOR(list_name, list_type, iterator_type, item_type) \
 	EP_RT_DECLARE_LIST_ITERATOR_PREFIX(ep, list_name, list_type, iterator_type, item_type) \
 
 #define EP_RT_DECLARE_QUEUE_PREFIX(prefix_name, queue_name, queue_type, item_type) \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## queue_name ## _alloc (queue_type *queue); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## queue_name ## _free (queue_type *queue); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## queue_name ## _pop_head (queue_type *queue, item_type *item); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## queue_name ## _push_head (queue_type *queue, item_type item); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## queue_name ## _push_tail (queue_type *queue, item_type item); \
-	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_  ## queue_name ## _is_empty (const queue_type *queue);
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, alloc) (queue_type *queue); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, free) (queue_type *queue); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, pop_head) (queue_type *queue, item_type *item); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_head) (queue_type *queue, item_type item); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_tail) (queue_type *queue, item_type item); \
+	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_empty) (const queue_type *queue);
 
 #define EP_RT_DECLARE_QUEUE(queue_name, queue_type, item_type) \
 	EP_RT_DECLARE_QUEUE_PREFIX(ep, queue_name, queue_type, item_type)
 
 #define EP_RT_DECLARE_ARRAY_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _alloc (array_type *ep_array); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _alloc_capacity (array_type *ep_array, size_t capacity); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _free (array_type *ep_array); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _append (array_type *ep_array, item_type item); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _clear (array_type *ep_array, void (*callback)(void *)); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _remove (array_type *ep_array, iterator_type *pos); \
-	static size_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _size (const array_type *ep_array); \
-	static item_type * EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _data (const array_type *ep_array);
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc) (array_type *ep_array); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc_capacity) (array_type *ep_array, size_t capacity); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, free) (array_type *ep_array); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, clear) (array_type *ep_array, void (*callback)(void *)); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, remove) (array_type *ep_array, iterator_type *pos); \
+	static size_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, size) (const array_type *ep_array); \
+	static item_type * EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, data) (const array_type *ep_array);
 
 #define EP_RT_DECLARE_ARRAY(array_name, array_type, iterator_type, item_type) \
 	EP_RT_DECLARE_ARRAY_PREFIX(ep, array_name, array_type, iterator_type, item_type)
 
 #define EP_RT_DECLARE_ARRAY_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_begin (const array_type *ep_array, iterator_type *iterator); \
-	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_end (const array_type *ep_array, const iterator_type *iterator); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_next (const array_type *ep_array, iterator_type *iterator); \
-	static item_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## array_name ## _iterator_value (const iterator_type *iterator);
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_begin) (const array_type *ep_array, iterator_type *iterator); \
+	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_end) (const array_type *ep_array, const iterator_type *iterator); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_next) (const array_type *ep_array, iterator_type *iterator); \
+	static item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_value) (const iterator_type *iterator);
 
 #define EP_RT_DECLARE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
 	EP_RT_DECLARE_ARRAY_ITERATOR_PREFIX(ep, array_name, array_type, iterator_type, item_type) \
 
 #define EP_RT_DECLARE_HASH_MAP_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _alloc (hash_map_type *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _free (hash_map_type *hash_map); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _add (hash_map_type *hash_map, key_type key, value_type value); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _remove (hash_map_type *hash_map, const key_type key); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _remove_all (hash_map_type *hash_map); \
-	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _lookup (const hash_map_type *hash_map, const key_type key, value_type *value); \
-	static uint32_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _count (const hash_map_type *hash_map);
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, alloc) (hash_map_type *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, free) (hash_map_type *hash_map); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add) (hash_map_type *hash_map, key_type key, value_type value); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove) (hash_map_type *hash_map, const key_type key); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove_all) (hash_map_type *hash_map); \
+	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, lookup) (const hash_map_type *hash_map, const key_type key, value_type *value); \
+	static uint32_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, count) (const hash_map_type *hash_map);
 
 #define EP_RT_DECLARE_HASH_MAP(hash_map_name, hash_map_type, key_type, value_type) \
 	EP_RT_DECLARE_HASH_MAP_PREFIX(ep, hash_map_name, hash_map_type, key_type, value_type)
 
 #define EP_RT_DECLARE_HASH_MAP_ITERATOR_PREFIX(prefix_name, hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _iterator_begin (const hash_map_type *hash_map, iterator_type *iterator); \
-	static bool EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _iterator_end (const hash_map_type *hash_map, const iterator_type *iterator); \
-	static void EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _iterator_next (const hash_map_type *hash_map, iterator_type *iterator); \
-	static key_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _iterator_key (const iterator_type *iterator); \
-	static value_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _rt_ ## hash_map_name ## _iterator_value (const iterator_type *iterator);
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_begin) (const hash_map_type *hash_map, iterator_type *iterator); \
+	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_end) (const hash_map_type *hash_map, const iterator_type *iterator); \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_next) (const hash_map_type *hash_map, iterator_type *iterator); \
+	static key_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_key) (const iterator_type *iterator); \
+	static value_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_value) (const iterator_type *iterator);
 
 #define EP_RT_DECLARE_HASH_MAP_ITERATOR(hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
 	EP_RT_DECLARE_HASH_MAP_ITERATOR_PREFIX(ep, hash_map_name, hash_map_type, iterator_type, key_type, value_type)

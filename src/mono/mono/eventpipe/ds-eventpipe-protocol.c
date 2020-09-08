@@ -55,14 +55,12 @@ eventpipe_collect_tracing_command_try_parse_config (
 	ep_rt_provider_config_array_t *result);
 
 static
-const
 uint8_t *
 eventpipe_collect_tracing_command_try_parse_payload (
 	uint8_t *buffer,
 	uint16_t buffer_len);
 
 static
-const
 uint8_t *
 eventpipe_collect_tracing2_command_try_parse_payload (
 	uint8_t *buffer,
@@ -214,7 +212,6 @@ ep_on_error:
 }
 
 static
-const
 uint8_t *
 eventpipe_collect_tracing_command_try_parse_payload (
 	uint8_t *buffer,
@@ -259,8 +256,8 @@ ds_eventpipe_collect_tracing_command_payload_free (EventPipeCollectTracingComman
 	EventPipeProviderConfiguration *config = ep_rt_provider_config_array_data (&payload->provider_configs);
 	size_t config_len = ep_rt_provider_config_array_size (&payload->provider_configs);
 	for (size_t i = 0; i < config_len; ++i) {
-		ep_rt_utf8_string_free (config [i].provider_name);
-		ep_rt_utf8_string_free (config [i].filter_data);
+		ep_rt_utf8_string_free ((ep_char8_t *)config [i].provider_name);
+		ep_rt_utf8_string_free ((ep_char8_t *)config [i].filter_data);
 	}
 
 	ep_rt_object_free (payload);
@@ -271,7 +268,6 @@ ds_eventpipe_collect_tracing_command_payload_free (EventPipeCollectTracingComman
 */
 
 static
-const
 uint8_t *
 eventpipe_collect_tracing2_command_try_parse_payload (
 	uint8_t *buffer,
@@ -317,8 +313,8 @@ ds_eventpipe_collect_tracing2_command_payload_free (EventPipeCollectTracing2Comm
 	EventPipeProviderConfiguration *config = ep_rt_provider_config_array_data (&payload->provider_configs);
 	size_t config_len = ep_rt_provider_config_array_size (&payload->provider_configs);
 	for (size_t i = 0; i < config_len; ++i) {
-		ep_rt_utf8_string_free (config [i].provider_name);
-		ep_rt_utf8_string_free (config [i].filter_data);
+		ep_rt_utf8_string_free ((ep_char8_t *)config [i].provider_name);
+		ep_rt_utf8_string_free ((ep_char8_t *)config [i].filter_data);
 	}
 
 	ep_rt_object_free (payload);
@@ -370,8 +366,8 @@ eventpipe_protocol_helper_stop_tracing (
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
-	const EventPipeStopTracingCommandPayload *payload;
-	payload = (const EventPipeStopTracingCommandPayload *)ds_ipc_message_try_parse_payload (message, NULL);
+	EventPipeStopTracingCommandPayload *payload;
+	payload = (EventPipeStopTracingCommandPayload *)ds_ipc_message_try_parse_payload (message, NULL);
 
 	if (!payload) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
@@ -400,8 +396,8 @@ eventpipe_protocol_helper_collect_tracing (
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
-	const EventPipeCollectTracingCommandPayload *payload;
-	payload = (const EventPipeCollectTracingCommandPayload *)ds_ipc_message_try_parse_payload (message, eventpipe_collect_tracing_command_try_parse_payload);
+	EventPipeCollectTracingCommandPayload *payload;
+	payload = (EventPipeCollectTracingCommandPayload *)ds_ipc_message_try_parse_payload (message, eventpipe_collect_tracing_command_try_parse_payload);
 
 	if (!payload) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
@@ -444,8 +440,8 @@ eventpipe_protocol_helper_collect_tracing_2 (
 {
 	ep_return_void_if_nok (message != NULL && stream != NULL);
 
-	const EventPipeCollectTracing2CommandPayload *payload;
-	payload = (const EventPipeCollectTracing2CommandPayload *)ds_ipc_message_try_parse_payload (message, eventpipe_collect_tracing2_command_try_parse_payload);
+	EventPipeCollectTracing2CommandPayload *payload;
+	payload = (EventPipeCollectTracing2CommandPayload *)ds_ipc_message_try_parse_payload (message, eventpipe_collect_tracing2_command_try_parse_payload);
 
 	if (!payload) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);

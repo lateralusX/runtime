@@ -320,7 +320,6 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 		ds_rt_port_array_iterator_begin (ports, &ports_iterator);
 		while (!ds_rt_port_array_iterator_end (ports, &ports_iterator)) {
 			port = ds_rt_port_array_iterator_value (&ports_iterator);
-			DiagnosticsIpcPollHandle handle;
 			if (ds_port_get_ipc_poll_handle_vcall (port, &ipc_poll_handle, callback))
 				ds_rt_ipc_poll_handle_array_append (&ipc_poll_handles, ipc_poll_handle);
 			else

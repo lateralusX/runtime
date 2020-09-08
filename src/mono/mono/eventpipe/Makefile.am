@@ -15,6 +15,8 @@ eventpipe_sources = \
 	ds-getter-setter.h	\
 	ds-ipc.c	\
 	ds-ipc.h	\
+	ds-ipc-posix.c	\
+	ds-ipc-posix.h	\
 	ds-process-protocol.c	\
 	ds-process-protocol.h	\
 	ds-profiler-protocol.c	\

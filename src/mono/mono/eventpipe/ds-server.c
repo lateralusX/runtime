@@ -7,7 +7,11 @@
 #ifdef DS_INCLUDE_SOURCE_FILES
 #define DS_FORCE_INCLUDE_SOURCE_FILES
 #include "ds-ipc.c"
+#ifdef HOST_WIN32
 #include "ds-ipc-win32.c"
+#else
+#include "ds-ipc-posix.c"
+#endif
 #include "ds-protocol.c"
 #include "ds-eventpipe-protocol.c"
 #include "ds-process-protocol.c"

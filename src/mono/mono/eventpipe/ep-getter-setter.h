@@ -1,11 +1,32 @@
-#ifndef EP_EXPAND_PREFIX_NAME
-#define EP_EXPAND_PREFIX_NAME(prefix_name) prefix_name
+#ifndef EP_BUILD_GETTER_GET_NAME
+#define EP_BUILD_GETTER_GET_NAME(prefix_name, instance_type_name, instance_field_name) \
+prefix_name ## _ ## instance_type_name ## _get_ ## instance_field_name
+#endif
+
+#ifndef EP_BUILD_GETTER_GET_REF_NAME
+#define EP_BUILD_GETTER_GET_REF_NAME(prefix_name, instance_type_name, instance_field_name) \
+prefix_name ## _ ## instance_type_name ## _get_ ## instance_field_name ## _ref
+#endif
+
+#ifndef EP_BUILD_GETTER_GET_CREF_NAME
+#define EP_BUILD_GETTER_GET_CREF_NAME(prefix_name, instance_type_name, instance_field_name) \
+prefix_name ## _ ## instance_type_name ## _get_ ## instance_field_name ## _cref
+#endif
+
+#ifndef EP_BUILD_GETTER_SIZEOF_NAME
+#define EP_BUILD_GETTER_SIZEOF_NAME(prefix_name, instance_type_name, instance_field_name) \
+prefix_name ## _ ## instance_type_name ## _sizeof_ ## instance_field_name
+#endif
+
+#ifndef EP_BUILD_SETTER_NAME
+#define EP_BUILD_SETTER_NAME(prefix_name, instance_type_name, instance_field_name) \
+prefix_name ## _ ## instance_type_name ## _set_ ## instance_field_name
 #endif
 
 #ifndef EP_DEFINE_INLINE_GETTER_PREFIX
 #define EP_DEFINE_INLINE_GETTER_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
-	static inline return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name (const instance_type instance) { return instance-> instance_field_name; } \
-	static inline size_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _sizeof_ ## instance_field_name (const instance_type instance) { return sizeof (instance-> instance_field_name); }
+	static inline return_type EP_BUILD_GETTER_GET_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return instance-> instance_field_name; } \
+	static inline size_t EP_BUILD_GETTER_SIZEOF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return sizeof (instance-> instance_field_name); }
 #endif
 
 #ifndef EP_DEFINE_INLINE_GETTER
@@ -15,8 +36,8 @@
 
 #ifndef EP_DEFINE_INLINE_GETTER_REF_PREFIX
 #define EP_DEFINE_INLINE_GETTER_REF_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
-	static inline return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _ref (instance_type instance) { return &(instance-> instance_field_name); } \
-	static inline const return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _cref (const instance_type instance) { return &(instance-> instance_field_name); }
+	static inline return_type EP_BUILD_GETTER_GET_REF_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance) { return &(instance-> instance_field_name); } \
+	static inline const return_type EP_BUILD_GETTER_GET_CREF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return &(instance-> instance_field_name); }
 #endif
 
 #ifndef EP_DEFINE_INLINE_GETTER_REF
@@ -26,8 +47,8 @@
 
 #ifndef EP_DEFINE_INLINE_GETTER_ARRAY_REF_PREFIX
 #define EP_DEFINE_INLINE_GETTER_ARRAY_REF_PREFIX(prefix_name, instance_type, instance_type_name, return_type, const_return_type, instance_field_name, instance_field) \
-	static inline return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _ref (instance_type instance) { return &(instance-> instance_field); } \
-	static inline const_return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _cref (const instance_type instance) { return &(instance-> instance_field); }
+	static inline return_type EP_BUILD_GETTER_GET_REF_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance) { return &(instance-> instance_field); } \
+	static inline const_return_type EP_BUILD_GETTER_GET_CREF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return &(instance-> instance_field); }
 #endif
 
 #ifndef EP_DEFINE_INLINE_GETTER_ARRAY_REF
@@ -36,7 +57,8 @@
 #endif
 
 #ifndef EP_DEFINE_INLINE_SETTER_PREFIX
-#define EP_DEFINE_INLINE_SETTER_PREFIX(prefix_name, instance_type, instance_type_name, instance_field_type, instance_field_name) static inline void EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _set_ ## instance_field_name (instance_type instance, instance_field_type instance_field_name) { instance-> instance_field_name = instance_field_name; }
+#define EP_DEFINE_INLINE_SETTER_PREFIX(prefix_name, instance_type, instance_type_name, instance_field_type, instance_field_name) \
+	static inline void EP_BUILD_SETTER_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance, instance_field_type instance_field_name) { instance-> instance_field_name = instance_field_name; }
 #endif
 
 #ifndef EP_DEFINE_INLINE_SETTER
@@ -46,8 +68,8 @@
 
 #ifndef EP_DEFINE_NOINLINE_GETTER_PREFIX
 #define EP_DEFINE_NOINLINE_GETTER_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
-	return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name (const instance_type instance); \
-	size_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _sizeof_ ## instance_field_name (const instance_type instance);
+	return_type EP_BUILD_GETTER_GET_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance); \
+	size_t EP_BUILD_GETTER_SIZEOF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance);
 #endif
 
 #ifndef EP_DEFINE_NOINLINE_GETTER
@@ -57,8 +79,8 @@
 
 #ifndef EP_DEFINE_NOINLINE_GETTER_REF_PREFIX
 #define EP_DEFINE_NOINLINE_GETTER_REF_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
-	return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _ref (instance_type instance); \
-	const return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _cref (const instance_type instance);
+	return_type EP_BUILD_GETTER_GET_REF_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance); \
+	const return_type EP_BUILD_GETTER_GET_CREF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance);
 #endif
 
 #ifndef EP_DEFINE_NOINLINE_GETTER_REF
@@ -68,8 +90,8 @@
 
 #ifndef EP_DEFINE_NOINLINE_GETTER_ARRAY_REF_PREFIX
 #define EP_DEFINE_NOINLINE_GETTER_ARRAY_REF_PREFIX(prefix_name, instance_type, instance_type_name, return_type, const_return_type, instance_field_name, instance_field) \
-	return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _ref (instance_type instance); \
-	const_return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _cref (const instance_type instance);
+	return_type EP_BUILD_GETTER_GET_REF_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance); \
+	const_return_type EP_BUILD_GETTER_GET_CREF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance);
 #endif
 
 #ifndef EP_DEFINE_NOINLINE_GETTER_ARRAY_REF
@@ -79,7 +101,7 @@
 
 #ifndef EP_DEFINE_NOINLINE_SETTER_PREFIX
 #define EP_DEFINE_NOINLINE_SETTER_PREFIX(prefix_name, instance_type, instance_type_name, instance_field_type, instance_field_name) \
-	void EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _set_ ## instance_field_name (instance_type instance, instance_field_type instance_field_name);
+	void EP_BUILD_SETTER_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance, instance_field_type instance_field_name);
 #endif
 
 #ifndef EP_DEFINE_NOINLINE_SETTER
@@ -89,8 +111,8 @@
 
 #ifndef EP_IMPL_GETTER_PREFIX
 #define EP_IMPL_GETTER_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
-	return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name (const instance_type instance) { return instance-> instance_field_name; } \
-	size_t EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _sizeof_ ## instance_field_name (const instance_type instance) { return sizeof (instance-> instance_field_name); }
+	return_type EP_BUILD_GETTER_GET_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return instance-> instance_field_name; } \
+	size_t EP_BUILD_GETTER_SIZEOF_NAME(prefix_name, instance_type_name, instance_field_name)e (const instance_type instance) { return sizeof (instance-> instance_field_name); }
 #endif
 
 #ifndef EP_IMPL_GETTER
@@ -100,8 +122,8 @@
 
 #ifndef EP_IMPL_GETTER_REF_PREFIX
 #define EP_IMPL_GETTER_REF_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
-	return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _ref (instance_type instance) { return &(instance-> instance_field_name); } \
-	const return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _cref (const instance_type instance) { return &(instance-> instance_field_name); }
+	return_type EP_BUILD_GETTER_GET_REF_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance) { return &(instance-> instance_field_name); } \
+	const return_type EP_BUILD_GETTER_GET_CREF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return &(instance-> instance_field_name); }
 #endif
 
 #ifndef EP_IMPL_GETTER_REF
@@ -111,8 +133,8 @@
 
 #ifndef EP_IMPL_GETTER_ARRAY_REF_PREFIX
 #define EP_IMPL_GETTER_ARRAY_REF_PREFIX(prefix_name, instance_type, instance_type_name, return_type, const_return_type, instance_field_name, instance_field) \
-	return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _ref (instance_type instance) { return &(instance-> instance_field); } \
-	const_return_type EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _get_ ## instance_field_name ## _cref (const instance_type instance) { return &(instance-> instance_field); }
+	return_type EP_BUILD_GETTER_GET_REF_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance) { return &(instance-> instance_field); } \
+	const_return_type EP_BUILD_GETTER_GET_CREF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return &(instance-> instance_field); }
 #endif
 
 #ifndef EP_IMPL_GETTER_ARRAY_REF
@@ -122,7 +144,7 @@
 
 #ifndef EP_IMPL_SETTER_PREFIX
 #define EP_IMPL_SETTER_PREFIX(prefix_name, instance_type, instance_type_name, instance_field_type, instance_field_name) \
-	void EP_EXPAND_PREFIX_NAME(prefix_name) ## _ ## instance_type_name ## _set_ ## instance_field_name (instance_type instance, instance_field_type instance_field_name) { instance-> instance_field_name = instance_field_name; }
+	void EP_BUILD_SETTER_NAME(prefix_name, instance_type_name, instance_field_name) (instance_type instance, instance_field_type instance_field_name) { instance-> instance_field_name = instance_field_name; }
 #endif
 
 #ifndef EP_IMPL_SETTER

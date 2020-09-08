@@ -23,7 +23,7 @@ process_info_payload_get_size (DiagnosticsProcessInfoPayload *payload);
 static
 bool
 process_info_payload_flatten (
-	DiagnosticsProcessInfoPayload *payload,
+	void *payload,
 	uint8_t **buffer,
 	uint16_t *size);
 
@@ -93,15 +93,17 @@ process_info_payload_get_size (DiagnosticsProcessInfoPayload *payload)
 static
 bool
 process_info_payload_flatten (
-	DiagnosticsProcessInfoPayload *payload,
+	void *payload,
 	uint8_t **buffer,
 	uint16_t *size)
 {
+	DiagnosticsProcessInfoPayload *process_info = (DiagnosticsProcessInfoPayload*)payload;
+
 	EP_ASSERT (payload != NULL);
 	EP_ASSERT (buffer != NULL);
 	EP_ASSERT (*buffer != NULL);
 	EP_ASSERT (size != NULL);
-	EP_ASSERT (process_info_payload_get_size (payload) == *size);
+	EP_ASSERT (process_info_payload_get_size (process_info) == *size);
 
 	// see IPC spec @ https://github.com/dotnet/diagnostics/blob/master/documentation/design-docs/ipc-protocol.md
 	// for definition of serialization format
@@ -109,25 +111,25 @@ process_info_payload_flatten (
 	bool success = true;
 
 	// uint64_t ProcessId;
-	memcpy (*buffer, &payload->process_id, sizeof (payload->process_id));
-	*buffer += sizeof (payload->process_id);
-	*size -= sizeof (payload->process_id);
+	memcpy (*buffer, &process_info->process_id, sizeof (process_info->process_id));
+	*buffer += sizeof (process_info->process_id);
+	*size -= sizeof (process_info->process_id);
 
 	// GUID RuntimeCookie;
-	memcpy(*buffer, &payload->runtime_cookie, sizeof (payload->runtime_cookie));
-	*buffer += sizeof (payload->runtime_cookie);
-	*size -= sizeof (payload->runtime_cookie);
+	memcpy(*buffer, &process_info->runtime_cookie, sizeof (process_info->runtime_cookie));
+	*buffer += sizeof (process_info->runtime_cookie);
+	*size -= sizeof (process_info->runtime_cookie);
 
 	// LPCWSTR CommandLine;
-	success &= ds_ipc_message_try_write_string_utf16_t (buffer, size, payload->command_line);
+	success &= ds_ipc_message_try_write_string_utf16_t (buffer, size, process_info->command_line);
 
 	// LPCWSTR OS;
 	if (success)
-		success &= ds_ipc_message_try_write_string_utf16_t (buffer, size, payload->os);
+		success &= ds_ipc_message_try_write_string_utf16_t (buffer, size, process_info->os);
 
 	// LPCWSTR Arch;
 	if (success)
-		success &= ds_ipc_message_try_write_string_utf16_t (buffer, size, payload->arch);
+		success &= ds_ipc_message_try_write_string_utf16_t (buffer, size, process_info->arch);
 
 	// Assert we've used the whole buffer we were given
 	EP_ASSERT(*size == 0);
@@ -204,7 +206,7 @@ process_protocol_helper_get_process_info (
 	ep_raise_error_if_nok (ds_ipc_message_initialize_buffer (
 		message,
 		ds_ipc_header_get_generic_success (),
-		&payload,
+		(void *)&payload,
 		process_info_payload_get_size (&payload),
 		process_info_payload_flatten) == true);
 
