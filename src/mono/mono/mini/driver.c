@@ -2074,6 +2074,9 @@ print_icall_table (void)
 }
 #endif
 
+extern void
+mono_set_os_args (int argc, char **argv);
+
 /**
  * mono_main:
  * \param argc number of arguments in the argv array

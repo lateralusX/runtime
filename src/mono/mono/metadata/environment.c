@@ -45,6 +45,22 @@ mono_environment_exitcode_set (gint32 value)
 	exitcode=value;
 }
 
+static int mini_argc = 0;
+static char **mini_argv = NULL;
+
+void
+mono_set_os_args (int argc, char **argv)
+{
+	mini_argc = argc;
+	mini_argv = argv;
+}
+
+char *
+mono_get_os_cmd_line (void)
+{
+	return mono_runtime_get_cmd_line (mini_argc, mini_argv);
+}
+
 #ifndef ENABLE_NETCORE
 /* note: we better manipulate the string in managed code (easier and safer) */
 MonoStringHandle

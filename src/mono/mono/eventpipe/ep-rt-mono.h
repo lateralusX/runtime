@@ -246,7 +246,7 @@ typedef struct _EventPipeMonoFuncTable {
 
 #ifdef EP_RT_MONO_USE_STATIC_RUNTIME
 extern char * mono_get_os_cmd_line (void);
-extern char * mono_get_managed_cmd_line (void);
+extern char * mono_runtime_get_managed_cmd_line (void);
 #endif
 
 #ifndef EP_RT_MONO_USE_STATIC_RUNTIME
