@@ -47,6 +47,20 @@ int32_t
 ds_rt_config_value_get_default_port_suspend (void);
 
 /*
+ * DiagnosticsIpc.
+ */
+
+static
+void
+ds_rt_transport_get_default_name (
+	ep_char8_t *name,
+	int32_t name_len,
+	const ep_char8_t *prefix,
+	int32_t id,
+	const ep_char8_t *group_id,
+	const ep_char8_t *suffix);
+
+/*
  * DiagnosticsIpcPollHandle.
  */
 

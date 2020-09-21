@@ -1234,7 +1234,9 @@ ep_rt_valloc0 (size_t buffer_size)
 static
 inline
 void
-ep_rt_vfree (uint8_t *buffer, size_t buffer_size)
+ep_rt_vfree (
+	uint8_t *buffer,
+	size_t buffer_size)
 {
 	if (buffer)
 #ifdef EP_RT_MONO_USE_STATIC_RUNTIME
@@ -1242,6 +1244,34 @@ ep_rt_vfree (uint8_t *buffer, size_t buffer_size)
 #else
 		ep_rt_mono_func_table_get ()->ep_rt_mono_vfree (buffer, buffer_size, MONO_MEM_ACCOUNT_PROFILER);
 #endif
+}
+
+static
+inline
+uint32_t
+ep_rt_temp_path_get (
+	ep_char8_t *buffer,
+	uint32_t buffer_len)
+{
+	EP_ASSERT (buffer != NULL);
+	EP_ASSERT (buffer_len > 0);
+
+	const ep_char8_t *path = g_get_tmp_dir ();
+	int32_t result = snprintf (buffer, buffer_len, "%s", path);
+	if (result <= 0 || result > buffer_len)
+		ep_raise_error ();
+
+	if (buffer [result - 1] != G_DIR_SEPARATOR) {
+		buffer [result++] = G_DIR_SEPARATOR;
+		buffer [result] = '\0';
+	}
+
+ep_on_exit:
+	return result;
+
+ep_on_error:
+	result = 0;
+	ep_exit_error_handler ();
 }
 
 /*

@@ -129,6 +129,7 @@ typedef enum {
 // If an agent closes its socket while we're still connected,
 // Poll will return and let us know which connection hung up
 #define DS_IPC_POLL_TIMEOUT_FALLOFF_FACTOR (float)1.25
+#define DS_IPC_STREAM_TIMEOUT_INFINITE (int32_t)-1
 #define DS_IPC_POLL_TIMEOUT_INFINITE (int32_t)-1
 #define DS_IPC_POLL_TIMEOUT_MIN_MS (int32_t)10
 #define DS_IPC_POLL_TIMEOUT_MAX_MS (int32_t)500

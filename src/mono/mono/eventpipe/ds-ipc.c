@@ -164,7 +164,7 @@ ipc_stream_factory_build_and_add_port (
 		ep_raise_error_if_nok (ds_ipc_listen (ipc, callback) == true);
 		ds_rt_port_array_append (&_ds_port_array, (DiagnosticsPort *)ds_listen_port_alloc (ipc, builder));
 		success = true;
-	} else if (builder->type == DS_PORT_TYPE_LISTEN) {
+	} else if (builder->type == DS_PORT_TYPE_CONNECT) {
 		ipc = ds_ipc_alloc (builder->path, DS_IPC_CONNECTION_MODE_CONNECT, callback);
 		ep_raise_error_if_nok (ipc != NULL);
 		ep_raise_error_if_nok (ds_ipc_listen (ipc, callback) == true);

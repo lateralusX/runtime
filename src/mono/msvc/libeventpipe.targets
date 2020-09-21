@@ -36,6 +36,9 @@
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-protocol.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-config.h"/>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-mono.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-mono.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-types.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ds-rt-types-mono.h"/>

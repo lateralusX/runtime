@@ -25,6 +25,7 @@ eventpipe_sources = \
 	ds-protocol.h	\
 	ds-rt.h	\
 	ds-rt-config.h	\
+	ds-rt-mono.c	\
 	ds-rt-mono.h	\
 	ds-rt-types.h	\
 	ds-rt-types-mono.h	\

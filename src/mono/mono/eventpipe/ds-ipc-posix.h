@@ -25,8 +25,11 @@ struct _DiagnosticsIpc {
 #else
 struct _DiagnosticsIpc_Internal {
 #endif
-	//TODO: Implement.
-	uint8_t dummy;
+	struct sockaddr_un *server_address;
+	int server_socket;
+	bool is_listening;
+	bool is_closed;
+	DiagnosticsIpcConnectionMode mode;
 };
 
 #if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_POSIX_GETTER_SETTER)
@@ -44,8 +47,9 @@ struct _DiagnosticsIpcStream {
 #else
 struct _DiagnosticsIpcStream_Internal {
 #endif
-	//TODO: Implement.
 	IpcStream stream;
+	int client_socket;
+	DiagnosticsIpcConnectionMode mode;
 };
 
 #if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_IPC_POSIX_GETTER_SETTER)

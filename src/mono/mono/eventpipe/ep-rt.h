@@ -460,7 +460,15 @@ ep_rt_valloc0 (size_t buffer_size);
 
 static
 void
-ep_rt_vfree (uint8_t *buffer, size_t buffer_size);
+ep_rt_vfree (
+	uint8_t *buffer,
+	size_t buffer_size);
+
+static
+uint32_t
+ep_rt_temp_path_get (
+	ep_char8_t *buffer,
+	uint32_t buffer_len);
 
 /*
 * SpinLock.

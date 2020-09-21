@@ -56,7 +56,7 @@ ipc_stream_alloc (
 
 DiagnosticsIpc *
 ds_ipc_alloc (
-	const char *pipe_name,
+	const ep_char8_t *pipe_name,
 	DiagnosticsIpcConnectionMode mode,
 	ds_ipc_error_callback_func callback)
 {
