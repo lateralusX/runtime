@@ -39,6 +39,7 @@
 #include <mono/metadata/profiler-private.h>
 #include <mono/metadata/mono-config.h>
 #include <mono/metadata/environment.h>
+#include <mono/metadata/environment-internals.h>
 #include <mono/metadata/verify.h>
 #include <mono/metadata/verify-internals.h>
 #include <mono/metadata/mono-debug.h>
@@ -2073,9 +2074,6 @@ print_icall_table (void)
 	printf ("]}\n]\n");
 }
 #endif
-
-extern void
-mono_set_os_args (int argc, char **argv);
 
 /**
  * mono_main:

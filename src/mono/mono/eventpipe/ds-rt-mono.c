@@ -2,8 +2,6 @@
 
 #ifdef ENABLE_PERFTRACING
 #include "ds-rt-config.h"
-#if !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES)
-
 #include "ds-types.h"
 #include "ds-rt.h"
 
@@ -42,6 +40,23 @@ void ipc_transport_get_default_name (
 	const ep_char8_t *suffix);
 
 #ifndef HOST_WIN32
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <pwd.h>
+
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
+
+#ifdef __NetBSD__
+#include <sys/cdefs.h>
+#include <sys/param.h>
+#include <sys/sysctl.h>
+#include <kvm.h>
+#endif
+
 /*
 Get a numeric value that can be used to disambiguate between processes with the same PID,
 provided that one of them is still running. The numeric value can mean different things
@@ -70,7 +85,7 @@ ipc_get_process_id_disambiguation_key (
 
 	const int result_sysctl = sysctl (mib, sizeof(mib)/sizeof(*mib), &info, &size, NULL, 0);
 	if (result_sysctl == 0) {
-		timeval proc_starttime = info.kp_proc.p_starttime;
+		struct timeval proc_starttime = info.kp_proc.p_starttime;
 		long seconds_since_epoch = proc_starttime.tv_sec;
 		*key = seconds_since_epoch;
 		return true;
@@ -134,7 +149,7 @@ ipc_get_process_id_disambiguation_key (
 	// last closing paren and the space after it.
 	char *scan_start_position = strrchr (line, ')');
 	if (!scan_start_position || scan_start_position [1] == '\0') {
-		EP__ASSERT (!"Failed to parse stat file contents with strrchr.");
+		EP_ASSERT (!"Failed to parse stat file contents with strrchr.");
 		return false;
 	}
 
@@ -146,7 +161,7 @@ ipc_get_process_id_disambiguation_key (
 		&start_time);
 
 	if (result_sscanf != 1) {
-		EP__ASSERT (!"Failed to parse stat file contents with sscanf.");
+		EP_ASSERT (!"Failed to parse stat file contents with sscanf.");
 		return false;
 	}
 
@@ -202,7 +217,7 @@ ipc_transport_get_default_name (
 		// In sandbox, all IPC files (locks, pipes) should be written to the application group
 		// container. The path returned by GetTempPathA will be unique for each process and cannot
 		// be used for IPC between two different processes
-		const char *home_dir = getpwuid (getuid ()))->pw_dir;
+		const char *home_dir = getpwuid (getuid ())->pw_dir;
 		size_t home_dir_len = strlen (home_dir);
 
 		// Verify the size of the path won't exceed maximum allowed size
@@ -258,8 +273,6 @@ ipc_transport_get_default_name (
 	g_assert_not_reached ();
 }
 #endif /* !HOST_WIN32 */
-
-#endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */
 #endif /* ENABLE_PERFTRACING */
 
 extern const char quiet_linker_empty_file_warning_diagnostics_rt_mono;

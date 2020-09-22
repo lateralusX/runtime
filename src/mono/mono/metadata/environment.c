@@ -16,6 +16,7 @@
 
 #include <mono/metadata/appdomain.h>
 #include <mono/metadata/environment.h>
+#include <mono/metadata/environment-internals.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/handle.h>
 #include <mono/utils/mono-compiler.h>

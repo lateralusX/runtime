@@ -111,7 +111,7 @@ ipc_init_listener (
 		ep_raise_error ();
 	}
 
-	const int result_bind = bind (server_socket, server_address, size_t server_address_len);
+	const int result_bind = bind (server_socket, server_address, server_address_len);
 	EP_ASSERT (result_bind != -1);
 	if (result_bind == -1) {
 		if (callback)

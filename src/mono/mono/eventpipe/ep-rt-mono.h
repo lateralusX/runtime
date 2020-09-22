@@ -19,6 +19,7 @@
 #include <mono/utils/mono-rand.h>
 #include <mono/metadata/w32file.h>
 #include <mono/metadata/w32event.h>
+#include <mono/metadata/environment-internals.h>
 #include <mono/utils/mono-lazy-init.h>
 #include <mono/utils/w32api.h>
 
@@ -243,11 +244,6 @@ typedef struct _EventPipeMonoFuncTable {
 	ep_rt_mono_get_os_cmd_line_func ep_rt_mono_get_os_cmd_line;
 	ep_rt_mono_get_managed_cmd_line_func ep_rt_mono_get_managed_cmd_line;
 } EventPipeMonoFuncTable;
-
-#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
-extern char * mono_get_os_cmd_line (void);
-extern char * mono_runtime_get_managed_cmd_line (void);
-#endif
 
 #ifndef EP_RT_MONO_USE_STATIC_RUNTIME
 static

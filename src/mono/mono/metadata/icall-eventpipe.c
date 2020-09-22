@@ -64,9 +64,6 @@ gpointer ep_rt_mono_rand_provider;
 static ep_rt_thread_holder_alloc_func thread_holder_alloc_callback_func;
 static ep_rt_thread_holder_free_func thread_holder_free_callback_func;
 
-extern char *
-mono_get_os_cmd_line (void);
-
 static
 gboolean
 rand_try_get_bytes_func (guchar *buffer, gssize buffer_size, MonoError *error)
