@@ -40,6 +40,7 @@
 
 static volatile uint32_t _server_shutting_down_state = 0;
 static ep_rt_wait_event_handle_t _server_resume_runtime_startup_event = { 0 };
+static bool _server_disabled = false;
 
 static
 inline
@@ -198,12 +199,18 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 	return (ep_rt_thread_start_func_return_t)0;
 }
 
+void
+ds_server_disable (void)
+{
+	_server_disabled = true;
+}
+
 bool
 ds_server_init (void)
 {
 	ds_ipc_stream_factory_init ();
 
-	if (!ds_rt_config_value_get_enable ())
+	if (_server_disabled || !ds_rt_config_value_get_enable ())
 		return true;
 
 	bool success = false;

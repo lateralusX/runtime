@@ -4558,6 +4558,9 @@ mini_init (const char *filename, const char *runtime_version)
 		domain = mono_init_from_assembly (filename, filename);
 
 #if defined(ENABLE_PERFTRACING) && !defined(DISABLE_EVENTPIPE)
+	if (mono_compile_aot)
+		ds_server_disable ();
+
 	ep_init ();
 #endif
 

@@ -12,6 +12,9 @@
  * DiagnosticsServer.
  */
 
+void
+ds_server_disable (void);
+
 // Initialize the event pipe (Creates the EventPipe IPC server).
 bool
 ds_server_init (void);
