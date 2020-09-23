@@ -1177,10 +1177,10 @@ test_write_event_perf (void)
 
 	// Write in chunks of 1000 events, all should fit into buffer manager.
 	for (events_written = 0; events_written < 10 * 1000 * 1000; events_written += 1000) {
-		int64_t start = ep_perf_counter_query ();
+		int64_t start = ep_perf_timestamp_get ();
 		for (uint32_t i = 0; i < 1000; i++)
 			ep_write_event (ep_event, data, EP_ARRAY_SIZE (data), NULL, NULL);
-		int64_t stop = ep_perf_counter_query ();
+		int64_t stop = ep_perf_timestamp_get ();
 		accumulted_write_time_ticks += stop - start;
 
 		// Drain events to not end up in having buffer manager OOM.

@@ -141,8 +141,6 @@ mono_eventpipe_init (
 	ep_rt_thread_holder_free_func thread_holder_free_func)
 {
 	if (table != NULL) {
-		table->ep_rt_mono_100ns_datetime = mono_100ns_datetime;
-		table->ep_rt_mono_100ns_ticks = mono_100ns_ticks;
 		table->ep_rt_mono_cpu_count = mono_cpu_count;
 		table->ep_rt_mono_process_current_pid = mono_process_current_pid;
 		table->ep_rt_mono_native_thread_id_get = mono_native_thread_id_get;

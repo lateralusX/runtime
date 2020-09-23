@@ -1406,22 +1406,6 @@ ep_get_wait_handle (EventPipeSessionID session_id)
 }
 
 /*
- * EventPipePerf.
- */
-
-int64_t
-ep_perf_counter_query (void)
-{
-	return ep_rt_perf_counter_query ();
-}
-
-int64_t
-ep_perf_frequency_query (void)
-{
-	return ep_rt_perf_frequency_query ();
-}
-
-/*
  * EventPipeProviderCallbackDataQueue.
  */
 
@@ -1449,6 +1433,33 @@ ep_provider_callback_data_queue_try_dequeue (
 	ep_provider_callback_data_free (value);
 
 	return true;
+}
+
+/*
+ * EventPipeSystemTime.
+ */
+
+void
+ep_system_time_set (
+	EventPipeSystemTime *system_time,
+	uint16_t year,
+	uint16_t month,
+	uint16_t day_of_week,
+	uint16_t day,
+	uint16_t hour,
+	uint16_t minute,
+	uint16_t second,
+	uint16_t milliseconds)
+{
+	EP_ASSERT (system_time != NULL);
+	system_time->year = year;
+	system_time->month = month;
+	system_time->day_of_week = day_of_week;
+	system_time->day = day;
+	system_time->hour = hour;
+	system_time->minute = minute;
+	system_time->second = second;
+	system_time->milliseconds = milliseconds;
 }
 
 #endif /* ENABLE_PERFTRACING */

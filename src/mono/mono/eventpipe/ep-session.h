@@ -37,7 +37,7 @@ struct _EventPipeSession_Internal {
 	// For synchoronous sessions.
 	EventPipeSessionSynchronousCallback synchronous_callback;
 	// Start date and time in UTC.
-	ep_systemtime_t session_start_time;
+	ep_filetime_t session_start_time;
 	// Start timestamp.
 	ep_timestamp_t session_start_timestamp;
 	uint32_t index;
@@ -66,7 +66,7 @@ EP_DEFINE_GETTER(EventPipeSession *, session, EventPipeSessionProviderList *, pr
 EP_DEFINE_GETTER(EventPipeSession *, session, EventPipeBufferManager *, buffer_manager)
 EP_DEFINE_GETTER_REF(EventPipeSession *, session, volatile uint32_t *, rundown_enabled)
 EP_DEFINE_GETTER(EventPipeSession *, session, bool, rundown_requested)
-EP_DEFINE_GETTER(EventPipeSession *, session, ep_systemtime_t, session_start_time)
+EP_DEFINE_GETTER(EventPipeSession *, session, ep_timestamp_t, session_start_time)
 EP_DEFINE_GETTER(EventPipeSession *, session, ep_timestamp_t, session_start_timestamp)
 EP_DEFINE_GETTER(EventPipeSession *, session, EventPipeFile *, file)
 

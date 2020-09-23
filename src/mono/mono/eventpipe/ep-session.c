@@ -55,7 +55,7 @@ session_disable_ipc_streaming_thread (EventPipeSession *session)
 	// Thread could be waiting on the event that there is new data to read.
 	ep_rt_wait_event_set (ep_buffer_manager_get_rt_wait_event_ref (session->buffer_manager));
 
-	// Wait for the sampling thread to clean itself up.
+	// Wait for the streaming thread to clean itself up.
 	ep_rt_wait_event_handle_t *rt_thread_shutdown_event = &session->rt_thread_shutdown_event;
 	ep_rt_wait_event_wait (rt_thread_shutdown_event, EP_INFINITE_WAIT, false /* bAlertable */);
 	ep_rt_wait_event_free (rt_thread_shutdown_event);
@@ -136,8 +136,8 @@ ep_session_alloc (
 		break;
 	}
 
-	instance->session_start_time = ep_rt_system_time_get ();
-	instance->session_start_timestamp = ep_perf_counter_query ();
+	instance->session_start_time = ep_system_file_time_get ();
+	instance->session_start_timestamp = ep_perf_timestamp_get ();
 
 	ep_rt_wait_event_alloc (&instance->rt_thread_shutdown_event, true, false);
 
@@ -356,7 +356,7 @@ ep_session_write_all_buffers_to_file (EventPipeSession *session, bool *events_wr
 	// Get the current time stamp.
 	// ep_buffer_manager_write_all_buffer_to_file will use this to ensure that no events after
 	// the current timestamp are written into the file.
-	ep_timestamp_t stop_timestamp = ep_rt_perf_counter_query ();
+	ep_timestamp_t stop_timestamp = ep_perf_timestamp_get ();
 	ep_buffer_manager_write_all_buffers_to_file (session->buffer_manager, session->file, stop_timestamp, events_written);
 	return ep_file_has_errors (session->file);
 }

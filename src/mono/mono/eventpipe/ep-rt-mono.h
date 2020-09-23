@@ -185,8 +185,6 @@ typedef void (*ep_rt_thread_holder_free_func)(EventPipeThreadHolder *thread_hold
 
 #define EP_RT_DEFINE_THREAD_FUNC(name) static mono_thread_start_return_t WINAPI name (gpointer data)
 
-typedef gint64 (*ep_rt_mono_100ns_ticks_func)(void);
-typedef gint64 (*ep_rt_mono_100ns_datetime_func)(void);
 typedef int (*ep_rt_mono_cpu_count_func)(void);
 typedef int (*ep_rt_mono_process_current_pid_func)(void);
 typedef MonoNativeThreadId (*ep_rt_mono_native_thread_id_get_func)(void);
@@ -215,8 +213,6 @@ typedef char* (*ep_rt_mono_get_os_cmd_line_func)(void);
 typedef char* (*ep_rt_mono_get_managed_cmd_line_func)(void);
 
 typedef struct _EventPipeMonoFuncTable {
-	ep_rt_mono_100ns_ticks_func ep_rt_mono_100ns_ticks;
-	ep_rt_mono_100ns_datetime_func ep_rt_mono_100ns_datetime;
 	ep_rt_mono_process_current_pid_func ep_rt_mono_process_current_pid;
 	ep_rt_mono_cpu_count_func ep_rt_mono_cpu_count;
 	ep_rt_mono_native_thread_id_get_func ep_rt_mono_native_thread_id_get;
@@ -244,6 +240,18 @@ typedef struct _EventPipeMonoFuncTable {
 	ep_rt_mono_get_os_cmd_line_func ep_rt_mono_get_os_cmd_line;
 	ep_rt_mono_get_managed_cmd_line_func ep_rt_mono_get_managed_cmd_line;
 } EventPipeMonoFuncTable;
+
+int64_t
+ep_rt_mono_perf_counter_query (void);
+
+int64_t
+ep_rt_mono_perf_frequency_query (void);
+
+void
+ep_rt_mono_system_time_get (EventPipeSystemTime *system_time);
+
+int64_t
+ep_rt_mono_system_file_time_get (void);
 
 #ifndef EP_RT_MONO_USE_STATIC_RUNTIME
 static
@@ -1112,11 +1120,7 @@ inline
 int64_t
 ep_rt_perf_counter_query (void)
 {
-#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
-	return (int64_t)mono_100ns_ticks ();
-#else
-	return (int64_t)ep_rt_mono_func_table_get ()->ep_rt_mono_100ns_ticks ();
-#endif
+	return ep_rt_mono_perf_counter_query ();
 }
 
 static
@@ -1124,20 +1128,23 @@ inline
 int64_t
 ep_rt_perf_frequency_query (void)
 {
-	//Counter uses resolution of 100ns ticks.
-	return 10 * 1000 * 1000;
+	return ep_rt_mono_perf_frequency_query ();
 }
 
 static
 inline
-ep_systemtime_t
-ep_rt_system_time_get (void)
+void
+ep_rt_system_time_get (EventPipeSystemTime *system_time)
 {
-#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
-	return (ep_systemtime_t)mono_100ns_datetime ();
-#else
-	return (ep_systemtime_t)ep_rt_mono_func_table_get ()->ep_rt_mono_100ns_datetime ();
-#endif
+	ep_rt_mono_system_time_get (system_time);
+}
+
+static
+inline
+int64_t
+ep_rt_system_file_time_get (void)
+{
+	return ep_rt_mono_system_file_time_get ();
 }
 
 static
@@ -1513,7 +1520,7 @@ ep_rt_thread_setup (bool background_thread)
 	// NOTE, under netcore, only root domain exists.
 	if (!mono_thread_current ()) {
 		MonoThread *thread = mono_thread_attach (mono_get_root_domain ());
-		if (background_thread)
+		if (background_thread && thread)
 			mono_thread_set_state (thread, ThreadState_Background);
 	}
 #else

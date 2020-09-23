@@ -318,8 +318,8 @@ ep_file_alloc (
 	ep_raise_error_if_nok (instance->stack_block != NULL);
 
 	// File start time information.
-	instance->file_open_system_time = ep_rt_system_time_get ();
-	instance->file_open_timestamp = ep_perf_counter_query ();
+	ep_system_time_get (&instance->file_open_system_time);
+	instance->file_open_timestamp = ep_perf_timestamp_get ();
 	instance->timestamp_frequency = ep_perf_frequency_query ();
 
 	instance->pointer_size = SIZEOF_VOID_P;
