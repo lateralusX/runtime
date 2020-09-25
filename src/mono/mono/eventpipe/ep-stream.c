@@ -214,7 +214,7 @@ ep_fast_serializer_write_buffer (
 	bool result = ep_stream_writer_write (fast_serializer->stream_writer, buffer, buffer_len, &bytes_written);
 
 	uint32_t required_padding = fast_serializer->required_padding;
-	required_padding = (FAST_SERIALIZER_ALIGNMENT_SIZE + required_padding - (bytes_written & FAST_SERIALIZER_ALIGNMENT_SIZE)) % FAST_SERIALIZER_ALIGNMENT_SIZE;
+	required_padding = (FAST_SERIALIZER_ALIGNMENT_SIZE + required_padding - (bytes_written % FAST_SERIALIZER_ALIGNMENT_SIZE)) % FAST_SERIALIZER_ALIGNMENT_SIZE;
 	fast_serializer->required_padding = required_padding;
 
 	// This will cause us to stop writing to the file.

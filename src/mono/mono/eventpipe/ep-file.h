@@ -99,12 +99,6 @@ ep_file_flush (
 	EventPipeFile *file,
 	EventPipeFileFlushFlags flags);
 
-int32_t
-ep_file_get_file_version (EventPipeSerializationFormat format);
-
-int32_t
-ep_file_get_file_minimum_version (EventPipeSerializationFormat format);
-
 /*
  * StackHashKey.
  */
