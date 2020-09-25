@@ -208,7 +208,7 @@ typedef int (*ep_rt_mono_vfree_func)(void *addr, size_t length, MonoMemAccountTy
 typedef int (*ep_rt_mono_valloc_granule_func)(void);
 typedef gboolean (*ep_rt_mono_thread_platform_create_thread_func)(ep_rt_thread_start_func thread_func, gpointer thread_data, gsize * const stack_size, ep_rt_thread_id_t *thread_id);
 typedef gpointer (*ep_rt_mono_thread_attach_func)(gboolean);
-typedef void (*ep_rt_mono_thread_detach_func)(gpointer thread);
+typedef void (*ep_rt_mono_thread_detach_func)(void);
 typedef char* (*ep_rt_mono_get_os_cmd_line_func)(void);
 typedef char* (*ep_rt_mono_get_managed_cmd_line_func)(void);
 
@@ -1073,6 +1073,14 @@ ep_rt_thread_create (
 
 static
 inline
+void
+ep_rt_thread_sleep (uint64_t ns)
+{
+	g_usleep (ns / 1000);
+}
+
+static
+inline
 uint32_t
 ep_rt_current_process_get_id (void)
 {
@@ -1525,6 +1533,20 @@ ep_rt_thread_setup (bool background_thread)
 	}
 #else
 	ep_rt_mono_func_table_get ()->ep_rt_mono_thread_attach (background_thread);
+#endif
+}
+
+static
+inline
+void
+ep_rt_thread_teardown (void)
+{
+#ifdef EP_RT_MONO_USE_STATIC_RUNTIME
+	MonoThread *current_thread = mono_thread_current ();
+	if (current_thread)
+		mono_thread_detach (current_thread);
+#else
+	ep_rt_mono_func_table_get ()->ep_rt_mono_thread_detach ();
 #endif
 }
 

@@ -129,9 +129,11 @@ eventpipe_thread_attach (gboolean background_thread)
 
 static
 void
-eventpipe_thread_detach (gpointer thread)
+eventpipe_thread_detach (void)
 {
-	mono_thread_detach ((MonoThread *)thread);
+	MonoThread *current_thread = mono_thread_current ();
+	if (current_thread)
+		mono_thread_detach (current_thread);
 }
 
 void
@@ -471,11 +473,13 @@ void
 ves_icall_System_Diagnostics_Tracing_EventPipeInternal_WriteEventData (
 	intptr_t event_handle,
 	/* EventProviderEventData[] */const void *event_data,
-	uint32_t data_len,
+	uint32_t event_data_len,
 	/* GUID * */const uint8_t *activity_id,
 	/* GUID * */const uint8_t *related_activity_id)
 {
-	;
+	g_assert (event_handle);
+	EventPipeEvent *ep_event = (EventPipeEvent *)event_handle;
+	ep_write_event (ep_event, event_data, event_data_len, activity_id, related_activity_id);
 }
 
 #else /* ENABLE_PERFTRACING */
@@ -591,7 +595,7 @@ void
 ves_icall_System_Diagnostics_Tracing_EventPipeInternal_WriteEventData (
 	intptr_t event_handle,
 	/* EventProviderEventData[] */const void *event_data,
-	uint32_t data_len,
+	uint32_t event_data_len,
 	/* GUID * */const uint8_t *activity_id,
 	/* GUID * */const uint8_t *related_activity_id)
 {

@@ -31,11 +31,65 @@ session_create_ipc_streaming_thread (EventPipeSession *session);
  * EventPipeSession.
  */
 
+EP_RT_DEFINE_THREAD_FUNC (streaming_thread)
+{
+	EP_ASSERT (data != NULL);
+	if (data == NULL)
+		return 1;
+
+	EventPipeSession *const session = (EventPipeSession *)data;
+	if (session->session_type != EP_SESSION_TYPE_IPCSTREAM)
+		return 1;
+
+	ep_rt_thread_setup (true);
+	session->ipc_streaming_thread = ep_thread_get_or_create ();
+
+	bool success = true;
+	ep_rt_wait_event_handle_t *wait_event = (ep_rt_wait_event_handle_t *)ep_session_get_wait_event (session);
+
+	while (ep_session_get_ipc_streaming_enabled (session)) {
+		bool events_written = false;
+		if (!ep_session_write_all_buffers_to_file (session, &events_written)) {
+			success = false;
+			break;
+		}
+
+		if (!events_written) {
+			// No events were available, sleep until more are available
+			ep_rt_wait_event_wait (wait_event, EP_INFINITE_WAIT, false);
+		}
+
+		// Wait until it's time to sample again.
+		const uint32_t timeout_ns = 100000000; // 100 msec.
+		ep_rt_thread_sleep (timeout_ns);
+	}
+
+	ep_rt_wait_event_set (&session->rt_thread_shutdown_event);
+
+	if (!success)
+		ep_disable ((EventPipeSessionID)session);
+
+	session->ipc_streaming_thread = NULL;
+	ep_rt_thread_teardown ();
+
+	return (ep_rt_thread_start_func_return_t)0;
+}
+
 static
 void
 session_create_ipc_streaming_thread (EventPipeSession *session)
 {
-	// TODO: Implement.
+	EP_ASSERT (session != NULL);
+	EP_ASSERT (session->session_type == EP_SESSION_TYPE_IPCSTREAM);
+
+	ep_requires_lock_held ();
+
+	ep_session_set_ipc_streaming_enabled (session, true);
+	ep_rt_wait_event_alloc (&session->rt_thread_shutdown_event, true, false);
+
+	ep_rt_thread_id_t thread_id = 0;
+	if (!ep_rt_thread_create ((void *)streaming_thread, (void *)session, &thread_id))
+		EP_ASSERT (!"Unable to create IPC stream flushing thread.");
 }
 
 static
@@ -138,8 +192,6 @@ ep_session_alloc (
 
 	instance->session_start_time = ep_system_file_time_get ();
 	instance->session_start_timestamp = ep_perf_timestamp_get ();
-
-	ep_rt_wait_event_alloc (&instance->rt_thread_shutdown_event, true, false);
 
 ep_on_exit:
 	ep_requires_lock_held ();
@@ -358,7 +410,7 @@ ep_session_write_all_buffers_to_file (EventPipeSession *session, bool *events_wr
 	// the current timestamp are written into the file.
 	ep_timestamp_t stop_timestamp = ep_perf_timestamp_get ();
 	ep_buffer_manager_write_all_buffers_to_file (session->buffer_manager, session->file, stop_timestamp, events_written);
-	return ep_file_has_errors (session->file);
+	return !ep_file_has_errors (session->file);
 }
 
 bool

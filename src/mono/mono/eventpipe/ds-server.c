@@ -196,6 +196,8 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 		ds_ipc_message_fini (&message);
 	}
 
+	ep_rt_thread_teardown ();
+
 	return (ep_rt_thread_start_func_return_t)0;
 }
 

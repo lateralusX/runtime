@@ -403,6 +403,10 @@ ep_rt_thread_create (
 	void *id);
 
 static
+void
+ep_rt_thread_sleep (uint64_t ns);
+
+static
 uint32_t
 ep_rt_current_process_get_id (void);
 
@@ -588,6 +592,10 @@ ep_rt_managed_command_line_get (void);
 static
 void
 ep_rt_thread_setup (bool background_thread);
+
+static
+void
+ep_rt_thread_teardown (void);
 
 static
 EventPipeThread *

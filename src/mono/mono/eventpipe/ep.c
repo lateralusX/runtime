@@ -632,7 +632,7 @@ write_event (
 	ep_return_void_if_nok (ep_event_is_enabled (ep_event) == true);
 
 	// Get current thread.
-	EventPipeThread *const thread = ep_thread_get ();
+	EventPipeThread *const thread = ep_thread_get_or_create ();
 
 	// If the activity id isn't specified AND we are in a eventpipe thread, pull it from the current thread.
 	// If pThread is NULL (we aren't in writing from a managed thread) then pActivityId can be NULL
