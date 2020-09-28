@@ -102,7 +102,11 @@ ipc_init_listener (
 	// This will set the default permission bit to 600
 	mode_t prev_mask = umask (~(S_IRUSR | S_IWUSR));
 
-	const int server_socket = socket (AF_UNIX, SOCK_STREAM, 0 );
+	int server_socket;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	server_socket = socket (AF_UNIX, SOCK_STREAM, 0 );
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	if (server_socket == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
@@ -111,13 +115,21 @@ ipc_init_listener (
 		ep_raise_error ();
 	}
 
-	const int result_bind = bind (server_socket, server_address, server_address_len);
+	int result_bind;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	result_bind = bind (server_socket, server_address, server_address_len);
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	EP_ASSERT (result_bind != -1);
 	if (result_bind == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
 
-		const int result_close = close (server_socket);
+		int result_close;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_close = close (server_socket);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		EP_ASSERT (result_close != -1);
 		if (result_close == -1) {
 			if (callback)
@@ -154,7 +166,11 @@ ipc_init_listener (
 
 	bool success = false;
 
-	const int server_socket = socket (AF_UNIX, SOCK_STREAM, 0);
+	int server_socket;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	server_socket = socket (AF_UNIX, SOCK_STREAM, 0);
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	if (server_socket == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
@@ -162,7 +178,11 @@ ipc_init_listener (
 		ep_raise_error ();
 	}
 
-	const int result_fchmod = fchmod (server_socket, S_IRUSR | S_IWUSR);
+	int result_fchmod;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	result_fchmod = fchmod (server_socket, S_IRUSR | S_IWUSR);
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	if (result_fchmod == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
@@ -170,13 +190,21 @@ ipc_init_listener (
 		ep_raise_error ();
 	}
 
-	const int result_bind = bind (server_socket, server_address, server_address_len);
+	int result_bind;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	result_bind = bind (server_socket, server_address, server_address_len);
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	EP_ASSERT (result_bind != -1);
 	if (result_bind == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
 
-		const int result_close = close (server_socket);
+		int result_close;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_close = close (server_socket);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		EP_ASSERT (result_close != -1);
 		if (result_close == -1) {
 			if (callback)
@@ -295,7 +323,10 @@ ds_ipc_poll (
 		poll_fds [i].events = POLLIN;
 	}
 
-	const int result_poll = poll (poll_fds, poll_handles_data_len, timeout_ms);
+	int result_poll;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	result_poll = poll (poll_fds, poll_handles_data_len, timeout_ms);
+	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	// Check results
 	if (result_poll < 0) {
@@ -368,20 +399,32 @@ ds_ipc_listen (
 
 	EP_ASSERT (ipc->server_socket != -1);
 
-	const int result_listen = listen (ipc->server_socket, /* backlog */ 255);
+	int result_listen;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	result_listen = listen (ipc->server_socket, /* backlog */ 255);
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	EP_ASSERT (result_listen != -1);
 	if (result_listen == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
 
-		const int result_unlink = unlink (ipc->server_address->sun_path);
+		int result_unlink;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_unlink = unlink (ipc->server_address->sun_path);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		EP_ASSERT (result_unlink != -1);
 		if (result_unlink == -1) {
 			if (callback)
 				callback (strerror (errno), errno);
 		}
 
-		const int result_close = close (ipc->server_socket);
+		int result_close;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_close = close (ipc->server_socket);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		EP_ASSERT (result_close != -1);
 		if (result_close == -1) {
 			if (callback)
@@ -415,7 +458,12 @@ ds_ipc_accept (
 
 	struct sockaddr_un from;
 	socklen_t from_len = sizeof (from);
-	const int client_socket = accept (ipc->server_socket, (struct sockaddr *)&from, &from_len);
+
+	int client_socket;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	client_socket = accept (ipc->server_socket, (struct sockaddr *)&from, &from_len);
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	if (client_socket == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
@@ -445,7 +493,12 @@ ds_ipc_connect (
 
 	struct sockaddr_un client_address;
 	client_address.sun_family = AF_UNIX;
-	const int client_socket = socket (AF_UNIX, SOCK_STREAM, 0);
+
+	int client_socket;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	client_socket = socket (AF_UNIX, SOCK_STREAM, 0);
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	if (client_socket == -1) {
 		if (callback)
 			callback (strerror (errno), errno);
@@ -455,12 +508,20 @@ ds_ipc_connect (
 	// We don't expect this to block since this is a Unix Domain Socket.  `connect` may block until the
 	// TCP handshake is complete for TCP/IP sockets, but UDS don't use TCP.  `connect` will return even if
 	// the server hasn't called `accept`.
-	const int result_connect = connect (client_socket, (struct sockaddr *)ipc->server_address, sizeof(*(ipc->server_address)));
+	int result_connect;
+	DS_ENTER_BLOCKING_PAL_SECTION;
+	result_connect = connect (client_socket, (struct sockaddr *)ipc->server_address, sizeof(*(ipc->server_address)));
+	DS_EXIT_BLOCKING_PAL_SECTION;
+
 	if (result_connect < 0) {
 		if (callback)
 			callback (strerror (errno), errno);
 
-		const int result_close = close (client_socket);
+		int result_close;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_close = close (client_socket);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		if (result_close < 0 && callback)
 			callback (strerror (errno), errno);
 
@@ -492,10 +553,17 @@ ds_ipc_close (
 
 	if (ipc->server_socket != -1) {
 		// only close the socket if not shutting down, let the OS handle it in that case
-		if (!is_shutdown && close(ipc->server_socket) == -1) {
-			if (callback)
-				callback (strerror (errno), errno);
-			EP_ASSERT (!"Failed to close unix domain socket.");
+		if (!is_shutdown) {
+			int close_result;
+			DS_ENTER_BLOCKING_PAL_SECTION;
+			close_result = close(ipc->server_socket);
+			DS_EXIT_BLOCKING_PAL_SECTION;
+
+			if (close_result == -1) {
+				if (callback)
+					callback (strerror (errno), errno);
+				EP_ASSERT (!"Failed to close unix domain socket.");
+			}
 		}
 
 		// N.B. - it is safe to unlink the unix domain socket file while the server
@@ -503,7 +571,11 @@ ds_ipc_close (
 		// "The usual UNIX close-behind semantics apply; the socket can be unlinked
 		// at any time and will be finally removed from the file system when the last
 		// reference to it is closed." - unix(7) man page
-		const int result_unlink = unlink (ipc->server_address->sun_path);
+		int result_unlink;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_unlink = unlink (ipc->server_address->sun_path);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		if (result_unlink == -1) {
 			if (callback)
 				callback (strerror (errno), errno);
@@ -558,7 +630,12 @@ ipc_stream_read_func (
 		struct pollfd pfd;
 		pfd.fd = ipc_stream->client_socket;
 		pfd.events = POLLIN;
-		const int result_poll = poll (&pfd, 1, timeout_ms);
+
+		int result_poll;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_poll = poll (&pfd, 1, timeout_ms);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		if (result_poll <= 0 || !(pfd.revents & POLLIN)) {
 			// timeout or error
 			ep_raise_error ();
@@ -570,6 +647,8 @@ ipc_stream_read_func (
 	ssize_t current_bytes_read = 0;
 	ssize_t total_bytes_read = 0;
 	bool continue_recv = true;
+
+	DS_ENTER_BLOCKING_PAL_SECTION;
 	while (continue_recv && bytes_to_read - total_bytes_read > 0) {
 		current_bytes_read = recv (
 			ipc_stream->client_socket,
@@ -582,6 +661,7 @@ ipc_stream_read_func (
 		total_bytes_read += current_bytes_read;
 		buffer_cursor += current_bytes_read;
 	}
+	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	ep_raise_error_if_nok (continue_recv == true);
 	success = true;
@@ -616,7 +696,12 @@ ipc_stream_write_func (
 		struct pollfd pfd;
 		pfd.fd = ipc_stream->client_socket;
 		pfd.events = POLLOUT;
-		const int result_poll = poll (&pfd, 1, timeout_ms);
+
+		int result_poll;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_poll = poll (&pfd, 1, timeout_ms);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		if (result_poll <= 0 || !(pfd.revents & POLLOUT)) {
 			// timeout or error
 			ep_raise_error ();
@@ -628,6 +713,8 @@ ipc_stream_write_func (
 	ssize_t current_bytes_written = 0;
 	ssize_t total_bytes_written = 0;
 	bool continue_send = true;
+
+	DS_ENTER_BLOCKING_PAL_SECTION;
 	while (continue_send && bytes_to_write - total_bytes_written > 0) {
 		current_bytes_written = send (
 			ipc_stream->client_socket,
@@ -640,6 +727,7 @@ ipc_stream_write_func (
 		total_bytes_written += current_bytes_written;
 		buffer_cursor += current_bytes_written;
 	}
+	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	ep_raise_error_if_nok (continue_send == true);
 	success = true;
@@ -763,7 +851,11 @@ ds_ipc_stream_close (
 	if (ipc_stream->client_socket != -1) {
 		ds_ipc_stream_flush (ipc_stream);
 
-		const int result_close = close (ipc_stream->client_socket);
+		int result_close;
+		DS_ENTER_BLOCKING_PAL_SECTION;
+		result_close = close (ipc_stream->client_socket);
+		DS_EXIT_BLOCKING_PAL_SECTION;
+
 		EP_ASSERT (result_close != -1);
 		if (result_close == -1) {
 			if (callback)
