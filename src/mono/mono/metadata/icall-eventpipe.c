@@ -34,12 +34,6 @@ typedef struct _EventPipeProviderConfigurationNative {
 	gunichar2 *filter_data;
 } EventPipeProviderConfigurationNative;
 
-typedef struct _EventProviderEventData {
-	uint64_t ptr;
-	uint32_t size;
-	uint32_t reserved;
-} EventProviderEventData;
-
 typedef struct _EventPipeSessionInfo {
 	int64_t starttime_as_utc_filetime;
 	int64_t start_timestamp;
@@ -472,14 +466,14 @@ ves_icall_System_Diagnostics_Tracing_EventPipeInternal_GetWaitHandle (uint64_t s
 void
 ves_icall_System_Diagnostics_Tracing_EventPipeInternal_WriteEventData (
 	intptr_t event_handle,
-	/* EventProviderEventData[] */const void *event_data,
+	/* EventData[] */void *event_data,
 	uint32_t event_data_len,
 	/* GUID * */const uint8_t *activity_id,
 	/* GUID * */const uint8_t *related_activity_id)
 {
 	g_assert (event_handle);
 	EventPipeEvent *ep_event = (EventPipeEvent *)event_handle;
-	ep_write_event (ep_event, event_data, event_data_len, activity_id, related_activity_id);
+	ep_write_event (ep_event, (EventData *)event_data, event_data_len, activity_id, related_activity_id);
 }
 
 #else /* ENABLE_PERFTRACING */
@@ -594,7 +588,7 @@ ves_icall_System_Diagnostics_Tracing_EventPipeInternal_GetWaitHandle (uint64_t s
 void
 ves_icall_System_Diagnostics_Tracing_EventPipeInternal_WriteEventData (
 	intptr_t event_handle,
-	/* EventProviderEventData[] */const void *event_data,
+	/* EventData[] */void *event_data,
 	uint32_t event_data_len,
 	/* GUID * */const uint8_t *activity_id,
 	/* GUID * */const uint8_t *related_activity_id)

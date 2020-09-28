@@ -6,12 +6,6 @@
 #include "ep-rt.h"
 #include <mono/utils/mono-lazy-init.h>
 
-static const int64_t SECS_BETWEEN_1601_AND_1970_EPOCHS = 11644473600LL;
-static const int64_t SECS_TO_100NS = 10000000;
-static const int64_t SECS_TO_NS = 1000000000;
-static const int64_t MSECS_TO_MIS = 1000;
-static const int64_t MISECS_TO_NS = 1000;
-
 ep_rt_spin_lock_handle_t _ep_rt_mono_config_lock = {0};
 EventPipeMonoFuncTable _ep_rt_mono_func_table = {0};
 
@@ -85,7 +79,16 @@ static mach_timebase_info_data_t _ep_rt_mono_time_base_info = {0};
 #endif
 
 #ifdef HAVE_LOCALTIME_R
-#define HAVE_GMTIME_R
+#define HAVE_GMTIME_R 1
+#endif
+
+static const int64_t SECS_BETWEEN_1601_AND_1970_EPOCHS = 11644473600LL;
+static const int64_t SECS_TO_100NS = 10000000;
+static const int64_t SECS_TO_NS = 1000000000;
+static const int64_t MSECS_TO_MIS = 1000;
+
+#ifndef HAVE_CLOCK_MONOTONIC
+static const int64_t MISECS_TO_NS = 1000;
 #endif
 
 static
