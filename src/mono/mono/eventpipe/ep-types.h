@@ -402,6 +402,15 @@ struct _EventPipeSystemTime {
 };
 #endif
 
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, year);
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, month);
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, day_of_week);
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, day);
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, hour);
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, minute);
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, second);
+EP_DEFINE_GETTER(EventPipeSystemTime *, system_time, uint16_t, milliseconds);
+
 void
 ep_system_time_set (
 	EventPipeSystemTime *system_time,

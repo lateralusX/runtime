@@ -256,8 +256,8 @@ ds_eventpipe_collect_tracing_command_payload_free (EventPipeCollectTracingComman
 	EventPipeProviderConfiguration *config = ep_rt_provider_config_array_data (&payload->provider_configs);
 	size_t config_len = ep_rt_provider_config_array_size (&payload->provider_configs);
 	for (size_t i = 0; i < config_len; ++i) {
-		ep_rt_utf8_string_free ((ep_char8_t *)config [i].provider_name);
-		ep_rt_utf8_string_free ((ep_char8_t *)config [i].filter_data);
+		ep_rt_utf8_string_free ((ep_char8_t *)ep_provider_config_get_provider_name (&config [i]));
+		ep_rt_utf8_string_free ((ep_char8_t *)ep_provider_config_get_filter_data (&config [i]));
 	}
 
 	ep_rt_object_free (payload);
@@ -313,8 +313,8 @@ ds_eventpipe_collect_tracing2_command_payload_free (EventPipeCollectTracing2Comm
 	EventPipeProviderConfiguration *config = ep_rt_provider_config_array_data (&payload->provider_configs);
 	size_t config_len = ep_rt_provider_config_array_size (&payload->provider_configs);
 	for (size_t i = 0; i < config_len; ++i) {
-		ep_rt_utf8_string_free ((ep_char8_t *)config [i].provider_name);
-		ep_rt_utf8_string_free ((ep_char8_t *)config [i].filter_data);
+		ep_rt_utf8_string_free ((ep_char8_t *)ep_provider_config_get_provider_name (&config [i]));
+		ep_rt_utf8_string_free ((ep_char8_t *)ep_provider_config_get_filter_data (&config [i]));
 	}
 
 	ep_rt_object_free (payload);

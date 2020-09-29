@@ -105,14 +105,14 @@ prefix_name ## _ ## instance_type_name ## _set_ ## instance_field_name
 #endif
 
 #ifndef EP_DEFINE_NOINLINE_SETTER
-#define EP_DEFINE_NOINLINE_SETTER(prefix_name, instance_type, instance_type_name, instance_field_type, instance_field_name) \
+#define EP_DEFINE_NOINLINE_SETTER(instance_type, instance_type_name, instance_field_type, instance_field_name) \
 	EP_DEFINE_NOINLINE_SETTER_PREFIX(ep, instance_type, instance_type_name, instance_field_type, instance_field_name)
 #endif
 
 #ifndef EP_IMPL_GETTER_PREFIX
 #define EP_IMPL_GETTER_PREFIX(prefix_name, instance_type, instance_type_name, return_type, instance_field_name) \
 	return_type EP_BUILD_GETTER_GET_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return instance-> instance_field_name; } \
-	size_t EP_BUILD_GETTER_SIZEOF_NAME(prefix_name, instance_type_name, instance_field_name)e (const instance_type instance) { return sizeof (instance-> instance_field_name); }
+	size_t EP_BUILD_GETTER_SIZEOF_NAME(prefix_name, instance_type_name, instance_field_name) (const instance_type instance) { return sizeof (instance-> instance_field_name); }
 #endif
 
 #ifndef EP_IMPL_GETTER
