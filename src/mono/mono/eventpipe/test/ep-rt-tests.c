@@ -126,8 +126,6 @@ test_rt_system_file_time (void)
 {
 	RESULT result = NULL;
 	uint32_t test_location = 0;
-	int64_t frequency = 0;
-	double elapsed_time_ms = 0;
 
 	ep_filetime_t start = ep_system_file_time_get ();
 	g_usleep (10 * 1000);
