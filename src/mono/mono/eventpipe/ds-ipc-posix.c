@@ -623,8 +623,12 @@ ipc_stream_read_func (
 	EP_ASSERT (buffer != NULL);
 	EP_ASSERT (bytes_read != NULL);
 
-	DiagnosticsIpcStream *ipc_stream = (DiagnosticsIpcStream *)object;
 	bool success = false;
+	DiagnosticsIpcStream *ipc_stream = (DiagnosticsIpcStream *)object;
+	uint8_t *buffer_cursor = (uint8_t*)buffer;
+	ssize_t current_bytes_read = 0;
+	ssize_t total_bytes_read = 0;
+	bool continue_recv = true;
 
 	if (timeout_ms != DS_IPC_STREAM_TIMEOUT_INFINITE) {
 		struct pollfd pfd;
@@ -642,11 +646,6 @@ ipc_stream_read_func (
 		}
 		// else fallthrough
 	}
-
-	uint8_t *buffer_cursor = (uint8_t*)buffer;
-	ssize_t current_bytes_read = 0;
-	ssize_t total_bytes_read = 0;
-	bool continue_recv = true;
 
 	DS_ENTER_BLOCKING_PAL_SECTION;
 	while (continue_recv && bytes_to_read - total_bytes_read > 0) {
@@ -689,8 +688,12 @@ ipc_stream_write_func (
 	EP_ASSERT (buffer != NULL);
 	EP_ASSERT (bytes_written != NULL);
 
-	DiagnosticsIpcStream *ipc_stream = (DiagnosticsIpcStream *)object;
 	bool success = false;
+	DiagnosticsIpcStream *ipc_stream = (DiagnosticsIpcStream *)object;
+	uint8_t *buffer_cursor = (uint8_t*)buffer;
+	ssize_t current_bytes_written = 0;
+	ssize_t total_bytes_written = 0;
+	bool continue_send = true;
 
 	if (timeout_ms != DS_IPC_STREAM_TIMEOUT_INFINITE) {
 		struct pollfd pfd;
@@ -708,11 +711,6 @@ ipc_stream_write_func (
 		}
 		// else fallthrough
 	}
-
-	uint8_t *buffer_cursor = (uint8_t*)buffer;
-	ssize_t current_bytes_written = 0;
-	ssize_t total_bytes_written = 0;
-	bool continue_send = true;
 
 	DS_ENTER_BLOCKING_PAL_SECTION;
 	while (continue_send && bytes_to_write - total_bytes_written > 0) {
