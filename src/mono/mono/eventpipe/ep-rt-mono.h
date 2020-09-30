@@ -1336,6 +1336,7 @@ ep_rt_spin_lock_release (ep_rt_spin_lock_handle_t *spin_lock)
 	if (spin_lock && spin_lock->lock) {
 #ifdef EP_CHECKED_BUILD
 		spin_lock->lock_is_held = false;
+		spin_lock->owning_thread_id = -1;
 #endif
 		mono_coop_mutex_unlock (spin_lock->lock);
 	}

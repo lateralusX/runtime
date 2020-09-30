@@ -337,7 +337,7 @@ ep_block_fast_serialize (
 		EP_ASSERT (required_padding <= FAST_SERIALIZER_ALIGNMENT_SIZE - 1);
 		ep_fast_serializer_write_buffer (fast_serializer, max_padding, required_padding); // we write zeros here, the reader is going to always read from the first aligned address of the serialized content
 
-		EP_ASSERT (ep_fast_serializer_get_write_error_encountered (fast_serializer) || ep_fast_serializer_get_required_padding (fast_serializer));
+		EP_ASSERT (ep_fast_serializer_get_write_error_encountered (fast_serializer) || (ep_fast_serializer_get_required_padding (fast_serializer) == 0));
 	}
 
 	ep_block_serialize_header_vcall (block, fast_serializer);
