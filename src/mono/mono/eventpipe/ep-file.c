@@ -381,7 +381,7 @@ ep_file_alloc (
 	ep_rt_volatile_store_uint32_t (&instance->initialized, 0);
 
 #ifdef EP_CHECKED_BUILD
-	instance->last_sorted_timestamp = ep_perf_counter_query ();
+	instance->last_sorted_timestamp = ep_perf_timestamp_get ();
 #endif
 
 ep_on_exit:
