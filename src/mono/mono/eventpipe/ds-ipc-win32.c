@@ -552,19 +552,21 @@ ipc_stream_read_func (
 		overlap) != FALSE;  // overlapped I/O
 
 	if (!success) {
-		DS_ENTER_BLOCKING_PAL_SECTION;
-		// if we're waiting infinitely, only make one syscall
-		if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
-			success = GetOverlappedResult (
-				ipc_stream->pipe,   // pipe
-				overlap,            // overlapped
-				&read,              // out actual number of bytes read
-				true) != FALSE;     // block until async IO completes
-		} else {
-			DWORD error = GetLastError ();
-			if (error == ERROR_IO_PENDING) {
+		DWORD error = GetLastError ();
+		if (error == ERROR_IO_PENDING) {
+			// if we're waiting infinitely, only make one syscall
+			if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
+				DS_ENTER_BLOCKING_PAL_SECTION;
+				success = GetOverlappedResult (
+					ipc_stream->pipe,   // pipe
+					overlap,            // overlapped
+					&read,              // out actual number of bytes read
+					true) != FALSE;     // block until async IO completes
+				DS_EXIT_BLOCKING_PAL_SECTION;
+			} else {
 				// Wait on overlapped IO event (triggers when async IO is complete regardless of success)
 				// or timeout
+				DS_ENTER_BLOCKING_PAL_SECTION;
 				DWORD wait = WaitForSingleObject (ipc_stream->overlap.hEvent, (DWORD)timeout_ms);
 				if (wait == WAIT_OBJECT_0) {
 					// async IO compelted, get the result
@@ -586,9 +588,9 @@ ipc_stream_read_func (
 						// Failure here isn't recoverable, so return as such
 					}
 				}
+				DS_EXIT_BLOCKING_PAL_SECTION;
 			}
 		}
-		DS_EXIT_BLOCKING_PAL_SECTION;
 	}
 
 	*bytes_read = (uint32_t)read;
@@ -620,19 +622,21 @@ ipc_stream_write_func (
 		overlap) != FALSE;  // overlapped I/O
 
 	if (!success) {
-		DS_ENTER_BLOCKING_PAL_SECTION;
-		// if we're waiting infinitely, only make one syscall
-		if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
-			success = GetOverlappedResult (
-				ipc_stream->pipe,   // pipe
-				overlap,            // overlapped
-				&written,           // out actual number of bytes written
-				true) != FALSE;     // block until async IO completes
-		} else {
-			DWORD error = GetLastError ();
-			if (error == ERROR_IO_PENDING) {
+		DWORD error = GetLastError ();
+		if (error == ERROR_IO_PENDING) {
+			// if we're waiting infinitely, only make one syscall
+			if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
+				DS_ENTER_BLOCKING_PAL_SECTION;
+				success = GetOverlappedResult (
+					ipc_stream->pipe,   // pipe
+					overlap,            // overlapped
+					&written,           // out actual number of bytes written
+					true) != FALSE;     // block until async IO completes
+				DS_EXIT_BLOCKING_PAL_SECTION;
+			} else {
 				// Wait on overlapped IO event (triggers when async IO is complete regardless of success)
 				// or timeout
+				DS_ENTER_BLOCKING_PAL_SECTION;
 				DWORD wait = WaitForSingleObject (ipc_stream->overlap.hEvent, (DWORD)timeout_ms);
 				if (wait == WAIT_OBJECT_0) {
 					// async IO compelted, get the result
@@ -654,9 +658,9 @@ ipc_stream_write_func (
 						// Failure here isn't recoverable, so return as such
 					}
 				}
+				DS_EXIT_BLOCKING_PAL_SECTION;
 			}
 		}
-		DS_EXIT_BLOCKING_PAL_SECTION;
 	}
 
 	*bytes_written = (uint32_t)written;
@@ -678,7 +682,6 @@ ipc_stream_flush_func (void *object)
 
 	// TODO: Add error handling.
 	return success;
-
 }
 
 static
