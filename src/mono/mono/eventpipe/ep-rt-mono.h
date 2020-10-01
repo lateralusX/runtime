@@ -251,7 +251,7 @@ void
 ep_rt_mono_system_time_get (EventPipeSystemTime *system_time);
 
 int64_t
-ep_rt_mono_system_file_time_get (void);
+ep_rt_mono_system_timestamp_get (void);
 
 #ifndef EP_RT_MONO_USE_STATIC_RUNTIME
 static
@@ -1150,9 +1150,9 @@ ep_rt_system_time_get (EventPipeSystemTime *system_time)
 static
 inline
 int64_t
-ep_rt_system_file_time_get (void)
+ep_rt_system_timestamp_get (void)
 {
-	return ep_rt_mono_system_file_time_get ();
+	return ep_rt_mono_system_timestamp_get ();
 }
 
 static
@@ -1529,8 +1529,10 @@ ep_rt_thread_setup (bool background_thread)
 	// NOTE, under netcore, only root domain exists.
 	if (!mono_thread_current ()) {
 		MonoThread *thread = mono_thread_attach (mono_get_root_domain ());
-		if (background_thread && thread)
+		if (background_thread && thread) {
 			mono_thread_set_state (thread, ThreadState_Background);
+			mono_thread_info_set_flags (MONO_THREAD_INFO_FLAGS_NO_SAMPLE);
+		}
 	}
 #else
 	ep_rt_mono_func_table_get ()->ep_rt_mono_thread_attach (background_thread);

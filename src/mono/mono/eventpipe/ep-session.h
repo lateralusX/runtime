@@ -37,7 +37,7 @@ struct _EventPipeSession_Internal {
 	// For synchoronous sessions.
 	EventPipeSessionSynchronousCallback synchronous_callback;
 	// Start date and time in UTC.
-	ep_filetime_t session_start_time;
+	ep_system_timestamp_t session_start_time;
 	// Start timestamp.
 	ep_timestamp_t session_start_timestamp;
 	uint32_t index;

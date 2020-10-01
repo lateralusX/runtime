@@ -166,7 +166,7 @@ typedef uint64_t EventPipeSessionID;
 typedef char ep_char8_t;
 typedef unsigned short ep_char16_t;
 typedef int64_t ep_timestamp_t;
-typedef int64_t ep_filetime_t;
+typedef int64_t ep_system_timestamp_t;
 
 /*
  * EventPipe Callbacks.

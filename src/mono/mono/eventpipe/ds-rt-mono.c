@@ -275,5 +275,4 @@ ipc_transport_get_default_name (
 #endif /* !HOST_WIN32 */
 #endif /* ENABLE_PERFTRACING */
 
-extern const char quiet_linker_empty_file_warning_diagnostics_rt_mono;
-const char quiet_linker_empty_file_warning_diagnostics_rt_mono = 0;
+MONO_EMPTY_SOURCE_FILE(diagnostics_rt_mono);

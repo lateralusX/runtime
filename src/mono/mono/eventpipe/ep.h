@@ -292,10 +292,10 @@ ep_perf_frequency_query (void)
 
 static
 inline
-ep_filetime_t
-ep_system_file_time_get (void)
+ep_system_timestamp_t
+ep_system_timestamp_get (void)
 {
-	return (ep_filetime_t)ep_rt_system_file_time_get ();
+	return (ep_system_timestamp_t)ep_rt_system_timestamp_get ();
 }
 
 static

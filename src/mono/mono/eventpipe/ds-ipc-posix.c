@@ -556,7 +556,7 @@ ds_ipc_close (
 		if (!is_shutdown) {
 			int close_result;
 			DS_ENTER_BLOCKING_PAL_SECTION;
-			close_result = close(ipc->server_socket);
+			close_result = close (ipc->server_socket);
 			DS_EXIT_BLOCKING_PAL_SECTION;
 
 			if (close_result == -1) {

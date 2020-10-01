@@ -190,7 +190,7 @@ ep_session_alloc (
 		break;
 	}
 
-	instance->session_start_time = ep_system_file_time_get ();
+	instance->session_start_time = ep_system_timestamp_get ();
 	instance->session_start_timestamp = ep_perf_timestamp_get ();
 
 ep_on_exit:

@@ -56,7 +56,7 @@ ep_rt_mono_system_time_get (EventPipeSystemTime *system_time)
 }
 
 int64_t
-ep_rt_mono_system_file_time_get (void)
+ep_rt_mono_system_timestamp_get (void)
 {
 	FILETIME value;
 	GetSystemTimeAsFileTime (&value);
@@ -216,7 +216,7 @@ system_time_to_int64 (
 }
 
 int64_t
-ep_rt_mono_system_file_time_get (void)
+ep_rt_mono_system_timestamp_get (void)
 {
 #if HAVE_CLOCK_MONOTONIC
 	struct timespec time;
@@ -234,5 +234,4 @@ ep_rt_mono_system_file_time_get (void)
 
 #endif /* ENABLE_PERFTRACING */
 
-extern const char quiet_linker_empty_file_warning_eventpipe_rt_mono;
-const char quiet_linker_empty_file_warning_eventpipe_rt_mono = 0;
+MONO_EMPTY_SOURCE_FILE(eventpipe_rt_mono);

@@ -114,8 +114,10 @@ eventpipe_thread_attach (gboolean background_thread)
 	// NOTE, under netcore, only root domain exists.
 	if (!mono_thread_current ()) {
 		thread = mono_thread_attach (mono_get_root_domain ());
-		if (background_thread)
+		if (background_thread) {
 			mono_thread_set_state (thread, ThreadState_Background);
+			mono_thread_info_set_flags (MONO_THREAD_INFO_FLAGS_NO_SAMPLE);
+		}
 	}
 
 	return thread;
@@ -601,4 +603,4 @@ ves_icall_System_Diagnostics_Tracing_EventPipeInternal_WriteEventData (
 #endif /* ENABLE_PERFTRACING */
 #endif /* ENABLE_NETCORE */
 
-MONO_EMPTY_SOURCE_FILE (eventpipe_rt_mono);
+MONO_EMPTY_SOURCE_FILE (icall_eventpipe);

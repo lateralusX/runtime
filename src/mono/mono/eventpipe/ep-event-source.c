@@ -15,14 +15,14 @@
 
 #if defined(HOST_WINDOWS) || defined(HOST_WIN32)
 const ep_char8_t* _ep_os_info = "Windows";
-#elif defined(HOST_DARWIN)
-const ep_char8_t* _ep_os_info = "macOS";
 #elif defined(HOST_IOS)
 const ep_char8_t* _ep_os_info = "iOS";
 #elif defined(HOST_WATCHOS)
 const ep_char8_t* _ep_os_info = "WatchOS";
 #elif defined(HOST_TVOS)
 const ep_char8_t* _ep_os_info = "tvOS";
+#elif defined(__APPLE__)
+const ep_char8_t* _ep_os_info = "macOS";
 #elif defined(HOST_ANDROID)
 const ep_char8_t* _ep_os_info = "Android";
 #elif defined(__linux__)

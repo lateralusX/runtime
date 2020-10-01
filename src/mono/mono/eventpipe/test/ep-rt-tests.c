@@ -122,14 +122,14 @@ ep_on_error:
 }
 
 static RESULT
-test_rt_system_file_time (void)
+test_rt_system_timestamp (void)
 {
 	RESULT result = NULL;
 	uint32_t test_location = 0;
 
-	ep_filetime_t start = ep_system_file_time_get ();
+	ep_system_timestamp_t start = ep_system_timestamp_get ();
 	g_usleep (10 * 1000);
-	ep_filetime_t stop = ep_system_file_time_get ();
+	ep_system_timestamp_t stop = ep_system_timestamp_get ();
 
 	test_location = 1;
 
@@ -162,7 +162,7 @@ static Test ep_rt_tests [] = {
 	{"test_rt_perf_frequency", test_rt_perf_frequency},
 	{"test_rt_perf_timestamp", test_rt_perf_timestamp},
 	{"test_rt_system_time", test_rt_system_time},
-	{"test_rt_system_file_time", test_rt_system_file_time},
+	{"test_rt_system_timestamp", test_rt_system_timestamp},
 	{"test_rt_teardown", test_rt_teardown},
 	{NULL, NULL}
 };

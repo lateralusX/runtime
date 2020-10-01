@@ -436,7 +436,7 @@ ep_rt_system_time_get (EventPipeSystemTime *system_time);
 
 static
 int64_t
-ep_rt_system_file_time_get (void);
+ep_rt_system_timestamp_get (void);
 
 static
 int32_t
