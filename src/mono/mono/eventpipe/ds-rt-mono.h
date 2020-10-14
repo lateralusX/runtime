@@ -43,6 +43,9 @@
 #undef DS_LOG_WARNING_2
 #define DS_LOG_WARNING_2(msg, data1, data2)
 
+#undef DS_LOG_DEBUG_0
+#define DS_LOG_DEBUG_0(msg)
+
 #undef DS_ENTER_BLOCKING_PAL_SECTION
 #define DS_ENTER_BLOCKING_PAL_SECTION \
 	MONO_REQ_GC_UNSAFE_MODE \
@@ -59,6 +62,42 @@
 
 #define DS_RT_DEFINE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
 	EP_RT_DEFINE_ARRAY_ITERATOR_PREFIX(ds, array_name, array_type, iterator_type, item_type)
+
+/*
+* AutoTrace.
+*/
+
+static
+inline
+void
+ds_rt_auto_trace_init (void)
+{
+	// TODO: Implement.
+}
+
+static
+inline
+void
+ds_rt_auto_trace_launch (void)
+{
+	// TODO: Implement.
+}
+
+static
+inline
+void
+ds_rt_auto_trace_signal (void)
+{
+	// TODO: Implement.
+}
+
+static
+inline
+void
+ds_rt_auto_trace_wait (void)
+{
+	// TODO: Implement.
+}
 
 /*
  * DiagnosticsConfiguration.
@@ -87,15 +126,28 @@ ds_rt_config_value_get_ports (void)
 
 static
 inline
-int32_t
+uint32_t
 ds_rt_config_value_get_default_port_suspend (void)
 {
-	int32_t value_int32_t = 0;
+	uint32_t value_uint32_t = 0;
 	gchar *value = g_getenv ("DOTNET_DefaultDiagnosticPortSuspend");
 	if (value)
-		value_int32_t = atoi (value);
+		value_uint32_t = (uint32_t)atoi (value);
 	g_free (value);
-	return value_int32_t;
+	return value_uint32_t;
+}
+
+/*
+* DiagnosticsDump.
+*/
+
+static
+inline
+uint32_t
+ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
+{
+	// TODO: Implement.
+	return DS_IPC_E_NOTSUPPORTED;
 }
 
 /*
@@ -133,6 +185,19 @@ DS_RT_DEFINE_ARRAY_ITERATOR (port_array, ds_rt_port_array_t, ds_rt_port_array_it
 
 DS_RT_DEFINE_ARRAY (port_config_array, ds_rt_port_config_array_t, ds_rt_port_config_array_iterator_t, ep_char8_t *)
 DS_RT_DEFINE_ARRAY_ITERATOR (port_config_array, ds_rt_port_config_array_t, ds_rt_port_config_array_iterator_t, ep_char8_t *)
+
+/*
+* DiagnosticsProfiler.
+*/
+
+static
+inline
+uint32_t
+ds_rt_profiler_attach (DiagnosticsAttachProfilerCommandPayload *payload)
+{
+	// TODO: Implement.
+	return DS_IPC_E_NOTSUPPORTED;
+}
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */

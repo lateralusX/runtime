@@ -8,6 +8,7 @@ if (CLR_CMAKE_TARGET_WIN32)
 endif (CLR_CMAKE_TARGET_WIN32)
 
 add_library_clr(cee_wks_core OBJECT ${VM_SOURCES_WKS} ${VM_SOURCES_WKS_ARCH_ASM})
+add_library_clr(cee_wks_core_eventpipe OBJECT ${VM_EVENTPIPE_SOURCES_WKS})
 add_library_clr(cee_wks_obj OBJECT ${VM_SOURCES_WKS_SPECIAL})
 add_library_clr(cee_wks_mergeable_obj OBJECT ${VM_SOURCES_WKS_SPECIAL})
 
@@ -21,6 +22,7 @@ if (MSVC)
 endif()
 
 add_dependencies(cee_wks_core eventing_headers)
+add_dependencies(cee_wks_core_eventpipe eventing_headers)
 add_dependencies(cee_wks_obj eventing_headers)
 add_dependencies(cee_wks_mergeable_obj eventing_headers)
 
@@ -55,6 +57,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     )
 
     add_dependencies(cee_wks_core asmconstants_inc)
+    add_dependencies(cee_wks_core_eventpipe asmconstants_inc)
     add_dependencies(cee_wks_obj asmconstants_inc)
     add_dependencies(cee_wks_mergeable_obj asmconstants_inc)
 
@@ -64,6 +67,7 @@ endif (CLR_CMAKE_TARGET_WIN32)
 
 add_custom_target(preprocessd_asm DEPENDS ${VM_WKS_ARCH_ASM_OBJECTS})
 add_dependencies(cee_wks_core preprocessd_asm)
+add_dependencies(cee_wks_core_eventpipe preprocessd_asm)
 add_dependencies(cee_wks_obj preprocessd_asm)
 add_dependencies(cee_wks_mergeable_obj preprocessd_asm)
 
@@ -74,4 +78,4 @@ target_compile_definitions(cee_wks_mergeable_obj PUBLIC CORECLR_EMBEDDED)
 add_library(cee_wks INTERFACE)
 target_sources(cee_wks INTERFACE $<TARGET_OBJECTS:cee_wks_obj> ${VM_WKS_ARCH_ASM_OBJECTS})
 add_library(cee_wks_mergeable INTERFACE)
-target_sources(cee_wks_mergeable INTERFACE $<TARGET_OBJECTS:cee_wks_mergeable_obj> $<TARGET_OBJECTS:cee_wks_core> ${VM_WKS_ARCH_ASM_OBJECTS})
+target_sources(cee_wks_mergeable INTERFACE $<TARGET_OBJECTS:cee_wks_mergeable_obj> $<TARGET_OBJECTS:cee_wks_core> $<TARGET_OBJECTS:cee_wks_core_eventpipe> ${VM_WKS_ARCH_ASM_OBJECTS})

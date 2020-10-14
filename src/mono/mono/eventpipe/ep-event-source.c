@@ -144,6 +144,7 @@ ep_event_source_init (EventPipeEventSource *event_source)
 
 	ep_raise_error_if_nok (event_source->process_info_event);
 
+ep_on_exit:
 	// Delete the metadata after the event is created.
 	// The metadata blob will be copied into EventPipe-owned memory.
 	ep_rt_byte_array_free (metadata);
@@ -155,13 +156,9 @@ ep_event_source_init (EventPipeEventSource *event_source)
 	ep_rt_utf16_string_free (os_info_arg_utf16);
 	ep_rt_utf16_string_free (command_line_arg_utf16);
 
-ep_on_exit:
 	return event_source;
 
 ep_on_error:
-	ep_rt_byte_array_free (metadata);
-	ep_rt_utf16_string_free (event_name_utf16);
-	ep_rt_utf16_string_free (command_line_arg_utf16);
 	ep_event_source_free (event_source);
 
 	event_source = NULL;
@@ -180,6 +177,7 @@ ep_event_source_free (EventPipeEventSource *event_source)
 {
 	ep_return_void_if_nok (event_source);
 	event_source_fini (event_source);
+	ep_rt_object_free (event_source);
 }
 
 void

@@ -6,6 +6,7 @@
 
 #define EP_IMPL_EVENT_INSTANCE_GETTER_SETTER
 #include "ep.h"
+#include "ep-event.h"
 #include "ep-event-instance.h"
 #include "ep-stream.h"
 #include "ep-rt.h"
@@ -134,7 +135,7 @@ ep_event_instance_get_aligned_total_size (
 			// Metadata ID
 			sizeof (ep_event_instance->metadata_id) +
 			// Thread ID
-			sizeof (int32_t) +
+			sizeof (uint32_t) +
 			// TimeStamp
 			sizeof (ep_event_instance->timestamp) +
 			// Activity ID
@@ -156,7 +157,7 @@ ep_event_instance_get_aligned_total_size (
 			// Sequence number (implied by the buffer containing the event instance)
 			sizeof (uint32_t) +
 			// Thread ID
-			sizeof (int32_t) +
+			sizeof (ep_event_instance->thread_id) +
 			// Capture Thread ID (implied by the buffer containing the event instance)
 			sizeof (uint64_t) +
 			// ProcNumber
@@ -184,6 +185,41 @@ ep_event_instance_get_aligned_total_size (
 	return payload_len;
 }
 
+//TODO: Implement when needed.
+//#ifdef EP_CHECKED_BUILD
+//#define MAX_JSON_FILE_MESSAGE_BUFFER_SIZE 512
+//void
+//ep_event_instance_serialize_to_json_file (
+//	EventPipeEventInstance *ep_event_instance,
+//	EventPipeJsonFile *file)
+//{
+//	ep_return_void_if_nok (ep_event_instance != NULL);
+//	ep_return_void_if_nok (file != NULL);
+//
+//
+//	ep_char8_t buffer [MAX_JSON_FILE_MESSAGE_BUFFER_SIZE];
+//	int32_t characters_written = -1;
+//	characters_written = ep_rt_utf8_string_snprintf (
+//		buffer,
+//		EP_ARRAY_SIZE (buffer),
+//		"Provider=%s/EventID=%d/Version=%d",
+//		ep_provider_get_provider_name (ep_event_get_provider (ep_event_instance->ep_event)),
+//		ep_event_get_id (ep_event_instance->ep_event),
+//		ep_event_get_version (ep_event_instance->ep_event));
+//
+//	if (characters_written > 0 && characters_written <= EP_ARRAY_SIZE (buffer))
+//		ep_json_file_write_event (ep_event_instance->timestamp, ep_event_instance->thread_id, buffer, &ep_event_instance->stack_contents);
+//}
+//#else
+//void
+//ep_event_instance_serialize_to_json_file (
+//	EventPipeEventInstance *ep_event_instance,
+//	EventPipeJsonFile *file)
+//{
+//	;
+//}
+//#endif
+
 /*
  * EventPipeSequencePoint.
  */
@@ -196,11 +232,9 @@ sequence_point_fini (EventPipeSequencePoint *sequence_point)
 
 	// Each entry in the map owns a ref-count on the corresponding thread
 	if (ep_rt_thread_sequence_number_map_count (&sequence_point->thread_sequence_numbers) != 0) {
-		ep_rt_thread_sequence_number_hash_map_iterator_t iterator;
-		for (
-			ep_rt_thread_sequence_number_map_iterator_begin (&sequence_point->thread_sequence_numbers, &iterator);
+		for (ep_rt_thread_sequence_number_hash_map_iterator_t iterator = ep_rt_thread_sequence_number_map_iterator_begin (&sequence_point->thread_sequence_numbers);
 			!ep_rt_thread_sequence_number_map_iterator_end (&sequence_point->thread_sequence_numbers, &iterator);
-			ep_rt_thread_sequence_number_map_iterator_next (&sequence_point->thread_sequence_numbers, &iterator)) {
+			ep_rt_thread_sequence_number_map_iterator_next (&iterator)) {
 
 			EventPipeThreadSessionState *key = ep_rt_thread_sequence_number_map_iterator_key (&iterator);
 			ep_thread_release (ep_thread_session_state_get_thread (key));

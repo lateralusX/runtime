@@ -29,14 +29,6 @@ void
 file_free_func (void *object);
 
 static
-uint32_t
-stack_hash_key_hash_func (const void *key);
-
-static
-bool
-stack_hash_key_eq_func (const void *key1, const void *key2);
-
-static
 void
 stack_hash_value_free_func (void *entry);
 
@@ -75,11 +67,11 @@ file_save_metadata_id (
 	uint32_t metadata_id);
 
 static
-int32_t
+uint32_t
 file_get_file_version (EventPipeSerializationFormat format);
 
 static
-int32_t
+uint32_t
 file_get_file_minimum_version (EventPipeSerializationFormat format);
 
 /*
@@ -126,28 +118,6 @@ file_vtable = {
 	file_free_func,
 	file_fast_serialize_func,
 	file_get_type_name_func };
-
-static
-uint32_t
-stack_hash_key_hash_func (const void *key)
-{
-	EP_ASSERT (key != NULL);
-	return ((const StackHashKey *)key)->hash;
-}
-
-static
-bool
-stack_hash_key_eq_func (const void *key1, const void *key2)
-{
-	EP_ASSERT (key1 != NULL);
-	EP_ASSERT (key2 != NULL);
-
-	const StackHashKey * stack_hash_key1 = (const StackHashKey *)key1;
-	const StackHashKey * stack_hash_key2 = (const StackHashKey *)key2;
-
-	return stack_hash_key1->stack_size_in_bytes == stack_hash_key2->stack_size_in_bytes &&
-		!memcmp (stack_hash_key1->stack_bytes, stack_hash_key2->stack_bytes, stack_hash_key1->stack_size_in_bytes);
-}
 
 static
 void
@@ -219,10 +189,9 @@ file_get_metadata_id (
 {
 	EP_ASSERT (file != NULL);
 	EP_ASSERT (ep_event != NULL);
-	EP_ASSERT (file->metadata_ids.table != NULL);
 
 	uint32_t metadata_ids;
-	if (ep_rt_metadata_labels_lookup (&file->metadata_ids, ep_event, &metadata_ids)) {
+	if (ep_rt_metadata_labels_hash_lookup (&file->metadata_ids, ep_event, &metadata_ids)) {
 		EP_ASSERT (metadata_ids != 0);
 		return metadata_ids;
 	}
@@ -287,19 +256,18 @@ file_save_metadata_id (
 	EP_ASSERT (file != NULL);
 	EP_ASSERT (ep_event != NULL);
 	EP_ASSERT (metadata_id > 0);
-	EP_ASSERT (file->metadata_ids.table != NULL);
 
 	// If a pre-existing metadata label exists, remove it.
 	uint32_t old_id;
-	if (ep_rt_metadata_labels_lookup (&file->metadata_ids, ep_event, &old_id))
-		ep_rt_metadata_labels_remove (&file->metadata_ids, ep_event);
+	if (ep_rt_metadata_labels_hash_lookup (&file->metadata_ids, ep_event, &old_id))
+		ep_rt_metadata_labels_hash_remove (&file->metadata_ids, ep_event);
 
 	// Add the metadata label.
-	ep_rt_metadata_labels_add (&file->metadata_ids, ep_event, metadata_id);
+	ep_rt_metadata_labels_hash_add (&file->metadata_ids, ep_event, metadata_id);
 }
 
 static
-int32_t
+uint32_t
 file_get_file_version (EventPipeSerializationFormat format)
 {
 	switch (format) {
@@ -314,7 +282,7 @@ file_get_file_version (EventPipeSerializationFormat format)
 }
 
 static
-int32_t
+uint32_t
 file_get_file_minimum_version (EventPipeSerializationFormat format)
 {
 	switch (format) {
@@ -360,17 +328,17 @@ ep_file_alloc (
 	instance->file_open_timestamp = ep_perf_timestamp_get ();
 	instance->timestamp_frequency = ep_perf_frequency_query ();
 
-	instance->pointer_size = SIZEOF_VOID_P;
+	instance->pointer_size = sizeof (void*);
 	instance->current_process_id = ep_rt_current_process_get_id ();
 	instance->number_of_processors = ep_rt_processors_get_count ();
 
 	instance->sampling_rate_in_ns = ep_rt_sample_profiler_get_sampling_rate ();
 
-	ep_rt_metadata_labels_alloc (&instance->metadata_ids, NULL, NULL, NULL, NULL);
-	ep_raise_error_if_nok (instance->metadata_ids.table);
+	ep_rt_metadata_labels_hash_alloc (&instance->metadata_ids, NULL, NULL, NULL, NULL);
+	//ep_raise_error_if_nok (instance->metadata_ids.table);
 
-	ep_rt_stack_hash_alloc (&instance->stack_hash, stack_hash_key_hash_func, stack_hash_key_eq_func, NULL, stack_hash_value_free_func);
-	ep_raise_error_if_nok (instance->stack_hash.table);
+	ep_rt_stack_hash_alloc (&instance->stack_hash, ep_stack_hash_key_hash, ep_stack_hash_key_equal, NULL, stack_hash_value_free_func);
+	//ep_raise_error_if_nok (instance->stack_hash.table);
 
 	// Start at 0 - The value is always incremented prior to use, so the first ID will be 1.
 	ep_rt_volatile_store_uint32_t (&instance->metadata_id_counter, 0);
@@ -405,7 +373,7 @@ ep_file_free (EventPipeFile *file)
 	ep_metadata_block_free (file->metadata_block);
 	ep_stack_block_free (file->stack_block);
 	ep_fast_serializer_free (file->fast_serializer);
-	ep_rt_metadata_labels_free (&file->metadata_ids);
+	ep_rt_metadata_labels_hash_free (&file->metadata_ids);
 	ep_rt_stack_hash_free (&file->stack_hash);
 
 	// If file has not been initialized, stream_writer ownership
@@ -560,6 +528,12 @@ ep_file_flush (
  * StackHashEntry.
  */
 
+StackHashKey *
+ep_stack_hash_entry_get_key (StackHashEntry *stack_hash_entry)
+{
+	return ep_stack_hash_entry_get_key_ref (stack_hash_entry);
+}
+
 StackHashEntry *
 ep_stack_hash_entry_alloc (
 	const EventPipeStackContents *stack_contents,
@@ -631,6 +605,26 @@ void
 ep_stack_hash_key_fini (StackHashKey *key)
 {
 	;
+}
+
+uint32_t
+ep_stack_hash_key_hash (const void *key)
+{
+	EP_ASSERT (key != NULL);
+	return ((const StackHashKey *)key)->hash;
+}
+
+bool
+ep_stack_hash_key_equal (const void *key1, const void *key2)
+{
+	EP_ASSERT (key1 != NULL);
+	EP_ASSERT (key2 != NULL);
+
+	const StackHashKey * stack_hash_key1 = (const StackHashKey *)key1;
+	const StackHashKey * stack_hash_key2 = (const StackHashKey *)key2;
+
+	return stack_hash_key1->stack_size_in_bytes == stack_hash_key2->stack_size_in_bytes &&
+		!memcmp (stack_hash_key1->stack_bytes, stack_hash_key2->stack_bytes, stack_hash_key1->stack_size_in_bytes);
 }
 
 #endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */

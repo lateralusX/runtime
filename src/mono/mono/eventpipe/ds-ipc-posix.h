@@ -1,7 +1,7 @@
 #ifndef __DIAGNOSTICS_IPC_POSIX_H__
 #define __DIAGNOSTICS_IPC_POSIX_H__
 
-#include <config.h>
+#include "rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
 #ifndef HOST_WIN32

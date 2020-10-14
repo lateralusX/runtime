@@ -96,8 +96,7 @@ provider_refresh_all_events (EventPipeProvider *provider)
 	const ep_rt_event_list_t *event_list = &provider->event_list;
 	EP_ASSERT (event_list != NULL);
 
-	ep_rt_event_list_iterator_t iterator;
-	for (ep_rt_event_list_iterator_begin (event_list, &iterator); !ep_rt_provider_list_iterator_end (event_list, &iterator); ep_rt_provider_list_iterator_next (event_list, &iterator))
+	for (ep_rt_event_list_iterator_t iterator = ep_rt_event_list_iterator_begin (event_list); !ep_rt_event_list_iterator_end (event_list, &iterator); ep_rt_event_list_iterator_next (&iterator))
 		provider_refresh_event_state (ep_rt_event_list_iterator_value (&iterator));
 
 	ep_requires_lock_held ();
@@ -180,8 +179,10 @@ ep_provider_alloc (
 	instance->provider_name = ep_rt_utf8_string_dup (provider_name);
 	ep_raise_error_if_nok (instance->provider_name != NULL);
 
-	instance->provider_name_utf16 = ep_rt_utf8_to_utf16_string (provider_name, ep_rt_utf8_string_len (provider_name));
+	instance->provider_name_utf16 = ep_rt_utf8_to_utf16_string (provider_name, -1);
 	ep_raise_error_if_nok (instance->provider_name_utf16 != NULL);
+
+	ep_rt_event_list_alloc (&instance->event_list);
 
 	instance->keywords = 0;
 	instance->provider_level = EP_EVENT_LEVEL_CRITICAL;
@@ -206,13 +207,22 @@ ep_provider_free (EventPipeProvider * provider)
 {
 	ep_return_void_if_nok (provider != NULL);
 
+	ep_requires_lock_not_held ();
+
 	if (provider->callback_data_free_func)
 		provider->callback_data_free_func (provider->callback_func, provider->callback_data);
 
-	ep_rt_event_list_free (&provider->event_list, event_free_func);
+	if (!ep_rt_event_list_is_empty (&provider->event_list)) {
+		ep_rt_config_aquire ();
+			ep_rt_event_list_free (&provider->event_list, event_free_func);
+		ep_rt_config_release ();
+	}
+
 	ep_rt_utf16_string_free (provider->provider_name_utf16);
 	ep_rt_utf8_string_free (provider->provider_name);
 	ep_rt_object_free (provider);
+
+	ep_requires_lock_not_held ();
 }
 
 EventPipeEvent *
@@ -356,7 +366,7 @@ provider_invoke_callback (EventPipeProviderCallbackData *provider_callback_data)
 		// the key and the second is the value.
 		// To convert to this format we need to convert all '=' and ';'
 		// characters to '\0', except when in a quoted string.
-		const uint32_t filter_data_len = ep_rt_utf8_string_len (filter_data);
+		const uint32_t filter_data_len = (uint32_t)strlen (filter_data);
 		uint32_t buffer_size = filter_data_len + 1;
 
 		buffer = ep_rt_byte_array_alloc (buffer_size);
@@ -387,7 +397,7 @@ provider_invoke_callback (EventPipeProviderCallbackData *provider_callback_data)
 	// NOTE: When we call the callback, we pass in enabled (which is either 1 or 0) as the ControlCode.
 	// If we want to add new ControlCode, we have to make corresponding change in ETW callback signature
 	// to address this. See https://github.com/dotnet/runtime/pull/36733 for more discussions on this.
-	if (callback_function && !ep_rt_process_detach ()) {
+	if (callback_function && !ep_rt_process_shutdown ()) {
 		(*callback_function)(
 			NULL, /* provider_id */
 			enabled ? 1 : 0, /* ControlCode */
@@ -407,6 +417,24 @@ ep_on_exit:
 
 ep_on_error:
 	ep_exit_error_handler ();
+}
+
+void
+provider_free (EventPipeProvider * provider)
+{
+	ep_return_void_if_nok (provider != NULL);
+
+	ep_requires_lock_held ();
+
+	if (provider->callback_data_free_func)
+		provider->callback_data_free_func (provider->callback_func, provider->callback_data);
+
+	if (!ep_rt_event_list_is_empty (&provider->event_list))
+		ep_rt_event_list_free (&provider->event_list, event_free_func);
+
+	ep_rt_utf16_string_free (provider->provider_name_utf16);
+	ep_rt_utf8_string_free (provider->provider_name);
+	ep_rt_object_free (provider);
 }
 
 #endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */
