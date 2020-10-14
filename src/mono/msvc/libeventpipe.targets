@@ -5,6 +5,9 @@
     <ExcludeEventPipeFromBuild Condition="'$(MONO_ENABLE_PERFTRACING)'=='' Or '$(MONO_ENABLE_PERFTRACING)'!='true'">true</ExcludeEventPipeFromBuild>
   </PropertyGroup>
   <ItemGroup Label="libeventpipe">
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ds-dump-protocol.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>

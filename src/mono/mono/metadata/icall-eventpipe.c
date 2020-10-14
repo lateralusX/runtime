@@ -362,32 +362,32 @@ ves_icall_System_Diagnostics_Tracing_EventPipeInternal_EventActivityIdControl (
 	/* GUID * */uint8_t *activity_id)
 {
 	int32_t result = 0;
-	EventPipeThread *thread = ep_thread_get_or_create ();
+	ep_rt_thread_activity_id_handle_t activity_id_handle = ep_thread_get_activity_id_handle ();
 
-	if (thread == NULL)
+	if (activity_id_handle == NULL)
 		return 1;
 
 	uint8_t current_activity_id [EP_ACTIVITY_ID_SIZE];
 	EventPipeActivityControlCode activity_control_code = (EventPipeActivityControlCode)control_code;
 	switch (activity_control_code) {
 	case EP_ACTIVITY_CONTROL_GET_ID:
-		ep_thread_get_activity_id (thread, activity_id, EP_ACTIVITY_ID_SIZE);
+		ep_thread_get_activity_id (activity_id_handle, activity_id, EP_ACTIVITY_ID_SIZE);
 		break;
 	case EP_ACTIVITY_CONTROL_SET_ID:
-		ep_thread_set_activity_id (thread, activity_id, EP_ACTIVITY_ID_SIZE);
+		ep_thread_set_activity_id (activity_id_handle, activity_id, EP_ACTIVITY_ID_SIZE);
 		break;
 	case EP_ACTIVITY_CONTROL_CREATE_ID:
 		ep_thread_create_activity_id (activity_id, EP_ACTIVITY_ID_SIZE);
 		break;
 	case EP_ACTIVITY_CONTROL_GET_SET_ID:
-		ep_thread_get_activity_id (thread, current_activity_id, EP_ACTIVITY_ID_SIZE);
-		ep_thread_set_activity_id (thread, activity_id, EP_ACTIVITY_ID_SIZE);
+		ep_thread_get_activity_id (activity_id_handle, current_activity_id, EP_ACTIVITY_ID_SIZE);
+		ep_thread_set_activity_id (activity_id_handle, activity_id, EP_ACTIVITY_ID_SIZE);
 		memcpy (activity_id, current_activity_id, EP_ACTIVITY_ID_SIZE);
 		break;
 	case EP_ACTIVITY_CONTROL_CREATE_SET_ID:
-		ep_thread_get_activity_id (thread, activity_id, EP_ACTIVITY_ID_SIZE);
+		ep_thread_get_activity_id (activity_id_handle, activity_id, EP_ACTIVITY_ID_SIZE);
 		ep_thread_create_activity_id (current_activity_id, EP_ACTIVITY_ID_SIZE);
-		ep_thread_set_activity_id (thread, current_activity_id, EP_ACTIVITY_ID_SIZE);
+		ep_thread_set_activity_id (activity_id_handle, current_activity_id, EP_ACTIVITY_ID_SIZE);
 		break;
 	default:
 		result = 1;

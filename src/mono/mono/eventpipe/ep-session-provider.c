@@ -83,6 +83,8 @@ ep_session_provider_list_alloc (
 	EventPipeSessionProviderList *instance = ep_rt_object_alloc (EventPipeSessionProviderList);
 	ep_raise_error_if_nok (instance != NULL);
 
+	ep_rt_session_provider_list_alloc (&instance->providers);
+
 	instance->catch_all_provider = NULL;
 
 	for (uint32_t i = 0; i < configs_len; ++i) {
@@ -136,7 +138,7 @@ bool
 ep_session_provider_list_is_empty (const EventPipeSessionProviderList *session_provider_list)
 {
 	EP_ASSERT (session_provider_list != NULL);
-	return (ep_rt_provider_list_is_empty (&session_provider_list->providers) && session_provider_list->catch_all_provider == NULL);
+	return (ep_rt_session_provider_list_is_empty (&session_provider_list->providers) && session_provider_list->catch_all_provider == NULL);
 }
 
 void

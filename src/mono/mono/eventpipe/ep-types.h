@@ -6,7 +6,6 @@
 #ifdef ENABLE_PERFTRACING
 #include <stdint.h>
 #include <stdbool.h>
-#include "ep-rt-types.h"
 
 #undef EP_IMPL_GETTER_SETTER
 #ifdef EP_IMPL_EP_GETTER_SETTER
@@ -157,6 +156,11 @@ typedef enum {
 	EP_STATE_SHUTTING_DOWN
 } EventPipeState;
 
+typedef enum {
+	EP_THREAD_TYPE_SERVER,
+	EP_THREAD_TYPE_SESSION
+} EventPipeThreadType;
+
 /*
  * EventPipe Basic Types.
  */
@@ -167,6 +171,8 @@ typedef char ep_char8_t;
 typedef unsigned short ep_char16_t;
 typedef int64_t ep_timestamp_t;
 typedef int64_t ep_system_timestamp_t;
+
+#include "ep-rt-types.h"
 
 /*
  * EventPipe Callbacks.
@@ -188,15 +194,15 @@ typedef void (*EventPipeCallbackDataFree)(
 
 typedef void (*EventPipeSessionSynchronousCallback)(
 	EventPipeProvider *provider,
-	int32_t event_id,
-	int32_t event_version,
+	uint32_t event_id,
+	uint32_t event_version,
 	uint32_t metadata_blob_len,
 	const uint8_t *metadata_blob,
 	uint32_t event_data_len,
 	const uint8_t *event_data,
 	const uint8_t *activity_id,
 	const uint8_t *related_activity_id,
-	EventPipeThread *event_thread,
+	ep_rt_thread_handle_t event_thread,
 	uint32_t stack_frames_len,
 	uintptr_t *stack_frames);
 
@@ -376,6 +382,30 @@ ep_provider_config_init (
 
 void
 ep_provider_config_fini (EventPipeProviderConfiguration *provider_config);
+
+static
+inline
+const ep_char8_t *
+ep_config_get_default_provider_name_utf8 (void)
+{
+	return "Microsoft-DotNETCore-EventPipeConfiguration";
+}
+
+static
+inline
+const ep_char8_t *
+ep_config_get_public_provider_name_utf8 (void)
+{
+	return "Microsoft-Windows-DotNETRuntime";
+}
+
+static
+inline
+const ep_char8_t *
+ep_config_get_rundown_provider_name_utf8 (void)
+{
+	return "Microsoft-Windows-DotNETRuntimeRundown";
+}
 
 /*
  * EventPipeSystemTime.

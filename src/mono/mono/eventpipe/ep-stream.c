@@ -154,7 +154,7 @@ fast_serializer_write_serialization_type (
 	// Write the SerializationType TypeName field.
 	const ep_char8_t *type_name = ep_fast_serializable_object_get_type_name_vcall (fast_serializable_ojbect);
 	if (type_name)
-		ep_fast_serializer_write_string (fast_serializer, type_name, (uint32_t)ep_rt_utf8_string_len (type_name));
+		ep_fast_serializer_write_string (fast_serializer, type_name, (uint32_t)strlen (type_name));
 
 	// Write the EndObject tag.
 	ep_fast_serializer_write_tag (fast_serializer, FAST_SERIALIZER_TAGS_END_OBJECT, NULL, 0);
@@ -247,7 +247,7 @@ ep_fast_serializer_write_string (
 	const ep_char8_t *contents,
 	uint32_t contents_len)
 {
-	// Write teh string length.
+	// Write the string length.
 	ep_fast_serializer_write_buffer (fast_serializer, (const uint8_t *)&contents_len, sizeof (contents_len));
 
 	//Wirte the string contents.
@@ -592,6 +592,8 @@ ep_ipc_stream_writer_write (
 	EP_ASSERT (buffer != NULL);
 	EP_ASSERT (bytes_to_write > 0);
 	EP_ASSERT (bytes_written != NULL);
+
+	ep_return_false_if_nok (buffer != NULL && bytes_to_write != 0);
 
 	bool result = false;
 

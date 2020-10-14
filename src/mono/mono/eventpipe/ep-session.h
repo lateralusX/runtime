@@ -53,6 +53,11 @@ struct _EventPipeSession_Internal {
 	EventPipeSerializationFormat format;
 	// For determininig if a particular session needs rundown events.
 	bool rundown_requested;
+	// Note - access to this field is NOT synchronized
+	// This functionality is a workaround because we couldn't safely enable/disable the session where we wanted to due to lock-leveling.
+	// we expect to remove it in the future once that limitation is resolved other scenarios are discouraged from using this given that
+	// we plan to make it go away
+	bool paused;
 };
 
 #if !defined(EP_INLINE_GETTER_SETTER) && !defined(EP_IMPL_SESSION_GETTER_SETTER)
@@ -146,12 +151,12 @@ ep_session_write_all_buffers_to_file (
 bool
 ep_session_write_event (
 	EventPipeSession *session,
-	EventPipeThread *thread,
+	ep_rt_thread_handle_t thread,
 	EventPipeEvent *ep_event,
 	EventPipeEventPayload *payload,
 	const uint8_t *activity_id,
 	const uint8_t *related_activity_id,
-	EventPipeThread *event_thread,
+	ep_rt_thread_handle_t event_thread,
 	EventPipeStackContents *stack);
 
 EventPipeEventInstance *
@@ -178,6 +183,14 @@ void
 ep_session_set_ipc_streaming_enabled (
 	EventPipeSession *session,
 	bool enabled);
+
+// Please do not use this function, see EventPipeSession paused field for more information.
+void
+ep_session_pause (EventPipeSession *session);
+
+// Please do not use this function, see EventPipeSession paused field for more information.
+void
+ep_session_resume (EventPipeSession *session);
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __EVENTPIPE_SESSION_H__ */

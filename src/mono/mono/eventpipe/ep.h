@@ -250,6 +250,15 @@ ep_write_event (
 	const uint8_t *activity_id,
 	const uint8_t *related_activity_id);
 
+void
+ep_write_sample_profile_event (
+	ep_rt_thread_handle_t sampling_thread,
+	EventPipeEvent *ep_event,
+	ep_rt_thread_handle_t target_thread,
+	EventPipeStackContents *stack,
+	uint8_t *event_data,
+	uint32_t event_data_len);
+
 EventPipeEventInstance *
 ep_get_next_event (EventPipeSessionID session_id);
 
@@ -261,9 +270,24 @@ inline
 bool
 ep_walk_managed_stack_for_current_thread (EventPipeStackContents *stack_contents)
 {
-	// TODO: Implement.
+	EP_ASSERT (stack_contents != NULL);
+
 	ep_stack_contents_reset (stack_contents);
-	return ep_rt_walk_managed_stack_for_current_thread (stack_contents);
+
+	ep_rt_thread_handle_t thread = ep_rt_thread_get_handle ();
+	return (thread != NULL) ? ep_rt_walk_managed_stack_for_thread (thread, stack_contents) : false;
+}
+
+static
+inline
+bool
+ep_walk_managed_stack_for_thread (ep_rt_thread_handle_t thread, EventPipeStackContents *stack_contents)
+{
+	EP_ASSERT (thread != NULL);
+	EP_ASSERT (stack_contents != NULL);
+
+	ep_stack_contents_reset (stack_contents);
+	return (thread != NULL) ? ep_rt_walk_managed_stack_for_thread (thread, stack_contents) : false;
 }
 
 /*

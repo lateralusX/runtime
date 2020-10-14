@@ -28,6 +28,27 @@ process_info_payload_flatten (
 	uint16_t *size);
 
 static
+uint16_t
+env_info_payload_get_size (DiagnosticsEnvironmentInfoPayload *payload);
+
+static
+uint32_t
+env_info_env_block_get_size (DiagnosticsEnvironmentInfoPayload *payload);
+
+static
+bool
+env_info_payload_flatten (
+	void *payload,
+	uint8_t **buffer,
+	uint16_t *size);
+
+static
+bool
+env_info_stream_env_block (
+	DiagnosticsEnvironmentInfoPayload *payload,
+	DiagnosticsIpcStream *stream);
+
+static
 void
 process_protocol_helper_get_process_info (
 	DiagnosticsIpcMessage *message,
@@ -166,6 +187,137 @@ ds_process_info_payload_fini (DiagnosticsProcessInfoPayload *payload)
 }
 
 /*
+ * DiagnosticsEnvironmentInfoPayload.
+ */
+
+static
+uint16_t
+env_info_payload_get_size (DiagnosticsEnvironmentInfoPayload *payload)
+{
+	EP_ASSERT (payload != NULL);
+
+	size_t size = 0;
+	size += sizeof (payload->incoming_bytes);
+	size += sizeof (payload->future);
+
+	EP_ASSERT (size <= UINT16_MAX);
+	return (uint16_t)size;
+}
+
+static
+uint32_t
+env_info_env_block_get_size (DiagnosticsEnvironmentInfoPayload *payload)
+{
+	EP_ASSERT (payload != NULL);
+
+	size_t size = 0;
+
+	size += sizeof (uint32_t);
+	size += (sizeof (uint32_t) * ep_rt_env_array_utf16_size (&payload->env_array));
+
+	ep_rt_env_array_utf16_iterator_t iterator = ep_rt_env_array_utf16_iterator_begin (&payload->env_array);
+	while (!ep_rt_env_array_utf16_iterator_end (&payload->env_array, &iterator)) {
+		size += ((ep_rt_utf16_string_len (ep_rt_env_array_utf16_iterator_value (&iterator)) + 1) * sizeof (ep_char16_t));
+		ep_rt_env_array_utf16_iterator_next (&iterator);
+	}
+
+	EP_ASSERT (size <= UINT32_MAX);
+	return (uint32_t)size;
+}
+
+static
+bool
+env_info_payload_flatten (
+	void *payload,
+	uint8_t **buffer,
+	uint16_t *size)
+{
+	DiagnosticsEnvironmentInfoPayload *env_info = (DiagnosticsEnvironmentInfoPayload*)payload;
+
+	EP_ASSERT (payload != NULL);
+	EP_ASSERT (buffer != NULL);
+	EP_ASSERT (*buffer != NULL);
+	EP_ASSERT (size != NULL);
+	EP_ASSERT (env_info_payload_get_size (env_info) == *size);
+
+	// see IPC spec @ https://github.com/dotnet/diagnostics/blob/master/documentation/design-docs/ipc-protocol.md
+	// for definition of serialization format
+
+	bool success = true;
+
+	// uint32_t incoming_bytes;
+	memcpy (*buffer, &env_info->incoming_bytes, sizeof (env_info->incoming_bytes));
+	*buffer += sizeof (env_info->incoming_bytes);
+	*size -= sizeof (env_info->incoming_bytes);
+
+	// uint16_t future;
+	memcpy(*buffer, &env_info->future, sizeof (env_info->future));
+	*buffer += sizeof (env_info->future);
+	*size -= sizeof (env_info->future);
+
+	// Assert we've used the whole buffer we were given
+	EP_ASSERT(*size == 0);
+
+	return success;
+}
+
+static
+bool
+env_info_stream_env_block (
+	DiagnosticsEnvironmentInfoPayload *payload,
+	DiagnosticsIpcStream *stream)
+{
+	DiagnosticsEnvironmentInfoPayload *env_info = (DiagnosticsEnvironmentInfoPayload*)payload;
+
+	EP_ASSERT (payload != NULL);
+	EP_ASSERT (stream != NULL);
+
+	// see IPC spec @ https://github.com/dotnet/diagnostics/blob/master/documentation/design-docs/ipc-protocol.md
+	// for definition of serialization format
+
+	bool success = true;
+	uint32_t bytes_written = 0;
+
+	// Array<Array<WCHAR>>
+	uint32_t env_len = (uint32_t)ep_rt_env_array_utf16_size (&env_info->env_array);
+	success &= ds_ipc_stream_write (stream, (const uint8_t *)&env_len, sizeof (env_len), &bytes_written, EP_INFINITE_WAIT);
+
+	ep_rt_env_array_utf16_iterator_t iterator = ep_rt_env_array_utf16_iterator_begin (&env_info->env_array);
+	while (!ep_rt_env_array_utf16_iterator_end (&env_info->env_array, &iterator)) {
+		success &= ds_ipc_message_try_write_string_utf16_t_to_stream (stream, ep_rt_env_array_utf16_iterator_value (&iterator));
+		ep_rt_env_array_utf16_iterator_next (&iterator);
+	}
+
+	return success;
+}
+
+DiagnosticsEnvironmentInfoPayload *
+ds_env_info_payload_init (DiagnosticsEnvironmentInfoPayload *payload)
+{
+	ep_return_null_if_nok (payload != NULL);
+
+	ep_rt_env_array_utf16_alloc (&payload->env_array);
+	ep_rt_os_environment_get_utf16 (&payload->env_array);
+
+	payload->incoming_bytes = env_info_env_block_get_size (payload);
+	payload->future = 0;
+
+	return payload;
+}
+
+void
+ds_env_info_payload_fini (DiagnosticsEnvironmentInfoPayload *payload)
+{
+	ep_rt_env_array_utf16_iterator_t iterator = ep_rt_env_array_utf16_iterator_begin (&payload->env_array);
+	while (!ep_rt_env_array_utf16_iterator_end (&payload->env_array, &iterator)) {
+		ep_rt_utf16_string_free (ep_rt_env_array_utf16_iterator_value (&iterator));
+		ep_rt_env_array_utf16_iterator_next (&iterator);
+	}
+
+	ep_rt_env_array_utf16_free (&payload->env_array);
+}
+
+/*
  * DiagnosticsProcessProtocolHelper.
  */
 
@@ -182,13 +334,7 @@ process_protocol_helper_get_process_info (
 	ep_char16_t *os_info = NULL;
 	ep_char16_t *arch_info = NULL;
 
-	if (ep_rt_managed_command_line_get ())
-		command_line = ep_rt_utf8_to_utf16_string (ep_rt_managed_command_line_get (), -1);
-
-	// Checkout https://github.com/dotnet/coreclr/pull/24433 for more information about this fall back.
-	if (!command_line)
-		// Use the result from ep_rt_os_command_line_get() instead
-		command_line = ep_rt_utf8_to_utf16_string (ep_rt_os_command_line_get (), -1);
+	command_line = ep_rt_utf8_to_utf16_string (ep_rt_diagnostics_command_line_get (), -1);
 
 	// get OS + Arch info
 	os_info = ep_rt_utf8_to_utf16_string (ep_event_source_get_os_info (), -1);
@@ -235,11 +381,28 @@ process_protocol_helper_get_process_env (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
-	// TODO: Implement.
-	ds_ipc_message_send_error (stream, DS_IPC_E_NOTSUPPORTED);
-	DS_LOG_WARNING_0 ("Get Process Environmnet not implemented\n");
+	DiagnosticsEnvironmentInfoPayload payload;
+	ds_env_info_payload_init (&payload);
 
+	ep_raise_error_if_nok (ds_ipc_message_initialize_buffer (
+		message,
+		ds_ipc_header_get_generic_success (),
+		(void *)&payload,
+		env_info_payload_get_size (&payload),
+		env_info_payload_flatten) == true);
+
+	ds_ipc_message_send (message, stream);
+	env_info_stream_env_block (&payload, stream);
+
+ep_on_exit:
+	ds_env_info_payload_fini (&payload);
 	ds_ipc_stream_free (stream);
+	return;
+
+ep_on_error:
+	ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
+	DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
+	ep_exit_error_handler ();
 }
 
 static
@@ -268,7 +431,7 @@ process_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
-	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_message_header_get_commandset (ds_ipc_message_get_header (&message)));
+	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (message)));
 	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 	ds_ipc_stream_free (stream);
 }

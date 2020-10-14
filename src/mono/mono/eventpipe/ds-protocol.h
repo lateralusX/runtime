@@ -162,6 +162,11 @@ ds_ipc_message_try_write_string_utf16_t (
 	const ep_char16_t *value);
 
 bool
+ds_ipc_message_try_write_string_utf16_t_to_stream (
+	DiagnosticsIpcStream *stream,
+	const ep_char16_t *value);
+
+bool
 ds_ipc_message_send (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
@@ -182,23 +187,11 @@ ds_ipc_message_send_success (
 	DiagnosticsIpcStream *stream,
 	uint32_t code);
 
-static
-inline
 const DiagnosticsIpcHeader *
-ds_ipc_header_get_generic_success (void)
-{
-	extern const DiagnosticsIpcHeader _ds_ipc_generic_success_header;
-	return &_ds_ipc_generic_success_header;
-}
+ds_ipc_header_get_generic_success (void);
 
-static
-inline
 const DiagnosticsIpcHeader *
-ds_ipc_header_get_generic_error (void)
-{
-	extern const DiagnosticsIpcHeader _ds_ipc_generic_error_header;
-	return &_ds_ipc_generic_error_header;
-}
+ds_ipc_header_get_generic_error (void);
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_PROTOCOL_H__ */

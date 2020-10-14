@@ -12,7 +12,7 @@
 #include "ep-rt.h"
 
 static ep_rt_spin_lock_handle_t _ep_threads_lock = {0};
-static ep_rt_thread_array_t _ep_threads = {0};
+static ep_rt_thread_list_t _ep_threads = {0};
 
 /*
  * Forward declares of all static functions.
@@ -39,7 +39,7 @@ ep_thread_alloc (void)
 	memset (instance->session_state, 0, sizeof (instance->session_state));
 
 	ep_rt_spin_lock_aquire (&_ep_threads_lock);
-		ep_rt_thread_array_append (&_ep_threads, instance);
+		ep_rt_thread_list_append (&_ep_threads, instance);
 	ep_rt_spin_lock_release (&_ep_threads_lock);
 
 ep_on_exit:
@@ -66,16 +66,15 @@ ep_thread_free (EventPipeThread *thread)
 
 	ep_rt_spin_lock_aquire (&_ep_threads_lock);
 		// Remove ourselves from the global list
-		ep_rt_thread_array_iterator_t iterator;
+		ep_rt_thread_list_iterator_t iterator = ep_rt_thread_list_iterator_begin (&_ep_threads);
 		bool found = false;
-		ep_rt_thread_array_iterator_begin (&_ep_threads, &iterator);
-		while (!ep_rt_thread_array_iterator_end (&_ep_threads, &iterator)) {
-			if (ep_rt_thread_array_iterator_value (&iterator) == thread) {
-				ep_rt_thread_array_remove (&_ep_threads, &iterator);
+		while (!ep_rt_thread_list_iterator_end (&_ep_threads, &iterator)) {
+			if (ep_rt_thread_list_iterator_value (&iterator) == thread) {
+				ep_rt_thread_list_remove (&_ep_threads, thread);
 				found = true;
 				break;
 			}
-			ep_rt_thread_array_iterator_next (&_ep_threads, &iterator);
+			ep_rt_thread_list_iterator_next (&iterator);
 		}
 	ep_rt_spin_lock_release (&_ep_threads_lock);
 
@@ -104,14 +103,14 @@ void
 ep_thread_init (void)
 {
 	ep_rt_spin_lock_alloc (&_ep_threads_lock);
-	ep_rt_thread_array_alloc (&_ep_threads);
+	ep_rt_thread_list_alloc (&_ep_threads);
 }
 
 void
 ep_thread_fini (void)
 {
-	EP_ASSERT (ep_rt_thread_array_size (&_ep_threads) == 0);
-	ep_rt_thread_array_free (&_ep_threads);
+	EP_ASSERT (ep_rt_thread_list_is_empty (&_ep_threads) == true);
+	ep_rt_thread_list_free (&_ep_threads, NULL);
 	ep_rt_spin_lock_free (&_ep_threads_lock);
 }
 
@@ -133,52 +132,17 @@ ep_thread_get_threads (ep_rt_thread_array_t *threads)
 	EP_ASSERT (threads != NULL);
 
 	ep_rt_spin_lock_aquire (&_ep_threads_lock);
-		ep_rt_thread_array_iterator_t threads_iterator;
-		ep_rt_thread_array_iterator_begin (&_ep_threads, &threads_iterator);
-		while (!ep_rt_thread_array_iterator_end (&_ep_threads, &threads_iterator)) {
-			EventPipeThread *thread = ep_rt_thread_array_iterator_value (&threads_iterator);
+		ep_rt_thread_list_iterator_t threads_iterator = ep_rt_thread_list_iterator_begin (&_ep_threads);
+		while (!ep_rt_thread_list_iterator_end (&_ep_threads, &threads_iterator)) {
+			EventPipeThread *thread = ep_rt_thread_list_iterator_value (&threads_iterator);
 			if (thread) {
 				// Add ref so the thread doesn't disappear when we release the lock
 				ep_thread_addref (thread);
 				ep_rt_thread_array_append (threads, thread);
 			}
-			ep_rt_thread_array_iterator_next (&_ep_threads, &threads_iterator);
+			ep_rt_thread_list_iterator_next (&threads_iterator);
 		}
 	ep_rt_spin_lock_release (&_ep_threads_lock);
-}
-
-void
-ep_thread_create_activity_id (
-	uint8_t *activity_id,
-	uint32_t activity_id_len)
-{
-	ep_rt_create_activity_id (activity_id, activity_id_len);
-}
-
-void
-ep_thread_get_activity_id (
-	EventPipeThread *thread,
-	uint8_t *activity_id,
-	uint32_t activity_id_len)
-{
-	EP_ASSERT (thread != NULL);
-	EP_ASSERT (activity_id != NULL);
-	EP_ASSERT (activity_id_len == EP_ACTIVITY_ID_SIZE);
-
-	memcpy (activity_id, &thread->activity_id, EP_ACTIVITY_ID_SIZE);
-}
-
-void
-ep_thread_set_activity_id (
-	EventPipeThread *thread,
-	const uint8_t *activity_id,
-	uint32_t activity_id_len)
-{
-	EP_ASSERT (thread != NULL);
-	EP_ASSERT (activity_id != NULL);
-	EP_ASSERT (activity_id_len == EP_ACTIVITY_ID_SIZE);
-
-	memcpy (thread->activity_id, activity_id, EP_ACTIVITY_ID_SIZE);
 }
 
 void
