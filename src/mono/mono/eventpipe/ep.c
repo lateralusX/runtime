@@ -17,6 +17,7 @@
 #include "ep-file.c"
 #include "ep-metadata-generator.c"
 #include "ep-provider.c"
+#include "ep-sample-profiler.c"
 #include "ep-session.c"
 #include "ep-session-provider.c"
 #include "ep-stack-contents.c"
@@ -33,6 +34,7 @@
 #include "ep-provider.h"
 #include "ep-provider-internals.h"
 #include "ep-session.h"
+#include "ep-sample-profiler.h"
 #endif
 
 static bool _ep_can_start_threads = false;
@@ -455,7 +457,7 @@ enable (
 	}
 
 	// Register the SampleProfiler the very first time (if supported).
-	ep_rt_sample_profiler_init (provider_callback_data_queue);
+	ep_sample_profiler_init (provider_callback_data_queue);
 
 	// Enable the EventPipe EventSource.
 	ep_event_source_enable (ep_event_source_get (), session);
@@ -475,7 +477,7 @@ enable (
 	config_enable_disable (ep_config_get (), session, provider_callback_data_queue, true);
 
 	if (session_requested_sampling (session))
-		ep_rt_sample_profiler_enable ();
+		ep_sample_profiler_enable ();
 
 ep_on_exit:
 	ep_requires_lock_held ();
@@ -514,7 +516,7 @@ disable_holding_lock (
 
 		if (session_requested_sampling (session)) {
 			// Disable the profiler.
-			ep_rt_sample_profiler_disable ();
+			ep_sample_profiler_disable ();
 		}
 
 		// Log the process information event.
@@ -843,7 +845,7 @@ bool
 session_requested_sampling (EventPipeSession *session)
 {
 	EP_ASSERT (session != NULL);
-	return ep_rt_session_provider_list_find_by_name (ep_session_provider_list_get_providers_cref (ep_session_get_providers (session)), "Microsoft-DotNETCore-SampleProfiler");
+	return ep_rt_session_provider_list_find_by_name (ep_session_provider_list_get_providers_cref (ep_session_get_providers (session)), ep_config_get_sample_profiler_provider_name_utf8 ());
 }
 
 // TODO: Replace with diagnostic server port implementation.
@@ -951,9 +953,9 @@ ep_enable_2 (
 		providers = ep_rt_object_array_alloc (EventPipeProviderConfiguration, providers_len);
 		ep_raise_error_if_nok (providers != NULL);
 
-		ep_provider_config_init (&providers [0], ep_rt_utf8_string_dup ("Microsoft-Windows-DotNETRuntime"), 0x4c14fccbd, EP_EVENT_LEVEL_VERBOSE, NULL);
-		ep_provider_config_init (&providers [1], ep_rt_utf8_string_dup ("Microsoft-Windows-DotNETRuntimePrivate"), 0x4002000b, EP_EVENT_LEVEL_VERBOSE, NULL);
-		ep_provider_config_init (&providers [2], ep_rt_utf8_string_dup ("Microsoft-DotNETCore-SampleProfiler"), 0x0, EP_EVENT_LEVEL_VERBOSE, NULL);
+		ep_provider_config_init (&providers [0], ep_rt_utf8_string_dup (ep_config_get_public_provider_name_utf8 ()), 0x4c14fccbd, EP_EVENT_LEVEL_VERBOSE, NULL);
+		ep_provider_config_init (&providers [1], ep_rt_utf8_string_dup (ep_config_get_private_provider_name_utf8 ()), 0x4002000b, EP_EVENT_LEVEL_VERBOSE, NULL);
+		ep_provider_config_init (&providers [2], ep_rt_utf8_string_dup (ep_config_get_sample_profiler_provider_name_utf8 ()), 0x0, EP_EVENT_LEVEL_VERBOSE, NULL);
 	} else {
 		// Count number of providers to parse.
 		while (*providers_config_to_parse != '\0') {
@@ -1260,7 +1262,7 @@ ep_init (void)
 
 	// Set the sampling rate for the sample profiler.
 	const uint32_t default_profiler_sample_rate_in_nanoseconds = 1000000; // 1 msec.
-	ep_rt_sample_profiler_set_sampling_rate (default_profiler_sample_rate_in_nanoseconds);
+	ep_sample_profiler_set_sampling_rate (default_profiler_sample_rate_in_nanoseconds);
 
 	ep_rt_session_id_array_alloc (&_ep_deferred_enable_session_ids);
 	ep_rt_session_id_array_alloc (&_ep_deferred_disable_session_ids);
@@ -1298,7 +1300,7 @@ ep_finish_init (void)
 			ep_rt_session_id_array_clear (&_ep_deferred_enable_session_ids);
 		}
 
-		ep_rt_sample_profiler_can_start_sampling ();
+		ep_sample_profiler_can_start_sampling ();
 	EP_LOCK_EXIT (section1)
 
 	// release lock in case someone tried to disable while we held it
@@ -1350,6 +1352,10 @@ ep_shutdown (void)
 	// dotnet/coreclr: issue 24850: EventPipe shutdown race conditions
 	// Deallocating providers/events here might cause AV if a WriteEvent
 	// was to occur. Thus, we are not doing this cleanup.
+
+	/*EP_LOCK_ENTER (section1)
+		ep_sample_profiler_shutdown ();
+	EP_LOCK_EXIT (section1)*/
 
 	// // Remove EventPipeEventSource first since it tries to use the data structures that we remove below.
 	// // We need to do this after disabling sessions since those try to write to EventPipeEventSource.

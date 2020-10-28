@@ -648,49 +648,11 @@ ep_rt_config_value_get_circular_mb (void)
 static
 inline
 void
-ep_rt_sample_profiler_init (EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
+ep_rt_sample_profiler_write_sampling_event_for_threads (ep_rt_thread_handle_t sampling_thread, EventPipeEvent *sampling_event)
 {
-	// SampleProfiler::Initialize (provider_callback_data_queue);
-}
 
-static
-inline
-void
-ep_rt_sample_profiler_enable (void)
-{
-	// SampleProfiler::Enable ();
-}
-
-static
-inline
-void
-ep_rt_sample_profiler_disable (void)
-{
-	// SampleProfiler::Disable ();
-}
-
-static
-inline
-uint32_t
-ep_rt_sample_profiler_get_sampling_rate (void)
-{
-	return 0;
-	// return SampleProfiler::GetSamplingRate ()
-}
-
-static
-inline
-void
-ep_rt_sample_profiler_set_sampling_rate (uint32_t nanoseconds)
-{
-	// SampleProfiler::SetSamplingRate (nanoseconds);
-}
-
-static
-void
-ep_rt_sample_profiler_can_start_sampling (void)
-{
-	// SampleProfiler::CanStartSampling ();
+	extern void ep_rt_coreclr_sample_profiler_write_sampling_event_for_threads (ep_rt_thread_handle_t sampling_thread, EventPipeEvent *sampling_event);
+	ep_rt_coreclr_sample_profiler_write_sampling_event_for_threads (sampling_thread, sampling_event);
 }
 
 static
@@ -950,19 +912,24 @@ ep_rt_object_free (void *ptr)
  * PAL.
  */
 
+typedef struct ep_rt_thread_params_t {
+	ep_rt_thread_handle_t thread;
+	EventPipeThreadType thread_type;
+	ep_rt_thread_start_func thread_func;
+	void *thread_params;
+} ep_rt_thread_params_t;
+
 typedef struct _rt_coreclr_thread_params_internal_t {
-	Thread *thread;
-	LPTHREAD_START_ROUTINE thread_func;
-	LPVOID thread_params;
+	ep_rt_thread_params_t thread_params;
 } rt_coreclr_thread_params_internal_t;
 
 static
 DWORD WINAPI ep_rt_thread_coreclr_start_func (LPVOID params)
 {
 	rt_coreclr_thread_params_internal_t *thread_params = reinterpret_cast<rt_coreclr_thread_params_internal_t *>(params);
-	DWORD result = thread_params->thread_func (thread_params->thread_params);
-	if (thread_params->thread)
-		::DestroyThread (thread_params->thread);
+	DWORD result = thread_params->thread_params.thread_func (thread_params);
+	if (thread_params->thread_params.thread)
+		::DestroyThread (thread_params->thread_params.thread);
 	delete thread_params;
 	return result;
 }
@@ -979,15 +946,16 @@ ep_rt_thread_create (
 	bool result = false;
 
 	rt_coreclr_thread_params_internal_t *thread_params = new (nothrow) rt_coreclr_thread_params_internal_t ();
+	thread_params->thread_params.thread_type = thread_type;
 	if (thread_params) {
-		if (thread_type == EP_THREAD_TYPE_SESSION) {
-			thread_params->thread = SetupUnstartedThread ();
-			thread_params->thread_func = reinterpret_cast<LPTHREAD_START_ROUTINE>(thread_func);
-			thread_params->thread_params = params;
-			if (thread_params->thread->CreateNewThread (0, ep_rt_thread_coreclr_start_func, thread_params)) {
-				thread_params->thread->SetBackground (TRUE);
-				thread_params->thread->StartThread ();
-				*reinterpret_cast<DWORD *>(id) = thread_params->thread->GetThreadId ();
+		if (thread_type == EP_THREAD_TYPE_SESSION || thread_type == EP_THREAD_TYPE_SAMPLING) {
+			thread_params->thread_params.thread = SetupUnstartedThread ();
+			thread_params->thread_params.thread_func = reinterpret_cast<LPTHREAD_START_ROUTINE>(thread_func);
+			thread_params->thread_params.thread_params = params;
+			if (thread_params->thread_params.thread->CreateNewThread (0, ep_rt_thread_coreclr_start_func, thread_params)) {
+				thread_params->thread_params.thread->SetBackground (TRUE);
+				thread_params->thread_params.thread->StartThread ();
+				*reinterpret_cast<DWORD *>(id) = thread_params->thread_params.thread->GetThreadId ();
 				result = true;
 			}
 		} else if (thread_type == EP_THREAD_TYPE_SERVER) {
@@ -1620,6 +1588,14 @@ ep_rt_thread_get_id (ep_rt_thread_handle_t thread_handle)
 {
 	EP_ASSERT (thread_handle != NULL);
 	return thread_handle->GetOSThreadId64 ();
+}
+
+static
+inline
+bool
+ep_rt_thread_has_started (ep_rt_thread_handle_t thread_handle)
+{
+	return thread_handle != NULL && thread_handle->HasStarted ();
 }
 
 static

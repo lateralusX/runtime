@@ -40,6 +40,7 @@ typedef struct _EventPipeProvider EventPipeProvider;
 typedef struct _EventPipeProviderCallbackData EventPipeProviderCallbackData;
 typedef struct _EventPipeProviderCallbackDataQueue EventPipeProviderCallbackDataQueue;
 typedef struct _EventPipeProviderConfiguration EventPipeProviderConfiguration;
+typedef struct _EventPipeSampleProfiler EventPipeSampleProfiler;
 typedef struct _EventPipeSession EventPipeSession;
 typedef struct _EventPipeSessionProvider EventPipeSessionProvider;
 typedef struct _EventPipeSessionProviderList EventPipeSessionProviderList;
@@ -106,9 +107,9 @@ typedef enum {
 	EP_PARAMETER_TYPE_OBJECT = 1,		// Instance that isn't a value
 	EP_PARAMETER_TYPE_DB_NULL = 2,		// Database null value
 	EP_PARAMETER_TYPE_BOOLEAN = 3,		// Boolean
-	EP_PARAMETER_TYPE_CHAR = 4,			// Unicode character
+	EP_PARAMETER_TYPE_CHAR = 4,		// Unicode character
 	EP_PARAMETER_TYPE_SBYTE = 5,		// Signed 8-bit integer
-	EP_PARAMETER_TYPE_BYTE = 6,			// Unsigned 8-bit integer
+	EP_PARAMETER_TYPE_BYTE = 6,		// Unsigned 8-bit integer
 	EP_PARAMETER_TYPE_INT16 = 7,		// Signed 16-bit integer
 	EP_PARAMETER_TYPE_UINT16 = 8,		// Unsigned 16-bit integer
 	EP_PARAMETER_TYPE_INT32 = 9,		// Signed 32-bit integer
@@ -128,6 +129,12 @@ typedef enum {
 	EP_METADATA_TAG_OPCODE = 1,
 	EP_METADATA_TAG_PARAMETER_PAYLOAD = 2
 } EventPipeMetadataTag;
+
+typedef enum {
+	EP_SAMPLE_PROFILER_SAMPLE_TYPE_ERROR = 0,
+	EP_SAMPLE_PROFILER_SAMPLE_TYPE_EXTERNAL = 1,
+	EP_SAMPLE_PROFILER_SAMPLE_TYPE_MANAGED = 2
+} EventPipeSampleProfilerSampleType;
 
 typedef enum {
 	// Default format used in .Net Core 2.0-3.0 Preview 6
@@ -158,7 +165,8 @@ typedef enum {
 
 typedef enum {
 	EP_THREAD_TYPE_SERVER,
-	EP_THREAD_TYPE_SESSION
+	EP_THREAD_TYPE_SESSION,
+	EP_THREAD_TYPE_SAMPLING
 } EventPipeThreadType;
 
 /*
@@ -402,9 +410,25 @@ ep_config_get_public_provider_name_utf8 (void)
 static
 inline
 const ep_char8_t *
+ep_config_get_private_provider_name_utf8 (void)
+{
+	return "Microsoft-Windows-DotNETRuntimePrivate";
+}
+
+static
+inline
+const ep_char8_t *
 ep_config_get_rundown_provider_name_utf8 (void)
 {
 	return "Microsoft-Windows-DotNETRuntimeRundown";
+}
+
+static
+inline
+const ep_char8_t *
+ep_config_get_sample_profiler_provider_name_utf8 (void)
+{
+	return "Microsoft-DotNETCore-SampleProfiler";
 }
 
 /*

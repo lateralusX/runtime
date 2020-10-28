@@ -70,6 +70,8 @@ eventpipe_sources = \
 	ep-thread.c	\
 	ep-thread.h	\
 	ep-types.h	\
+	ep-sample-profiler.c	\
+	ep-sample-profiler.h	\
 	ep-session.c	\
 	ep-session.h	\
 	ep-session-provider.c	\

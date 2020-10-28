@@ -814,51 +814,13 @@ ep_rt_config_value_get_circular_mb (void)
  */
 
 static
-inline
 void
-ep_rt_sample_profiler_init (EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
+ep_rt_sample_profiler_write_sampling_event_for_threads (ep_rt_thread_handle_t sampling_thread, EventPipeEvent *sampling_event)
 {
-	// TODO: Not supported.
-}
-
-static
-inline
-void
-ep_rt_sample_profiler_enable (void)
-{
-	// TODO: Not supported.
-}
-
-static
-inline
-void
-ep_rt_sample_profiler_disable (void)
-{
-	// TODO: Not supported.
-}
-
-static
-inline
-uint32_t
-ep_rt_sample_profiler_get_sampling_rate (void)
-{
-	// TODO: Not supported.
-	return 0;
-}
-
-static
-inline
-void
-ep_rt_sample_profiler_set_sampling_rate (uint32_t nanoseconds)
-{
-	// TODO: Not supported.
-}
-
-static
-void
-ep_rt_sample_profiler_can_start_sampling (void)
-{
-	// TODO: Not supported.
+	// TODO: Implement.
+	// Suspend threads.
+	// Stack walk each thread, write sample event.
+	// Resume threads.
 }
 
 static
@@ -1147,9 +1109,15 @@ ep_rt_object_free (void *ptr)
  * PAL.
  */
 
-typedef struct _rt_mono_thread_params_internal_t {
+typedef struct ep_rt_thread_params_t {
+	ep_rt_thread_handle_t thread;
+	EventPipeThreadType thread_type;
 	ep_rt_thread_start_func thread_func;
-	gpointer thread_params;
+	void *thread_params;
+} ep_rt_thread_params_t;
+
+typedef struct _rt_mono_thread_params_internal_t {
+	ep_rt_thread_params_t thread_params;
 	bool background_thread;
 } rt_mono_thread_params_internal_t;
 
@@ -1159,7 +1127,8 @@ EP_RT_DEFINE_THREAD_FUNC (ep_rt_thread_mono_start_func)
 
 	ep_rt_mono_thread_setup (thread_params->background_thread);
 
-	mono_thread_start_return_t result = thread_params->thread_func (thread_params->thread_params);
+	thread_params->thread_params.thread = ep_rt_thread_get_handle ();
+	mono_thread_start_return_t result = thread_params->thread_params.thread_func (thread_params);
 
 	ep_rt_mono_thread_teardown ();
 
@@ -1179,8 +1148,9 @@ ep_rt_thread_create (
 {
 	rt_mono_thread_params_internal_t *thread_params = g_new0 (rt_mono_thread_params_internal_t, 1);
 	if (thread_params) {
-		thread_params->thread_func = thread_func;
-		thread_params->thread_params = params;
+		thread_params->thread_params.thread_type = thread_type;
+		thread_params->thread_params.thread_func = thread_func;
+		thread_params->thread_params.thread_params = params;
 		thread_params->background_thread = true;
 #ifdef EP_RT_MONO_USE_STATIC_RUNTIME
 		return (bool)mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, thread_params, NULL, (ep_rt_thread_id_t *)id);
@@ -1738,6 +1708,14 @@ size_t
 ep_rt_thread_get_id (ep_rt_thread_handle_t thread_handle)
 {
 	return mono_thread_info_get_tid (thread_handle);
+}
+
+static
+inline
+bool
+ep_rt_thread_has_started (ep_rt_thread_handle_t thread_handle)
+{
+	return thread_handle == ep_rt_thread_get_handle ();
 }
 
 static

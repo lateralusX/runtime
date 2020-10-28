@@ -3,8 +3,10 @@
 #ifdef ENABLE_PERFTRACING
 #include "ep-rt-config.h"
 #include "ep-types.h"
-#include "ep-rt.h"
+#include "ep.h"
 #include "ep-stack-contents.h"
+#include "ep-rt.h"
+#include "threadsuspend.h"
 
 ep_rt_lock_handle_t _ep_rt_coreclr_config_lock_handle;
 CrstStatic _ep_rt_coreclr_config_lock;
@@ -23,13 +25,19 @@ uint32_t *_ep_rt_coreclr_proc_group_offsets;
 
 static
 StackWalkAction
-rt_coreclr_stack_walk_callback (
+stack_walk_callback (
 	CrawlFrame *frame,
 	EventPipeStackContents *stack_contents);
 
 static
+void
+walk_managed_stack_for_threads (
+	ep_rt_thread_handle_t sampling_thread,
+	EventPipeEvent *sampling_event);
+
+static
 StackWalkAction
-rt_coreclr_stack_walk_callback (
+stack_walk_callback (
 	CrawlFrame *frame,
 	EventPipeStackContents *stack_contents)
 {
@@ -86,12 +94,86 @@ ep_rt_coreclr_walk_managed_stack_for_thread (
 	bool gc_on_transitions = GC_ON_TRANSITIONS (FALSE);
 
 	StackWalkAction result = thread->StackWalkFrames (
-		(PSTACKWALKFRAMESCALLBACK)rt_coreclr_stack_walk_callback,
+		(PSTACKWALKFRAMESCALLBACK)stack_walk_callback,
 		stack_contents,
 		ALLOW_ASYNC_STACK_WALK | FUNCTIONSONLY | HANDLESKIPPEDFRAMES | ALLOW_INVALID_OBJECTS);
 
 	GC_ON_TRANSITIONS (gc_on_transitions);
 	return ((result == SWA_DONE) || (result == SWA_CONTINUE));
+}
+
+// The thread store lock must already be held by the thread before this function
+// is called.  ThreadSuspend::SuspendEE acquires the thread store lock.
+static
+void
+walk_managed_stack_for_threads (
+	ep_rt_thread_handle_t sampling_thread,
+	EventPipeEvent *sampling_event)
+{
+	CONTRACTL
+	{
+		NOTHROW;
+		GC_TRIGGERS;
+		MODE_PREEMPTIVE;
+	}
+	CONTRACTL_END;
+
+	Thread *target_thread = NULL;
+
+	EventPipeStackContents stack_contents;
+	EventPipeStackContents *current_stack_contents;
+	current_stack_contents = ep_stack_contents_init (&stack_contents);
+
+	EP_ASSERT (current_stack_contents != NULL);
+
+	// Iterate over all managed threads.
+	// Assumes that the ThreadStoreLock is held because we've suspended all threads.
+	while ((target_thread = ThreadStore::GetThreadList (target_thread)) != NULL) {
+		ep_stack_contents_reset (current_stack_contents);
+
+		// Walk the stack and write it out as an event.
+		if (ep_rt_coreclr_walk_managed_stack_for_thread (target_thread, current_stack_contents) && !ep_stack_contents_is_empty (current_stack_contents)) {
+			// Set the payload.  If the GC mode on suspension > 0, then the thread was in cooperative mode.
+			// Even though there are some cases where this is not managed code, we assume it is managed code here.
+			// If the GC mode on suspension == 0 then the thread was in preemptive mode, which we qualify as external here.
+			uint32_t payload_data = target_thread->GetGCModeOnSuspension () ? EP_SAMPLE_PROFILER_SAMPLE_TYPE_MANAGED : EP_SAMPLE_PROFILER_SAMPLE_TYPE_EXTERNAL;
+
+			// Write the sample.
+			ep_write_sample_profile_event (
+				sampling_thread,
+				sampling_event,
+				target_thread,
+				current_stack_contents,
+				(uint8_t *)&payload_data,
+				sizeof (payload_data));
+		}
+
+		// Reset the GC mode.
+		target_thread->ClearGCModeOnSuspension ();
+	}
+
+	ep_stack_contents_fini (current_stack_contents);
+}
+
+void
+ep_rt_coreclr_sample_profiler_write_sample_event_for_threads (
+	ep_rt_thread_handle_t sampling_thread,
+	EventPipeEvent *sampling_event)
+{
+	// Check to see if we can suspend managed execution.
+	if (ThreadSuspend::SysIsSuspendInProgress () || (ThreadSuspend::GetSuspensionThread () != 0))
+		return;
+
+	// Actually suspend managed execution.
+	ThreadSuspend::SuspendEE (ThreadSuspend::SUSPEND_REASON::SUSPEND_OTHER);
+
+	// Walk all managed threads and capture stacks.
+	walk_managed_stack_for_threads (sampling_thread, sampling_event);
+
+	// Resume managed execution.
+	ThreadSuspend::RestartEE (FALSE /* bFinishedGC */, TRUE /* SuspendSucceeded */);
+
+	return;
 }
 
 #endif /* ENABLE_PERFTRACING */

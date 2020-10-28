@@ -37,8 +37,13 @@ EP_RT_DEFINE_THREAD_FUNC (streaming_thread)
 	if (data == NULL)
 		return 1;
 
-	EventPipeSession *const session = (EventPipeSession *)data;
+	ep_rt_thread_params_t *thread_params = (ep_rt_thread_params_t *)data;
+
+	EventPipeSession *const session = (EventPipeSession *)thread_params->thread_params;
 	if (session->session_type != EP_SESSION_TYPE_IPCSTREAM)
+		return 1;
+
+	if (!thread_params->thread || !ep_rt_thread_has_started (thread_params->thread))
 		return 1;
 
 	session->ipc_streaming_thread = ep_thread_get_or_create ();

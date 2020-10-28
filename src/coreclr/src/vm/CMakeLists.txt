@@ -910,6 +910,7 @@ if(FEATURE_PERFTRACING)
         ../../../mono/mono/eventpipe/ep-metadata-generator.c
         ../../../mono/mono/eventpipe/ep-provider.c
         ../../../mono/mono/eventpipe/ep-thread.c
+        ../../../mono/mono/eventpipe/ep-sample-profiler.c
         ../../../mono/mono/eventpipe/ep-session.c
         ../../../mono/mono/eventpipe/ep-session-provider.c
         ../../../mono/mono/eventpipe/ep-stack-contents.c
@@ -937,6 +938,7 @@ if(FEATURE_PERFTRACING)
         ../../../mono/mono/eventpipe/ep-rt-types.h
         ../../../mono/mono/eventpipe/ep-thread.h
         ../../../mono/mono/eventpipe/ep-types.h
+        ../../../mono/mono/eventpipe/ep-sample-profiler.h
         ../../../mono/mono/eventpipe/ep-session.h
         ../../../mono/mono/eventpipe/ep-stack-contents.h
         ../../../mono/mono/eventpipe/ep-stream.h

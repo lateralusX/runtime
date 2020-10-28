@@ -115,6 +115,10 @@
     </ClCompile>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-thread.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-types.h"/>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ep-sample-profiler.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-sample-profiler.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ep-session.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>

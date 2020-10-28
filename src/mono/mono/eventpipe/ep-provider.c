@@ -419,6 +419,18 @@ ep_on_error:
 	ep_exit_error_handler ();
 }
 
+EventPipeProvider *
+provider_create (
+	const ep_char8_t *provider_name,
+	EventPipeCallback callback_func,
+	EventPipeCallbackDataFree callback_data_free_func,
+	void *callback_data,
+	EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
+{
+	ep_requires_lock_held ();
+	return config_create_provider (ep_config_get (), provider_name, callback_func, callback_data_free_func, callback_data, provider_callback_data_queue);
+}
+
 void
 provider_free (EventPipeProvider * provider)
 {
@@ -435,6 +447,45 @@ provider_free (EventPipeProvider * provider)
 	ep_rt_utf16_string_free (provider->provider_name_utf16);
 	ep_rt_utf8_string_free (provider->provider_name);
 	ep_rt_object_free (provider);
+}
+
+EventPipeEvent *
+provider_add_event (
+	EventPipeProvider *provider,
+	uint32_t event_id,
+	uint64_t keywords,
+	uint32_t event_version,
+	EventPipeEventLevel level,
+	bool need_stack,
+	const uint8_t *metadata,
+	uint32_t metadata_len)
+{
+	EP_ASSERT (provider != NULL);
+
+	ep_requires_lock_held ();
+
+	EventPipeEvent *instance = ep_event_alloc (
+		provider,
+		keywords,
+		event_id,
+		event_version,
+		level,
+		need_stack,
+		metadata,
+		metadata_len);
+
+	ep_raise_error_if_nok (instance != NULL);
+
+	ep_rt_event_list_append (&provider->event_list, instance);
+	provider_refresh_event_state (instance);
+
+ep_on_exit:
+	ep_requires_lock_held ();
+	return instance;
+
+ep_on_error:
+	instance = NULL;
+	ep_exit_error_handler ();
 }
 
 #endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */

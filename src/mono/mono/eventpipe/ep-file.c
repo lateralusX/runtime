@@ -10,6 +10,7 @@
 #include "ep-config.h"
 #include "ep-event-instance.h"
 #include "ep-file.h"
+#include "ep-sample-profiler.h"
 #include "ep-rt.h"
 
 /*
@@ -332,13 +333,11 @@ ep_file_alloc (
 	instance->current_process_id = ep_rt_current_process_get_id ();
 	instance->number_of_processors = ep_rt_processors_get_count ();
 
-	instance->sampling_rate_in_ns = ep_rt_sample_profiler_get_sampling_rate ();
+	instance->sampling_rate_in_ns = (uint32_t)ep_sample_profiler_get_sampling_rate ();
 
 	ep_rt_metadata_labels_hash_alloc (&instance->metadata_ids, NULL, NULL, NULL, NULL);
-	//ep_raise_error_if_nok (instance->metadata_ids.table);
 
 	ep_rt_stack_hash_alloc (&instance->stack_hash, ep_stack_hash_key_hash, ep_stack_hash_key_equal, NULL, stack_hash_value_free_func);
-	//ep_raise_error_if_nok (instance->stack_hash.table);
 
 	// Start at 0 - The value is always incremented prior to use, so the first ID will be 1.
 	ep_rt_volatile_store_uint32_t (&instance->metadata_id_counter, 0);

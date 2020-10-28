@@ -262,27 +262,7 @@ ep_rt_config_value_get_circular_mb (void);
 
 static
 void
-ep_rt_sample_profiler_init (EventPipeProviderCallbackDataQueue *provider_callback_data_queue);
-
-static
-void
-ep_rt_sample_profiler_enable (void);
-
-static
-void
-ep_rt_sample_profiler_disable (void);
-
-static
-uint32_t
-ep_rt_sample_profiler_get_sampling_rate (void);
-
-static
-void
-ep_rt_sample_profiler_set_sampling_rate (uint32_t nanoseconds);
-
-static
-void
-ep_rt_sample_profiler_can_start_sampling (void);
+ep_rt_sample_profiler_write_sampling_event_for_threads (ep_rt_thread_handle_t sampling_thread, EventPipeEvent *sampling_event);
 
 static
 void
@@ -675,6 +655,10 @@ ep_rt_thread_get_handle (void);
 static
 size_t
 ep_rt_thread_get_id (ep_rt_thread_handle_t thread_handle);
+
+static
+bool
+ep_rt_thread_has_started (ep_rt_thread_handle_t thread_handle);
 
 static
 ep_rt_thread_activity_id_handle_t

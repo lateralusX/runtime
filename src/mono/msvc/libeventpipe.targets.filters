@@ -187,6 +187,12 @@
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-types.h">
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ep-sample-profiler.c">
+      <Filter>Source Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-sample-profiler.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ep-session.c">
       <Filter>Source Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClCompile>
