@@ -203,6 +203,10 @@ include_directories(BEFORE ..)
 include_directories(${CLR_DIR}/src/gc)
 include_directories(../${ARCH_SOURCES_DIR})
 
+if(FEATURE_PERFTRACING)
+    include_directories(../../../../mono/mono/eventpipe)
+endif(FEATURE_PERFTRACING)
+
 if(CLR_CMAKE_TARGET_ARCH_AMD64)
   list(APPEND VM_CROSSGEN_SOURCES
     ../${ARCH_SOURCES_DIR}/stublinkeramd64.cpp

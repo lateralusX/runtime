@@ -1,7 +1,9 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#ifdef FEATURE_PERFTRACING
+//#define FEATURE_PERFTRACING_C_LIB
+
+#if defined(FEATURE_PERFTRACING) && defined(FEATURE_PERFTRACING_C_LIB)
 #define ENABLE_PERFTRACING
 #endif
 

@@ -1635,7 +1635,21 @@ ep_rt_utf8_to_wcs_string (
 #if WCHAR_MAX == 0xFFFF
 	return (wchar_t *)ep_rt_utf8_to_utf16_string (str, len);
 #else
-	return (wchar_t *)g_utf8_to_ucs4 (str, len, NULL, NULL, NULL);
+	return (wchar_t *)g_utf8_to_ucs4 ((const gchar *)str, (glong)len, NULL, NULL, NULL);
+#endif
+}
+
+static
+inline
+ep_char8_t *
+ep_rt_wcs_to_utf8_string (
+	const wchar_t *str,
+	size_t len)
+{
+#if WCHAR_MAX == 0xFFFF
+	return ep_rt_utf16_to_utf8_string ((const ep_char16_t *)str, len);
+#else
+	return (ep_char8_t *)g_ucs4_to_utf8 ((const gunichar *)str, (glong)len, NULL, NULL, NULL);
 #endif
 }
 

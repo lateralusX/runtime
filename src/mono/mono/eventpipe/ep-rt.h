@@ -639,6 +639,12 @@ ep_rt_utf8_to_wcs_string (
 	size_t len);
 
 static
+ep_char8_t *
+ep_rt_wcs_to_utf8_string (
+	const wchar_t *str,
+	size_t len);
+
+static
 const ep_char8_t *
 ep_rt_managed_command_line_get (void);
 

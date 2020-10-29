@@ -2,13 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include "common.h"
-#include "eventpipe.h"
-#include "eventpipeconfiguration.h"
-#include "eventpipeeventinstance.h"
+#include "eventpipeadapter.h"
 #include "eventpipeinternal.h"
-#include "eventpipeprovider.h"
-#include "eventpipesession.h"
-#include "eventpipesessionprovider.h"
 
 #ifdef TARGET_UNIX
 #include "pal.h"

@@ -4,6 +4,7 @@
 
 #ifdef ENABLE_PERFTRACING
 #include "ep-rt-config.h"
+#include "slist.h"
 
 #ifdef DEBUG
 #define EP_CHECKED_BUILD

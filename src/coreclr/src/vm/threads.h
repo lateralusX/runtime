@@ -163,7 +163,11 @@ typedef void(*ADCallBackFcnType)(LPVOID);
 #include "eventtrace.h"
 
 #ifdef FEATURE_PERFTRACING
+#ifdef FEATURE_PERFTRACING_C_LIB
+typedef struct _EventPipeBufferList EventPipeBufferList;
+#else
 class EventPipeBufferList;
+#endif // FEATURE_PERFTRACING_C_LIB
 #endif // FEATURE_PERFTRACING
 
 struct TLMTableEntry;

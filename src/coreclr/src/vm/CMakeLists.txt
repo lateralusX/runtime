@@ -442,6 +442,7 @@ set(VM_HEADERS_WKS
     custommarshalerinfo.h
     autotrace.h
     diagnosticserver.h
+    diagnosticserveradapter.h
     diagnosticsprotocol.h
     dllimportcallback.h
     eeconfig.h
@@ -453,6 +454,7 @@ set(VM_HEADERS_WKS
     eetoprofinterfaceimpl.h
     eetoprofinterfaceimpl.inl
     eventpipe.h
+    eventpipeadapter.h
     eventpipeblock.h
     eventpipebuffer.h
     eventpipebuffermanager.h
