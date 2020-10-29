@@ -15,6 +15,7 @@
 #include "ep-event-payload.c"
 #include "ep-event-source.c"
 #include "ep-file.c"
+#include "ep-json-file.c"
 #include "ep-metadata-generator.c"
 #include "ep-provider.c"
 #include "ep-sample-profiler.c"

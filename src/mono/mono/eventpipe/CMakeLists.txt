@@ -45,6 +45,8 @@ set(eventpipe_sources_base
 	ep-file.c
 	ep-file.h
 	ep-getter-setter.h
+	ep-json-file.c
+	ep-json-file.h
 	ep-metadata-generator.c
 	ep-metadata-generator.h
 	ep-provider.c

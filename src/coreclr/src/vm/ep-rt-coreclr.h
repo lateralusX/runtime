@@ -11,6 +11,7 @@
 #include "ep-provider.h"
 #include "ep-session-provider.h"
 #include "fstream.h"
+#include "typestring.h"
 
 #undef EP_ARRAY_SIZE
 #define EP_ARRAY_SIZE(expr) (sizeof(expr) / sizeof ((expr) [0]))
@@ -496,6 +497,54 @@ ep_rt_walk_managed_stack_for_thread (
 {
 	extern bool ep_rt_coreclr_walk_managed_stack_for_thread (ep_rt_thread_handle_t thread, EventPipeStackContents *stack_contents);
 	return ep_rt_coreclr_walk_managed_stack_for_thread (thread, stack_contents);
+}
+
+static
+inline
+bool
+ep_rt_method_get_simple_assembly_name (
+	ep_rt_method_desc_t *method,
+	ep_char8_t *name,
+	size_t name_len)
+{
+	EP_ASSERT (method != NULL);
+	EP_ASSERT (name != NULL);
+
+	name [0] = 0;
+
+	const ep_char8_t *assembly_name = method->GetLoaderModule ()->GetAssembly ()->GetSimpleName ();
+	if (!assembly_name)
+		return false;
+
+	size_t assembly_name_len = strlen (assembly_name) + 1;
+	memcpy (name, assembly_name, (assembly_name_len < name_len) ? assembly_name_len : name_len);
+
+	return true;
+}
+
+static
+inline
+bool
+ep_rt_method_get_full_name (
+	ep_rt_method_desc_t *method,
+	ep_char8_t *name,
+	size_t name_len)
+{
+	EP_ASSERT (method != NULL);
+	EP_ASSERT (name != NULL);
+
+	SString method_name;
+	StackScratchBuffer conversion;
+
+	TypeString::AppendMethodInternal (method_name, method, TypeString::FormatNamespace | TypeString::FormatSignature);
+	const ep_char8_t *method_name_utf8 = method_name.GetUTF8 (conversion);
+	if (!method_name_utf8)
+		return false;
+
+	size_t method_name_utf8_len = strlen (method_name_utf8) + 1;
+	memcpy (name, method_name_utf8, (method_name_utf8_len < name_len) ? method_name_utf8_len : name_len);
+
+	return true;
 }
 
 static

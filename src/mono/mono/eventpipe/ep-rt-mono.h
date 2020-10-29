@@ -663,10 +663,36 @@ ep_rt_config_requires_lock_not_held (void)
 static
 inline
 bool
-ep_rt_walk_managed_stack_for_thread (ep_rt_thread_handle_t thread, EventPipeStackContents *stack_contents)
+ep_rt_walk_managed_stack_for_thread (
+	ep_rt_thread_handle_t thread,
+	EventPipeStackContents *stack_contents)
 {
 	// TODO: Implement.
 	return true;
+}
+
+static
+inline
+bool
+ep_rt_method_get_simple_assembly_name (
+	ep_rt_method_desc_t *method,
+	ep_char8_t *name,
+	size_t name_len)
+{
+	//TODO: Implement.
+	return false;
+}
+
+static
+inline
+bool
+ep_rt_method_get_full_name (
+	ep_rt_method_desc_t *method,
+	ep_char8_t *name,
+	size_t name_len)
+{
+	//TODO: Implement.
+	return false;
 }
 
 static

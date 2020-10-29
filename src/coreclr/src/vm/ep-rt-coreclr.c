@@ -156,7 +156,7 @@ walk_managed_stack_for_threads (
 }
 
 void
-ep_rt_coreclr_sample_profiler_write_sample_event_for_threads (
+ep_rt_coreclr_sample_profiler_write_sampling_event_for_threads (
 	ep_rt_thread_handle_t sampling_thread,
 	EventPipeEvent *sampling_event)
 {

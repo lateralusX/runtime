@@ -185,40 +185,40 @@ ep_event_instance_get_aligned_total_size (
 	return payload_len;
 }
 
-//TODO: Implement when needed.
-//#ifdef EP_CHECKED_BUILD
-//#define MAX_JSON_FILE_MESSAGE_BUFFER_SIZE 512
-//void
-//ep_event_instance_serialize_to_json_file (
-//	EventPipeEventInstance *ep_event_instance,
-//	EventPipeJsonFile *file)
-//{
-//	ep_return_void_if_nok (ep_event_instance != NULL);
-//	ep_return_void_if_nok (file != NULL);
-//
-//
-//	ep_char8_t buffer [MAX_JSON_FILE_MESSAGE_BUFFER_SIZE];
-//	int32_t characters_written = -1;
-//	characters_written = ep_rt_utf8_string_snprintf (
-//		buffer,
-//		EP_ARRAY_SIZE (buffer),
-//		"Provider=%s/EventID=%d/Version=%d",
-//		ep_provider_get_provider_name (ep_event_get_provider (ep_event_instance->ep_event)),
-//		ep_event_get_id (ep_event_instance->ep_event),
-//		ep_event_get_version (ep_event_instance->ep_event));
-//
-//	if (characters_written > 0 && characters_written <= EP_ARRAY_SIZE (buffer))
-//		ep_json_file_write_event (ep_event_instance->timestamp, ep_event_instance->thread_id, buffer, &ep_event_instance->stack_contents);
-//}
-//#else
-//void
-//ep_event_instance_serialize_to_json_file (
-//	EventPipeEventInstance *ep_event_instance,
-//	EventPipeJsonFile *file)
-//{
-//	;
-//}
-//#endif
+#ifdef EP_CHECKED_BUILD
+#include "ep-json-file.h"
+#define MAX_JSON_FILE_MESSAGE_BUFFER_SIZE 512
+void
+ep_event_instance_serialize_to_json_file (
+	EventPipeEventInstance *ep_event_instance,
+	EventPipeJsonFile *json_file)
+{
+	ep_return_void_if_nok (ep_event_instance != NULL);
+	ep_return_void_if_nok (json_file != NULL);
+
+
+	ep_char8_t buffer [MAX_JSON_FILE_MESSAGE_BUFFER_SIZE];
+	int32_t characters_written = -1;
+	characters_written = ep_rt_utf8_string_snprintf (
+		buffer,
+		EP_ARRAY_SIZE (buffer),
+		"Provider=%s/EventID=%d/Version=%d",
+		ep_provider_get_provider_name (ep_event_get_provider (ep_event_instance->ep_event)),
+		ep_event_get_event_id (ep_event_instance->ep_event),
+		ep_event_get_event_version (ep_event_instance->ep_event));
+
+	if (characters_written > 0 && characters_written < EP_ARRAY_SIZE (buffer))
+		ep_json_file_write_event_data (json_file, ep_event_instance->timestamp, (ep_rt_thread_id_t)(ep_event_instance->thread_id), buffer, &ep_event_instance->stack_contents);
+}
+#else
+void
+ep_event_instance_serialize_to_json_file (
+	EventPipeEventInstance *ep_event_instance,
+	EventPipeJsonFile *json_file)
+{
+	;
+}
+#endif
 
 /*
  * EventPipeSequencePoint.

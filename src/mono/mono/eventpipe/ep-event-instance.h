@@ -97,11 +97,10 @@ ep_event_instance_get_aligned_total_size (
 	const EventPipeEventInstance *ep_event_instance,
 	EventPipeSerializationFormat format);
 
-// TODO: Implement when needed.
-//void
-//ep_event_instance_serialize_to_json_file (
-//	EventPipeEventInstance *ep_event_instance,
-//	EventPipeJsonFile *file);
+void
+ep_event_instance_serialize_to_json_file (
+	EventPipeEventInstance *ep_event_instance,
+	EventPipeJsonFile *json_file);
 
 /*
  * EventPipeSequencePoint.

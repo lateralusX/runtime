@@ -92,6 +92,10 @@
     </ClCompile>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-file.h"/>
     <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-getter-setter.h"/>
+    <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ep-json-file.c">
+      <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="$(MonoSourceLocation)\mono\eventpipe\ep-json-file.h"/>
     <ClCompile Include="$(MonoSourceLocation)\mono\eventpipe\ep-metadata-generator.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>

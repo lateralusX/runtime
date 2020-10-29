@@ -907,6 +907,7 @@ if(FEATURE_PERFTRACING)
         ../../../mono/mono/eventpipe/ep-event-payload.c
         ../../../mono/mono/eventpipe/ep-event-source.c
         ../../../mono/mono/eventpipe/ep-file.c
+        ../../../mono/mono/eventpipe/ep-json-file.c
         ../../../mono/mono/eventpipe/ep-metadata-generator.c
         ../../../mono/mono/eventpipe/ep-provider.c
         ../../../mono/mono/eventpipe/ep-thread.c
@@ -930,6 +931,7 @@ if(FEATURE_PERFTRACING)
         ../../../mono/mono/eventpipe/ep-event-source.h
         ../../../mono/mono/eventpipe/ep-file.h
         ../../../mono/mono/eventpipe/ep-getter-setter.h
+        ../../../mono/mono/eventpipe/ep-json-file.h
         ../../../mono/mono/eventpipe/ep-metadata-generator.h
         ../../../mono/mono/eventpipe/ep-provider.h
         ../../../mono/mono/eventpipe/ep-provider-internals.h

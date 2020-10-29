@@ -130,7 +130,7 @@ set_time_granularity (void)
 	// Note that is effects a system-wide setting and when set low will increase the amount of time
 	// the OS is on-CPU, decreasing overall system performance and increasing power consumption
 	if (_time_begin_period_func != NULL) {
-		if (((time_period_func)_time_begin_period_func)(_sampling_rate_in_ns / NUM_NANOSECONDS_IN_1_MS) == TIMERR_NOERROR) {
+		if (((time_period_func)_time_begin_period_func)((uint32_t)(_sampling_rate_in_ns / NUM_NANOSECONDS_IN_1_MS)) == TIMERR_NOERROR) {
 			_time_period_is_set = true;
 		}
 	}
@@ -144,7 +144,7 @@ reset_time_granularity (void)
 #ifdef HOST_WIN32
 	// End the modifications we had to the timer period in enable.
 	if (_time_end_period_func != NULL) {
-		if (((time_period_func)_time_end_period_func)(_sampling_rate_in_ns / NUM_NANOSECONDS_IN_1_MS) == TIMERR_NOERROR) {
+		if (((time_period_func)_time_end_period_func)((uint32_t)(_sampling_rate_in_ns / NUM_NANOSECONDS_IN_1_MS)) == TIMERR_NOERROR) {
 			_time_period_is_set = false;
 		}
 	}
