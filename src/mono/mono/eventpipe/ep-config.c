@@ -63,7 +63,7 @@ config_compute_keyword_and_level (
 	ep_requires_lock_held ();
 
 	*keyword_for_all_sessions = 0;
-	*level_for_all_sessions = EP_EVENT_LEVEL_LOG_ALWAYS;
+	*level_for_all_sessions = EP_EVENT_LEVEL_LOGALWAYS;
 
 	for (int i = 0; i < EP_MAX_NUMBER_OF_SESSIONS; i++) {
 		// Entering EventPipe lock gave us a barrier, we don't need more of them.
@@ -172,8 +172,10 @@ ep_config_init (EventPipeConfiguration *config)
 	EventPipeProviderCallbackData provider_callback_data;
 	EventPipeProviderCallbackDataQueue *provider_callback_data_queue = ep_provider_callback_data_queue_init (&callback_data_queue);
 
+	ep_rt_provider_list_alloc (&config->provider_list);
+
 	EP_LOCK_ENTER (section1)
-		config->config_provider = ep_create_provider (ep_config_get_default_provider_name_utf8 (), NULL, NULL, NULL);
+		config->config_provider = provider_create (ep_config_get_default_provider_name_utf8 (), NULL, NULL, NULL, provider_callback_data_queue);
 	EP_LOCK_EXIT (section1)
 
 	ep_raise_error_if_nok (config->config_provider != NULL);
@@ -183,15 +185,13 @@ ep_config_init (EventPipeConfiguration *config)
 		provider_invoke_callback (&provider_callback_data);
 	}
 
-	ep_rt_provider_list_alloc (&config->provider_list);
-
 	// Create the metadata event.
 	config->metadata_event = ep_provider_add_event (
 		config->config_provider,
 		0, /* event_id */
 		0, /* keywords */
 		0, /* event_version */
-		EP_EVENT_LEVEL_LOG_ALWAYS,
+		EP_EVENT_LEVEL_LOGALWAYS,
 		false, /* need_stack */
 		NULL, /* meatadata */
 		0); /* metadata_len */

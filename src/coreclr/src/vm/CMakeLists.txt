@@ -65,7 +65,6 @@ set(VM_SOURCES_DAC_AND_WKS_COMMON
     disassembler.cpp
     dllimport.cpp
     domainfile.cpp
-    dumpdiagnosticprotocolhelper.cpp
     dynamicmethod.cpp
     ecall.cpp
     eedbginterfaceimpl.cpp
@@ -110,7 +109,6 @@ set(VM_SOURCES_DAC_AND_WKS_COMMON
     pgo.cpp
     precode.cpp
     prestub.cpp
-    profilerdiagnosticprotocolhelper.cpp
     rejit.cpp
     sigformat.cpp
     siginfo.cpp
@@ -320,7 +318,6 @@ set(VM_SOURCES_WKS
     customattribute.cpp
     custommarshalerinfo.cpp
     autotrace.cpp
-    diagnosticserver.cpp
     dllimportcallback.cpp
     dynamicinterfacecastable.cpp
     eeconfig.cpp
@@ -328,27 +325,8 @@ set(VM_SOURCES_WKS
     eemessagebox.cpp
     eepolicy.cpp
     eetoprofinterfaceimpl.cpp
-    eventpipe.cpp
-    eventpipeconfiguration.cpp
-    eventpipeevent.cpp
-    eventpipeeventinstance.cpp
-    eventpipeeventpayload.cpp
-    eventpipeeventsource.cpp
-    eventpipeblock.cpp
-    eventpipecommontypes.cpp
-    eventpipefile.cpp
     eventpipeinternal.cpp
-    eventpipejsonfile.cpp
-    eventpipemetadatagenerator.cpp
-    eventpipeprotocolhelper.cpp
-    eventpipeprovider.cpp
-    eventpipethread.cpp
-    eventpipebuffer.cpp
-    eventpipebuffermanager.cpp
-    eventpipesession.cpp
-    eventpipesessionprovider.cpp
     eventstore.cpp
-    fastserializer.cpp
     fcall.cpp
     fieldmarshaler.cpp
     finalizerthread.cpp
@@ -366,7 +344,6 @@ set(VM_SOURCES_WKS
     interoputil.cpp
     interpreter.cpp
     invokeutil.cpp
-    ipcstreamfactory.cpp
     jithelpers.cpp
     managedmdimport.cpp
     marshalnative.cpp
@@ -380,7 +357,6 @@ set(VM_SOURCES_WKS
     objectlist.cpp
     olevariant.cpp
     pendingload.cpp
-    processdiagnosticsprotocolhelper.cpp
     profdetach.cpp
     profilermetadataemitvalidator.cpp
     profilingenumerators.cpp
@@ -391,7 +367,6 @@ set(VM_SOURCES_WKS
     reflectioninvocation.cpp
     runtimehandles.cpp
     safehandle.cpp
-    sampleprofiler.cpp
     simplerwlock.cpp
     sourceline.cpp
     stackingallocator.cpp
@@ -441,9 +416,7 @@ set(VM_HEADERS_WKS
     customattribute.h
     custommarshalerinfo.h
     autotrace.h
-    diagnosticserver.h
     diagnosticserveradapter.h
-    diagnosticsprotocol.h
     dllimportcallback.h
     eeconfig.h
     eecontract.h
@@ -453,27 +426,9 @@ set(VM_HEADERS_WKS
     eeprofinterfaces.inl
     eetoprofinterfaceimpl.h
     eetoprofinterfaceimpl.inl
-    eventpipe.h
     eventpipeadapter.h
-    eventpipeblock.h
-    eventpipebuffer.h
-    eventpipebuffermanager.h
-    eventpipecommontypes.h
-    eventpipeconfiguration.h
-    eventpipeevent.h
-    eventpipeeventinstance.h
-    eventpipeeventpayload.h
-    eventpipeeventsource.h
-    eventpipefile.h
     eventpipeinternal.h
-    eventpipejsonfile.h
-    eventpipemetadatagenerator.h
-    eventpipeprotocolhelper.h
-    eventpipeprovider.h
-    eventpipesession.h
-    eventpipesessionprovider.h
     eventstore.hpp
-    fastserializer.h
     fcall.h
     fieldmarshaler.h
     finalizerthread.h
@@ -489,7 +444,6 @@ set(VM_HEADERS_WKS
     interpreter.h
     interpreter.hpp
     invokeutil.h
-    ipcstreamfactory.h
     managedmdimport.hpp
     marshalnative.h
     methodtablebuilder.h
@@ -503,7 +457,6 @@ set(VM_HEADERS_WKS
     objectlist.h
     olevariant.h
     pendingload.h
-    processdiagnosticsprotocolhelper.h
     profdetach.h
     profilermetadataemitvalidator.h
     profilingenumerators.h
@@ -514,10 +467,8 @@ set(VM_HEADERS_WKS
     reflectclasswriter.h
     reflectioninvocation.h
     runtimehandles.h
-    sampleprofiler.h
     simplerwlock.hpp
     sourceline.h
-    stackcontents.h
     stackingallocator.h
     stringliteralmap.h
     stubcache.h
@@ -898,121 +849,197 @@ if(FEATURE_PERFTRACING)
     set (DIAGNOSTIC_SERVER_RT_CORECLR_HEADERS "")
     set (VM_EVENTPIPE_SOURCES_WKS "")
 
-    list(APPEND EVENTPIPE_SOURCES
-        ../../../mono/mono/eventpipe/ep.c
-        ../../../mono/mono/eventpipe/ep-block.c
-        ../../../mono/mono/eventpipe/ep-buffer.c
-        ../../../mono/mono/eventpipe/ep-buffer-manager.c
-        ../../../mono/mono/eventpipe/ep-config.c
-        ../../../mono/mono/eventpipe/ep-event.c
-        ../../../mono/mono/eventpipe/ep-event-instance.c
-        ../../../mono/mono/eventpipe/ep-event-payload.c
-        ../../../mono/mono/eventpipe/ep-event-source.c
-        ../../../mono/mono/eventpipe/ep-file.c
-        ../../../mono/mono/eventpipe/ep-json-file.c
-        ../../../mono/mono/eventpipe/ep-metadata-generator.c
-        ../../../mono/mono/eventpipe/ep-provider.c
-        ../../../mono/mono/eventpipe/ep-thread.c
-        ../../../mono/mono/eventpipe/ep-sample-profiler.c
-        ../../../mono/mono/eventpipe/ep-session.c
-        ../../../mono/mono/eventpipe/ep-session-provider.c
-        ../../../mono/mono/eventpipe/ep-stack-contents.c
-        ../../../mono/mono/eventpipe/ep-stream.c
-    )
+    if(FEATURE_PERFTRACING_C_LIB)
+        list(APPEND EVENTPIPE_SOURCES
+            ../../../mono/mono/eventpipe/ep.c
+            ../../../mono/mono/eventpipe/ep-block.c
+            ../../../mono/mono/eventpipe/ep-buffer.c
+            ../../../mono/mono/eventpipe/ep-buffer-manager.c
+            ../../../mono/mono/eventpipe/ep-config.c
+            ../../../mono/mono/eventpipe/ep-event.c
+            ../../../mono/mono/eventpipe/ep-event-instance.c
+            ../../../mono/mono/eventpipe/ep-event-payload.c
+            ../../../mono/mono/eventpipe/ep-event-source.c
+            ../../../mono/mono/eventpipe/ep-file.c
+            ../../../mono/mono/eventpipe/ep-json-file.c
+            ../../../mono/mono/eventpipe/ep-metadata-generator.c
+            ../../../mono/mono/eventpipe/ep-provider.c
+            ../../../mono/mono/eventpipe/ep-sample-profiler.c
+            ../../../mono/mono/eventpipe/ep-session.c
+            ../../../mono/mono/eventpipe/ep-session-provider.c
+            ../../../mono/mono/eventpipe/ep-stack-contents.c
+            ../../../mono/mono/eventpipe/ep-stream.c
+            ../../../mono/mono/eventpipe/ep-thread.c
+        )
+    else(FEATURE_PERFTRACING_C_LIB)
+        list(APPEND EVENTPIPE_SOURCES
+            eventpipe.cpp
+            eventpipeblock.cpp
+            eventpipebuffer.cpp
+            eventpipebuffermanager.cpp
+            eventpipecommontypes.cpp
+            eventpipeconfiguration.cpp
+            eventpipeevent.cpp
+            eventpipeeventinstance.cpp
+            eventpipeeventpayload.cpp
+            eventpipeeventsource.cpp
+            eventpipefile.cpp
+            eventpipejsonfile.cpp
+            eventpipemetadatagenerator.cpp
+            eventpipeprovider.cpp
+            eventpipethread.cpp
+            eventpipesession.cpp
+            eventpipesessionprovider.cpp
+            fastserializer.cpp
+            sampleprofiler.cpp
+        )
+    endif(FEATURE_PERFTRACING_C_LIB)
 
-    list(APPEND EVENTPIPE_HEADERS
-        ../../../mono/mono/eventpipe/ep.h
-        ../../../mono/mono/eventpipe/ep-block.h
-        ../../../mono/mono/eventpipe/ep-buffer.h
-        ../../../mono/mono/eventpipe/ep-buffer-manager.h
-        ../../../mono/mono/eventpipe/ep-config.h
-        ../../../mono/mono/eventpipe/ep-config-internals.h
-        ../../../mono/mono/eventpipe/ep-event.h
-        ../../../mono/mono/eventpipe/ep-event-instance.h
-        ../../../mono/mono/eventpipe/ep-event-payload.h
-        ../../../mono/mono/eventpipe/ep-event-source.h
-        ../../../mono/mono/eventpipe/ep-file.h
-        ../../../mono/mono/eventpipe/ep-getter-setter.h
-        ../../../mono/mono/eventpipe/ep-json-file.h
-        ../../../mono/mono/eventpipe/ep-metadata-generator.h
-        ../../../mono/mono/eventpipe/ep-provider.h
-        ../../../mono/mono/eventpipe/ep-provider-internals.h
-        ../../../mono/mono/eventpipe/ep-rt.h
-        ../../../mono/mono/eventpipe/ep-rt-config.h
-        ../../../mono/mono/eventpipe/ep-rt-types.h
-        ../../../mono/mono/eventpipe/ep-thread.h
-        ../../../mono/mono/eventpipe/ep-types.h
-        ../../../mono/mono/eventpipe/ep-sample-profiler.h
-        ../../../mono/mono/eventpipe/ep-session.h
-        ../../../mono/mono/eventpipe/ep-stack-contents.h
-        ../../../mono/mono/eventpipe/ep-stream.h
-    )
+    if(FEATURE_PERFTRACING_C_LIB)
+        list(APPEND EVENTPIPE_HEADERS
+            ../../../mono/mono/eventpipe/ep.h
+            ../../../mono/mono/eventpipe/ep-block.h
+            ../../../mono/mono/eventpipe/ep-buffer.h
+            ../../../mono/mono/eventpipe/ep-buffer-manager.h
+            ../../../mono/mono/eventpipe/ep-config.h
+            ../../../mono/mono/eventpipe/ep-config-internals.h
+            ../../../mono/mono/eventpipe/ep-event.h
+            ../../../mono/mono/eventpipe/ep-event-instance.h
+            ../../../mono/mono/eventpipe/ep-event-payload.h
+            ../../../mono/mono/eventpipe/ep-event-source.h
+            ../../../mono/mono/eventpipe/ep-file.h
+            ../../../mono/mono/eventpipe/ep-getter-setter.h
+            ../../../mono/mono/eventpipe/ep-json-file.h
+            ../../../mono/mono/eventpipe/ep-metadata-generator.h
+            ../../../mono/mono/eventpipe/ep-provider.h
+            ../../../mono/mono/eventpipe/ep-provider-internals.h
+            ../../../mono/mono/eventpipe/ep-rt.h
+            ../../../mono/mono/eventpipe/ep-rt-config.h
+            ../../../mono/mono/eventpipe/ep-rt-types.h
+            ../../../mono/mono/eventpipe/ep-sample-profiler.h
+            ../../../mono/mono/eventpipe/ep-session.h
+            ../../../mono/mono/eventpipe/ep-stack-contents.h
+            ../../../mono/mono/eventpipe/ep-stream.h
+            ../../../mono/mono/eventpipe/ep-thread.h
+            ../../../mono/mono/eventpipe/ep-types.h
+        )
+    else(FEATURE_PERFTRACING_C_LIB)
+        list(APPEND EVENTPIPE_HEADERS
+            eventpipe.h
+            eventpipeblock.h
+            eventpipebuffer.h
+            eventpipebuffermanager.h
+            eventpipecommontypes.h
+            eventpipeconfiguration.h
+            eventpipeevent.h
+            eventpipeeventinstance.h
+            eventpipeeventpayload.h
+            eventpipeeventsource.h
+            eventpipefile.h
+            eventpipejsonfile.h
+            eventpipemetadatagenerator.h
+            eventpipeprovider.h
+            eventpipesession.h
+            eventpipesessionprovider.h
+            eventpipethread.h
+            fastserializer.h
+            sampleprofiler.h
+            stackcontents.h
+        )
+    endif(FEATURE_PERFTRACING_C_LIB)
 
-    list(APPEND DIAGNOSTIC_SERVER_SOURCES
-        ../../../mono/mono/eventpipe/ds.c
-        ../../../mono/mono/eventpipe/ds-dump-protocol.c
-        ../../../mono/mono/eventpipe/ds-eventpipe-protocol.c
-        ../../../mono/mono/eventpipe/ds-ipc.c
-        ../../../mono/mono/eventpipe/ds-process-protocol.c
-        ../../../mono/mono/eventpipe/ds-profiler-protocol.c
-        ../../../mono/mono/eventpipe/ds-protocol.c
-        ../../../mono/mono/eventpipe/ds-server.c
-    )
-
-    list(APPEND DIAGNOSTIC_SERVER_HEADERS
-        ../../../mono/mono/eventpipe/ds-dump-protocol.h
-        ../../../mono/mono/eventpipe/ds-eventpipe-protocol.h
-        ../../../mono/mono/eventpipe/ds-getter-setter.h
-        ../../../mono/mono/eventpipe/ds-ipc.h
-        ../../../mono/mono/eventpipe/ds-process-protocol.h
-        ../../../mono/mono/eventpipe/ds-profiler-protocol.h
-        ../../../mono/mono/eventpipe/ds-protocol.h
-        ../../../mono/mono/eventpipe/ds-rt.h
-        ../../../mono/mono/eventpipe/ds-rt-config.h
-        ../../../mono/mono/eventpipe/ds-rt-types.h
-        ../../../mono/mono/eventpipe/ds-server.h
-        ../../../mono/mono/eventpipe/ds-types.h
-    )
-
-    if(CLR_CMAKE_TARGET_WIN32)
+    if(FEATURE_PERFTRACING_C_LIB)
         list(APPEND DIAGNOSTIC_SERVER_SOURCES
-            ../../../mono/mono/eventpipe/ds-ipc-win32.c
+            ../../../mono/mono/eventpipe/ds.c
+            ../../../mono/mono/eventpipe/ds-dump-protocol.c
+            ../../../mono/mono/eventpipe/ds-eventpipe-protocol.c
+            ../../../mono/mono/eventpipe/ds-ipc.c
+            ../../../mono/mono/eventpipe/ds-process-protocol.c
+            ../../../mono/mono/eventpipe/ds-profiler-protocol.c
+            ../../../mono/mono/eventpipe/ds-protocol.c
+            ../../../mono/mono/eventpipe/ds-server.c
         )
-        list(APPEND DIAGNOSTIC_SERVER_HEADERS
-            ../../../mono/mono/eventpipe/ds-ipc-win32.h
-        )
-    else()
+    else(FEATURE_PERFTRACING_C_LIB)
         list(APPEND DIAGNOSTIC_SERVER_SOURCES
-            ../../../mono/mono/eventpipe/ds-ipc-posix.c
+            diagnosticserver.cpp
+            dumpdiagnosticprotocolhelper.cpp
+            eventpipeprotocolhelper.cpp
+            ipcstreamfactory.cpp
+            processdiagnosticsprotocolhelper.cpp
+            profilerdiagnosticprotocolhelper.cpp
         )
+    endif(FEATURE_PERFTRACING_C_LIB)
+
+    if(FEATURE_PERFTRACING_C_LIB)
         list(APPEND DIAGNOSTIC_SERVER_HEADERS
-            ../../../mono/mono/eventpipe/ds-ipc-posix.h
+            ../../../mono/mono/eventpipe/ds-dump-protocol.h
+            ../../../mono/mono/eventpipe/ds-eventpipe-protocol.h
+            ../../../mono/mono/eventpipe/ds-getter-setter.h
+            ../../../mono/mono/eventpipe/ds-ipc.h
+            ../../../mono/mono/eventpipe/ds-process-protocol.h
+            ../../../mono/mono/eventpipe/ds-profiler-protocol.h
+            ../../../mono/mono/eventpipe/ds-protocol.h
+            ../../../mono/mono/eventpipe/ds-rt.h
+            ../../../mono/mono/eventpipe/ds-rt-config.h
+            ../../../mono/mono/eventpipe/ds-rt-types.h
+            ../../../mono/mono/eventpipe/ds-server.h
+            ../../../mono/mono/eventpipe/ds-types.h
         )
-    endif()
+    else(FEATURE_PERFTRACING_C_LIB)
+        list(APPEND DIAGNOSTIC_SERVER_HEADERS
+            diagnosticserver.h
+            diagnosticsprotocol.h
+            dumpdiagnosticprotocolhelper.h
+            eventpipeprotocolhelper.h
+            ipcstreamfactory.h
+            processdiagnosticsprotocolhelper.h
+            profilerdiagnosticprotocolhelper.h
+        )
+    endif(FEATURE_PERFTRACING_C_LIB)
 
-    list(APPEND EVENTPIPE_RT_CORECLR_SOURCES
-        ep-rt-coreclr.c
-    )
+    if(FEATURE_PERFTRACING_C_LIB)
 
-    list(APPEND EVENTPIPE_RT_CORECLR_HEADERS
-        config.h
-        ep-rt-coreclr.h
-        ep-rt-config-coreclr.h
-        ep-rt-types-coreclr.h
-    )
+        if(CLR_CMAKE_TARGET_WIN32)
+            list(APPEND DIAGNOSTIC_SERVER_SOURCES
+                ../../../mono/mono/eventpipe/ds-ipc-win32.c
+            )
+            list(APPEND DIAGNOSTIC_SERVER_HEADERS
+                ../../../mono/mono/eventpipe/ds-ipc-win32.h
+            )
+        else(CLR_CMAKE_TARGET_WIN32)
+            list(APPEND DIAGNOSTIC_SERVER_SOURCES
+                ../../../mono/mono/eventpipe/ds-ipc-posix.c
+            )
+            list(APPEND DIAGNOSTIC_SERVER_HEADERS
+                ../../../mono/mono/eventpipe/ds-ipc-posix.h
+            )
+        endif(CLR_CMAKE_TARGET_WIN32)
 
-    list(APPEND DIAGNOSTIC_SERVER_RT_CORECLR_HEADERS
-        ds-rt-coreclr.h
-        ds-rt-types-coreclr.h
-    )
+        list(APPEND EVENTPIPE_RT_CORECLR_SOURCES
+            ep-rt-coreclr.c
+        )
 
-    list(APPEND VM_EVENTPIPE_SOURCES_WKS
-        ${EVENTPIPE_SOURCES}
-        ${DIAGNOSTIC_SERVER_SOURCES}
-        ${EVENTPIPE_RT_CORECLR_SOURCES}
-    )
+        list(APPEND EVENTPIPE_RT_CORECLR_HEADERS
+            config.h
+            ep-rt-coreclr.h
+            ep-rt-config-coreclr.h
+            ep-rt-types-coreclr.h
+        )
 
-    set_source_files_properties(${VM_EVENTPIPE_SOURCES_WKS} PROPERTIES LANGUAGE CXX)
+        list(APPEND DIAGNOSTIC_SERVER_RT_CORECLR_HEADERS
+            ds-rt-coreclr.h
+            ds-rt-types-coreclr.h
+        )
+
+        list(APPEND VM_EVENTPIPE_SOURCES_WKS
+            ${EVENTPIPE_SOURCES}
+            ${DIAGNOSTIC_SERVER_SOURCES}
+            ${EVENTPIPE_RT_CORECLR_SOURCES}
+        )
+
+        set_source_files_properties(${VM_EVENTPIPE_SOURCES_WKS} PROPERTIES LANGUAGE CXX)
+        include_directories(../../../mono/mono/eventpipe)
+    endif(FEATURE_PERFTRACING_C_LIB)
 
     list(APPEND VM_EVENTPIPE_SOURCES_WKS
         ${EVENTPIPE_HEADERS}
@@ -1022,7 +1049,6 @@ if(FEATURE_PERFTRACING)
     )
 
     convert_to_absolute_path(VM_EVENTPIPE_SOURCES_WKS ${VM_EVENTPIPE_SOURCES_WKS})
-    include_directories(../../../mono/mono/eventpipe)
 endif(FEATURE_PERFTRACING)
 
 list(APPEND VM_SOURCES_WKS

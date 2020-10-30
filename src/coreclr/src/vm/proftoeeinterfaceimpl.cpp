@@ -7192,7 +7192,7 @@ HRESULT ProfToEEInterfaceImpl::EventPipeCreateProvider(
     HRESULT hr = S_OK;
     EX_TRY
     {
-        EventPipeProvider *pRealProvider = EventPipeAdapter::CreateProvider(providerName);
+        EventPipeProvider *pRealProvider = EventPipeAdapter::CreateProvider(providerName, nullptr);
         if (pRealProvider == NULL)
         {
             hr = E_FAIL;

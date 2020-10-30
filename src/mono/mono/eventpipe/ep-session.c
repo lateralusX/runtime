@@ -49,7 +49,7 @@ EP_RT_DEFINE_THREAD_FUNC (streaming_thread)
 	session->ipc_streaming_thread = ep_thread_get_or_create ();
 
 	bool success = true;
-	ep_rt_wait_event_handle_t *wait_event = (ep_rt_wait_event_handle_t *)ep_session_get_wait_event (session);
+	ep_rt_wait_event_handle_t *wait_event = ep_session_get_wait_event (session);
 
 	EP_GCX_PREEMP_ENTER
 		while (ep_session_get_ipc_streaming_enabled (session)) {
@@ -495,7 +495,7 @@ ep_session_get_next_event (EventPipeSession *session)
 	return ep_buffer_manager_get_next_event (session->buffer_manager);
 }
 
-EventPipeWaitHandle
+ep_rt_wait_event_handle_t *
 ep_session_get_wait_event (EventPipeSession *session)
 {
 	EP_ASSERT (session != NULL);
@@ -505,7 +505,7 @@ ep_session_get_wait_event (EventPipeSession *session)
 		return (EventPipeWaitHandle)NULL;
 	}
 
-	return ep_rt_wait_event_get_wait_handle (ep_buffer_manager_get_rt_wait_event_ref (session->buffer_manager));
+	return ep_buffer_manager_get_rt_wait_event_ref (session->buffer_manager);
 }
 
 uint64_t

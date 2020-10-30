@@ -1002,7 +1002,7 @@ EventPipeWaitHandle
 ep_rt_wait_event_get_wait_handle (ep_rt_wait_event_handle_t *wait_event)
 {
 	EP_ASSERT (wait_event != NULL);
-	return (EventPipeWaitHandle)wait_event;
+	return (EventPipeWaitHandle)wait_event->event;
 }
 
 static

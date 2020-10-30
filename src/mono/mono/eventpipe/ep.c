@@ -1384,6 +1384,24 @@ ep_build_event_metadata_event (
 void
 ep_write_event (
 	EventPipeEvent *ep_event,
+	uint8_t *data,
+	uint32_t data_len,
+	const uint8_t *activity_id,
+	const uint8_t *related_activity_id)
+{
+	ep_return_void_if_nok (ep_event != NULL && data != NULL);
+
+	EventPipeEventPayload payload;
+	EventPipeEventPayload *event_payload = ep_event_payload_init (&payload, data, data_len);
+
+	write_event (ep_event, event_payload, activity_id, related_activity_id);
+
+	ep_event_payload_fini (event_payload);
+}
+
+void
+ep_write_event_2 (
+	EventPipeEvent *ep_event,
 	EventData *event_data,
 	uint32_t event_data_len,
 	const uint8_t *activity_id,
@@ -1440,7 +1458,7 @@ EventPipeWaitHandle
 ep_get_wait_handle (EventPipeSessionID session_id)
 {
 	EventPipeSession *const session = ep_get_session (session_id);
-	return session ? ep_session_get_wait_event (session) : 0;
+	return session ? ep_rt_wait_event_get_wait_handle (ep_session_get_wait_event (session)) : 0;
 }
 
 /*

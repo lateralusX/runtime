@@ -245,6 +245,14 @@ ep_build_event_metadata_event (
 void
 ep_write_event (
 	EventPipeEvent *ep_event,
+	uint8_t *data,
+	uint32_t data_len,
+	const uint8_t *activity_id,
+	const uint8_t *related_activity_id);
+
+void
+ep_write_event_2 (
+	EventPipeEvent *ep_event,
 	EventData *event_data,
 	uint32_t event_data_len,
 	const uint8_t *activity_id,

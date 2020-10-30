@@ -853,8 +853,8 @@ inline
 EventPipeWaitHandle
 ep_rt_wait_event_get_wait_handle (ep_rt_wait_event_handle_t *wait_event)
 {
-	EP_ASSERT (wait_event != NULL);
-	return reinterpret_cast<EventPipeWaitHandle>(wait_event);
+	EP_ASSERT (wait_event != NULL && wait_event->event != NULL);
+	return reinterpret_cast<EventPipeWaitHandle>(wait_event->event->GetHandleUNHOSTED());
 }
 
 static
@@ -1259,7 +1259,7 @@ ep_rt_lock_aquire (ep_rt_lock_handle_t *lock)
 {
 	if (lock) {
 		CrstBase::CrstHolderWithState holder(lock->lock);
-		holder.Clear ();
+		holder.SuppressRelease ();
 	}
 }
 
@@ -1288,7 +1288,7 @@ inline
 void
 ep_rt_lock_requires_lock_not_held (const ep_rt_lock_handle_t *lock)
 {
-	EP_ASSERT (!((ep_rt_lock_handle_t *)lock)->lock->OwnedByCurrentThread ());
+	EP_ASSERT (lock->lock == NULL || !((ep_rt_lock_handle_t *)lock)->lock->OwnedByCurrentThread ());
 }
 #endif
 
@@ -1348,7 +1348,7 @@ inline
 void
 ep_rt_spin_lock_requires_lock_not_held (const ep_rt_spin_lock_handle_t *spin_lock)
 {
-	EP_ASSERT (!spin_lock->lock->OwnedByCurrentThread ());
+	EP_ASSERT (spin_lock->lock == NULL || !spin_lock->lock->OwnedByCurrentThread ());
 }
 #endif
 

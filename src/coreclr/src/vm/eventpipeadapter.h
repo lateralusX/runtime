@@ -12,6 +12,7 @@
 #include "ep.h"
 #include "ep-provider.h"
 #include "ep-config.h"
+#include "ep-event.h"
 #include "ep-event-instance.h"
 #include "ep-session.h"
 #include "ep-session-provider.h"
@@ -33,15 +34,24 @@
 #endif
 
 #ifndef FEATURE_PERFTRACING_C_LIB
+#define EP_SESSION_TYPE_FILE EventPipeSessionType::File
+#define EP_SESSION_TYPE_LISTENER EventPipeSessionType::Listener
 #define EP_SESSION_TYPE_SYNCHRONOUS EventPipeSessionType::Synchronous
 #define EP_SERIALIZATION_FORMAT_NETTRACE_V4 EventPipeSerializationFormat::NetTraceV4
+#define EP_SERIALIZATION_FORMAT_COUNT EventPipeSerializationFormat::Count
 #define EP_PARAMETER_TYPE_OBJECT EventPipeParameterType::Object
+#define EP_EVENT_LEVEL_LOGALWAYS EventPipeEventLevel::LogAlways
+#define EP_EVENT_LEVEL_CRITICAL EventPipeEventLevel::Critical
+#define EP_EVENT_LEVEL_ERROR EventPipeEventLevel::Error
+#define EP_EVENT_LEVEL_WARNING EventPipeEventLevel::Warning
+#define EP_EVENT_LEVEL_IFORMATIONAL EventPipeEventLevel::Informational
+#define EP_EVENT_LEVEL_VERBOSE EventPipeEventLevel::Verbose
 #endif
 
 class EventPipeProviderConfigurationAdapter final
 {
 public:
-	EventPipeProviderConfigurationAdapter(COR_PRF_EVENTPIPE_PROVIDER_CONFIG *providerConfigs, uint32_t providerConfigsLen)
+	EventPipeProviderConfigurationAdapter(const COR_PRF_EVENTPIPE_PROVIDER_CONFIG *providerConfigs, uint32_t providerConfigsLen)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
 		m_providerConfigs = new (nothrow) EventPipeProviderConfiguration[providerConfigsLen];
@@ -278,6 +288,40 @@ public:
 #endif
 	}
 
+	static inline HANDLE GetWaitHandle(EventPipeSessionID id)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return reinterpret_cast<HANDLE>(ep_get_wait_handle(id));
+#else
+		return EventPipe::GetWaitHandle(id);
+#endif
+	}
+
+	static inline FILETIME GetSessionStartTime(EventPipeSession *session)
+	{
+		_ASSERTE(session != NULL);
+#ifdef FEATURE_PERFTRACING_C_LIB
+		FILETIME fileTime;
+		LARGE_INTEGER largeValue;
+		largeValue.QuadPart = ep_session_get_session_start_time(session);
+		fileTime.dwLowDateTime = largeValue.LowPart;
+		fileTime.dwHighDateTime = largeValue.HighPart;
+		return fileTime;
+#else
+		return session->GetStartTime();
+#endif
+	}
+
+	static inline LONGLONG GetSessionStartTimestamp(EventPipeSession *session)
+	{
+		_ASSERTE(session != NULL);
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_session_get_session_start_timestamp(session);
+#else
+		return session->GetStartTimeStamp().QuadPart;
+#endif
+	}
+
 	static inline void AddProviderToSession(EventPipeSessionProvider *provider, EventPipeSession *session)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
@@ -287,14 +331,36 @@ public:
 #endif
 	}
 
-	static inline EventPipeProvider * CreateProvider(const SString &providerName)
+	static inline EventPipeProvider * CreateProvider(const SString &providerName, EventPipeCallback callback)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
 		StackScratchBuffer conversion;
 		const ep_char8_t *providerNameUTF8 = reinterpret_cast<const ep_char8_t *>(providerName.GetUTF8(conversion));
-		return ep_create_provider (providerNameUTF8, NULL, NULL, NULL);
+		return ep_create_provider (providerNameUTF8, callback, NULL, NULL);
 #else
-		return EventPipe::CreateProvider(providerName, NULL, NULL);
+		return EventPipe::CreateProvider(providerName, callback, NULL);
+#endif
+	}
+
+	static inline void DeleteProvider (EventPipeProvider * provider)
+	{
+		_ASSERTE(provider != NULL);
+#ifdef FEATURE_PERFTRACING_C_LIB
+		ep_delete_provider (provider);
+#else
+		EventPipe::DeleteProvider(provider)
+#endif
+	}
+
+	static inline EventPipeProvider * GetProvider (LPCWSTR providerName)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		ep_char8_t *providerNameUTF8 = ep_rt_utf16_to_utf8_string(reinterpret_cast<const ep_char16_t *>(providerName), -1);
+		EventPipeProvider * provider = ep_get_provider (providerNameUTF8);
+		ep_rt_utf8_string_free(providerNameUTF8);
+		return provider;
+#else
+		EventPipe::GetProvider(providerName)
 #endif
 	}
 
@@ -425,9 +491,28 @@ public:
 #endif
 	}
 
+	static inline EventPipeEvent * AddEvent(
+		EventPipeProvider *provider,
+		uint32_t eventID,
+		int64_t keywords,
+		uint32_t eventVersion,
+		EventPipeEventLevel level,
+		bool needStack,
+		BYTE *metadata = NULL,
+		uint32_t metadataLen = 0)
+	{
+		_ASSERTE(provider != NULL);
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_provider_add_event(provider, eventID, keywords, eventVersion, level, needStack, metadata, metadataLen);
+#else
+		return provider->AddEvent(eventID, keywords, eventVersion, level, needStack, metadata, metadataLen);
+#endif
+	}
+
 	static inline void WriteEvent(
 		EventPipeEvent *ep_event,
-		EventDataAdapter &data,
+		BYTE *data,
+		uint32_t dataLen,
 		LPCGUID activityId,
 		LPCGUID relatedActivityId)
 	{
@@ -436,17 +521,170 @@ public:
 #ifdef FEATURE_PERFTRACING_C_LIB
 		ep_write_event(
 			ep_event,
-			(EventData*)data.GetData(),
-			data.GetDataLen(),
+			data,
+			dataLen,
 			reinterpret_cast<const uint8_t*>(activityId),
 			reinterpret_cast<const uint8_t*>(relatedActivityId));
 #else
 		EventPipe::WriteEvent(
 			*ep_event,
+			data,
+			dataLen,
+			activityId,
+			relatedActivityId);
+#endif
+	}
+
+	static inline void WriteEvent(
+		EventPipeEvent *ep_event,
+		EventData *data,
+		uint32_t dataLen,
+		LPCGUID activityId,
+		LPCGUID relatedActivityId)
+	{
+		_ASSERTE(ep_event != NULL);
+
+#ifdef FEATURE_PERFTRACING_C_LIB
+		ep_write_event_2(
+			ep_event,
+			data,
+			dataLen,
+			reinterpret_cast<const uint8_t*>(activityId),
+			reinterpret_cast<const uint8_t*>(relatedActivityId));
+#else
+		EventPipe::WriteEvent(
+			*ep_event,
+			data,
+			dataLen,
+			activityId,
+			relatedActivityId);
+#endif
+	}
+
+	static inline void WriteEvent(
+		EventPipeEvent *ep_event,
+		EventDataAdapter &data,
+		LPCGUID activityId,
+		LPCGUID relatedActivityId)
+	{
+		_ASSERTE(ep_event != NULL);
+		WriteEvent(
+			ep_event,
 			(EventData*)data.GetData(),
 			data.GetDataLen(),
 			activityId,
 			relatedActivityId);
+	}
+
+	static inline bool EventIsEnabled (const EventPipeEvent *epEvent)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_event_is_enabled(epEvent);
+#else
+		return epEvent->IsEnbled();
+#endif
+	}
+
+	static inline EventPipeEventInstance * GetNextEvent (EventPipeSessionID id)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_get_next_event(id);
+#else
+		return EventPipe::GetNextEvent(id);
+#endif
+	}
+
+	static inline EventPipeProvider * GetEventProvider (EventPipeEventInstance *eventInstance)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_event_get_provider(ep_event_instance_get_ep_event(eventInstance));
+#else
+		return eventInstance->GetEvent()->GetProvider();
+#endif
+	}
+
+	static inline uint32_t GetEventID (EventPipeEventInstance *eventInstance)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_event_get_event_id(ep_event_instance_get_ep_event(eventInstance));
+#else
+		return eventInstance->GetEvent()->GetEventID();
+#endif
+	}
+
+	static inline uint64_t GetEventThreadID (EventPipeEventInstance *eventInstance)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_event_instance_get_thread_id(eventInstance);
+#else
+		return eventInstance->GetThreadId64();
+#endif
+	}
+
+	static inline int64_t GetEventTimestamp (EventPipeEventInstance *eventInstance)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_event_instance_get_timestamp(eventInstance);
+#else
+		return eventInstance->GetTimeStamp()->QuadPart;
+#endif
+	}
+
+	static inline LPCGUID GetEventActivityID (EventPipeEventInstance *eventInstance)
+	{
+		static_assert(sizeof(GUID) == EP_ACTIVITY_ID_SIZE, "Size missmatch, sizeof(GUID) should be equal to EP_ACTIVITY_ID_SIZE");
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return reinterpret_cast<LPCGUID>(ep_event_instance_get_activity_id_cref(eventInstance));
+#else
+		return eventInstance->GetActivityId();
+#endif
+	}
+
+	static inline LPCGUID GetEventRelativeActivityID (EventPipeEventInstance *eventInstance)
+	{
+		static_assert(sizeof(GUID) == EP_ACTIVITY_ID_SIZE, "Size missmatch, sizeof(GUID) should be equal to EP_ACTIVITY_ID_SIZE");
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return reinterpret_cast<LPCGUID>(ep_event_instance_get_related_activity_id_cref(eventInstance));
+#else
+		return eventInstance->GetRelatedActivityId();
+#endif
+	}
+
+	static inline const BYTE * GetEventData (EventPipeEventInstance *eventInstance)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_event_instance_get_data(eventInstance);
+#else
+		return eventInstance->GetData();
+#endif
+	}
+
+	static inline uint32_t GetEventDataLen (EventPipeEventInstance *eventInstance)
+	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		return ep_event_instance_get_data_len(eventInstance);
+#else
+		return eventInstance->GetDataLength();
+#endif
+	}
+
+	static inline void ResumeSession (EventPipeSession *session)
+	{
+		_ASSERTE(session != NULL);
+#ifdef FEATURE_PERFTRACING_C_LIB
+		ep_session_resume (session);
+#else
+		session->Resume();
+#endif
+	}
+
+	static inline void PauseSession (EventPipeSession *session)
+	{
+		_ASSERTE(session != NULL);
+#ifdef FEATURE_PERFTRACING_C_LIB
+		ep_session_pause (session);
+#else
+		session->Pause();
 #endif
 	}
 };

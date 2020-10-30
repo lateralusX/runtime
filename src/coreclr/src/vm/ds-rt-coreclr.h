@@ -205,6 +205,10 @@ DS_RT_DEFINE_ARRAY_ITERATOR (port_config_array, ds_rt_port_config_array_t, ds_rt
 * DiagnosticsProfiler.
 */
 
+#ifdef FEATURE_PROFAPI_ATTACH_DETACH
+#include "profilinghelper.h"
+#include "profilinghelper.inl"
+
 static
 inline
 uint32_t
@@ -231,6 +235,7 @@ ds_rt_profiler_attach (DiagnosticsAttachProfilerCommandPayload *payload)
 
 	return hr;
 }
+#endif // FEATURE_PROFAPI_ATTACH_DETACH
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */

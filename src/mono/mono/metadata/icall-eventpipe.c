@@ -475,7 +475,7 @@ ves_icall_System_Diagnostics_Tracing_EventPipeInternal_WriteEventData (
 {
 	g_assert (event_handle);
 	EventPipeEvent *ep_event = (EventPipeEvent *)event_handle;
-	ep_write_event (ep_event, (EventData *)event_data, event_data_len, activity_id, related_activity_id);
+	ep_write_event_2 (ep_event, (EventData *)event_data, event_data_len, activity_id, related_activity_id);
 }
 
 #else /* ENABLE_PERFTRACING */

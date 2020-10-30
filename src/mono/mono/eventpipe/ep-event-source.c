@@ -123,7 +123,7 @@ ep_event_source_init (EventPipeEventSource *event_source)
 		event_name_utf16,
 		0,		/* keywords */
 		1,		/* version */
-		EP_EVENT_LEVEL_LOG_ALWAYS,
+		EP_EVENT_LEVEL_LOGALWAYS,
 		0,		/* opcode */
 		params,
 		params_len,
@@ -137,7 +137,7 @@ ep_event_source_init (EventPipeEventSource *event_source)
 		1,		/* eventID */
 		0,		/* keywords */
 		0,		/* eventVersion */
-		EP_EVENT_LEVEL_LOG_ALWAYS,
+		EP_EVENT_LEVEL_LOGALWAYS,
 		false,  /* needStack */
 		metadata,
 		(uint32_t)metadata_len);
@@ -190,7 +190,7 @@ ep_event_source_enable (
 
 	ep_requires_lock_held ();
 
-	EventPipeSessionProvider *session_provider = ep_session_provider_alloc (event_source->provider_name, (uint64_t)-1, EP_EVENT_LEVEL_LOG_ALWAYS, NULL);
+	EventPipeSessionProvider *session_provider = ep_session_provider_alloc (event_source->provider_name, (uint64_t)-1, EP_EVENT_LEVEL_LOGALWAYS, NULL);
 	if (session_provider != NULL)
 		ep_session_add_session_provider (session, session_provider);
 }
@@ -218,7 +218,7 @@ ep_event_source_send_process_info (
 	if (arch_info_utf16)
 		ep_event_data_init (&data[2], (uint64_t)arch_info_utf16, (uint32_t)((ep_rt_utf16_string_len (arch_info_utf16) + 1) * sizeof (ep_char16_t)), 0);
 
-	ep_write_event (event_source->process_info_event, data, EP_ARRAY_SIZE (data), NULL, NULL);
+	ep_write_event_2 (event_source->process_info_event, data, EP_ARRAY_SIZE (data), NULL, NULL);
 
 	ep_rt_utf16_string_free (arch_info_utf16);
 	ep_rt_utf16_string_free (os_info_utf16);

@@ -162,7 +162,7 @@ ep_session_write_event (
 EventPipeEventInstance *
 ep_session_get_next_event (EventPipeSession *session);
 
-EventPipeWaitHandle
+ep_rt_wait_event_handle_t *
 ep_session_get_wait_event (EventPipeSession *session);
 
 uint64_t

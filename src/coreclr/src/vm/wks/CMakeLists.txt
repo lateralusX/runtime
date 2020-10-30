@@ -8,13 +8,20 @@ if (CLR_CMAKE_TARGET_WIN32)
 endif (CLR_CMAKE_TARGET_WIN32)
 
 add_library_clr(cee_wks_core OBJECT ${VM_SOURCES_WKS} ${VM_SOURCES_WKS_ARCH_ASM})
-add_library_clr(cee_wks_core_eventpipe OBJECT ${VM_EVENTPIPE_SOURCES_WKS})
 add_library_clr(cee_wks_obj OBJECT ${VM_SOURCES_WKS_SPECIAL})
 add_library_clr(cee_wks_mergeable_obj OBJECT ${VM_SOURCES_WKS_SPECIAL})
+
+if(FEATURE_PERFTRACING)
+  add_library_clr(cee_wks_core_eventpipe OBJECT ${VM_EVENTPIPE_SOURCES_WKS})
+endif(FEATURE_PERFTRACING)
 
 target_precompile_header(TARGET cee_wks_core HEADER common.h)
 target_precompile_header(TARGET cee_wks_obj HEADER common.h)
 target_precompile_header(TARGET cee_wks_mergeable_obj HEADER common.h)
+
+if(FEATURE_PERFTRACING AND NOT FEATURE_PERFTRACING_C_LIB)
+  target_precompile_header(TARGET cee_wks_core_eventpipe HEADER common.h)
+endif(FEATURE_PERFTRACING AND NOT FEATURE_PERFTRACING_C_LIB)
 
 if (MSVC)
     # corelib.cpp does not compile with precompiled header file
@@ -22,9 +29,12 @@ if (MSVC)
 endif()
 
 add_dependencies(cee_wks_core eventing_headers)
-add_dependencies(cee_wks_core_eventpipe eventing_headers)
 add_dependencies(cee_wks_obj eventing_headers)
 add_dependencies(cee_wks_mergeable_obj eventing_headers)
+
+if(FEATURE_PERFTRACING)
+  add_dependencies(cee_wks_core_eventpipe eventing_headers)
+endif(FEATURE_PERFTRACING)
 
 if (CLR_CMAKE_TARGET_WIN32)
 
@@ -57,9 +67,12 @@ if (CLR_CMAKE_TARGET_WIN32)
     )
 
     add_dependencies(cee_wks_core asmconstants_inc)
-    add_dependencies(cee_wks_core_eventpipe asmconstants_inc)
     add_dependencies(cee_wks_obj asmconstants_inc)
     add_dependencies(cee_wks_mergeable_obj asmconstants_inc)
+
+    if(FEATURE_PERFTRACING)
+      add_dependencies(cee_wks_core_eventpipe asmconstants_inc)
+    endif(FEATURE_PERFTRACING)
 
   endif(NOT CLR_CMAKE_HOST_ARCH_ARM AND NOT CLR_CMAKE_HOST_ARCH_ARM64)
 
@@ -67,9 +80,12 @@ endif (CLR_CMAKE_TARGET_WIN32)
 
 add_custom_target(preprocessd_asm DEPENDS ${VM_WKS_ARCH_ASM_OBJECTS})
 add_dependencies(cee_wks_core preprocessd_asm)
-add_dependencies(cee_wks_core_eventpipe preprocessd_asm)
 add_dependencies(cee_wks_obj preprocessd_asm)
 add_dependencies(cee_wks_mergeable_obj preprocessd_asm)
+
+if(FEATURE_PERFTRACING)
+  add_dependencies(cee_wks_core_eventpipe preprocessd_asm)
+endif(FEATURE_PERFTRACING)
 
 
 target_compile_definitions(cee_wks_mergeable_obj PUBLIC FEATURE_MERGE_JIT_AND_ENGINE)
