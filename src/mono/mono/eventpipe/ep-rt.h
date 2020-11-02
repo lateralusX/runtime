@@ -153,7 +153,7 @@ bool
 ep_rt_config_aquire (void);
 
 static
-void
+bool
 ep_rt_config_release (void);
 
 #ifdef EP_CHECKED_BUILD
@@ -515,11 +515,11 @@ ep_rt_os_environment_get_utf16 (ep_rt_env_array_utf16_t *env_array);
 */
 
 static
-void
+bool
 ep_rt_lock_aquire (ep_rt_lock_handle_t *lock);
 
 static
-void
+bool
 ep_rt_lock_release (ep_rt_lock_handle_t *lock);
 
 #ifdef EP_CHECKED_BUILD
@@ -548,11 +548,11 @@ void
 ep_rt_spin_lock_free (ep_rt_spin_lock_handle_t *spin_lock);
 
 static
-void
+bool
 ep_rt_spin_lock_aquire (ep_rt_spin_lock_handle_t *spin_lock);
 
 static
-void
+bool
 ep_rt_spin_lock_release (ep_rt_spin_lock_handle_t *spin_lock);
 
 #ifdef EP_CHECKED_BUILD

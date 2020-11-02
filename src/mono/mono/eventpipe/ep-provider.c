@@ -213,16 +213,21 @@ ep_provider_free (EventPipeProvider * provider)
 		provider->callback_data_free_func (provider->callback_func, provider->callback_data);
 
 	if (!ep_rt_event_list_is_empty (&provider->event_list)) {
-		ep_rt_config_aquire ();
-			ep_rt_event_list_free (&provider->event_list, event_free_func);
-		ep_rt_config_release ();
+		EP_LOCK_ENTER (section1)
+		ep_rt_event_list_free (&provider->event_list, event_free_func);
+		EP_LOCK_EXIT (section1)
 	}
 
+ep_on_exit:
 	ep_rt_utf16_string_free (provider->provider_name_utf16);
 	ep_rt_utf8_string_free (provider->provider_name);
 	ep_rt_object_free (provider);
 
 	ep_requires_lock_not_held ();
+	return;
+
+ep_on_error:
+	ep_exit_error_handler ();
 }
 
 EventPipeEvent *

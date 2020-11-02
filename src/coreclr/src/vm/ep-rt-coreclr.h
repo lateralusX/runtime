@@ -280,7 +280,7 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 		return (hash_map->table->End () == *iterator); \
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_next) (iterator_type *iterator) { \
-		*(iterator)++; \
+		(*iterator)++; \
 	} \
 	static inline key_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_key) (const iterator_type *iterator) { \
 		return (*iterator)->Key (); \
@@ -458,16 +458,15 @@ inline
 bool
 ep_rt_config_aquire (void)
 {
-	ep_rt_lock_aquire (ep_rt_coreclr_config_lock_get ());
-	return true;
+	return ep_rt_lock_aquire (ep_rt_coreclr_config_lock_get ());
 }
 
 static
 inline
-void
+bool
 ep_rt_config_release (void)
 {
-	ep_rt_lock_release (ep_rt_coreclr_config_lock_get ());
+	return ep_rt_lock_release (ep_rt_coreclr_config_lock_get ());
 }
 
 #ifdef EP_CHECKED_BUILD
@@ -635,7 +634,7 @@ ep_rt_provider_list_find_by_name (
 {
 	// The provider list should be non-NULL, but can be NULL on shutdown.
 	if (list){
-		SList<SListElem<EventPipeProvider *>> *provider_list = (SList<SListElem<EventPipeProvider *>> *)(list);
+		SList<SListElem<EventPipeProvider *>> *provider_list = list->list;
 		SListElem<EventPipeProvider *> *element = provider_list->GetHead ();
 		while (element) {
 			EventPipeProvider *provider = element->GetValue ();
@@ -711,7 +710,7 @@ ep_rt_notify_profiler_provider_created (EventPipeProvider *provider)
 #ifndef DACCESS_COMPILE
 		// Let the profiler know the provider has been created so it can register if it wants to
 		BEGIN_PIN_PROFILER (CORProfilerIsMonitoringEventPipe ());
-		//g_profControlBlock.pProfInterface->EventPipeProviderCreated (provider);
+		g_profControlBlock.pProfInterface->EventPipeProviderCreated (provider);
 		END_PIN_PROFILER ();
 #endif // DACCESS_COMPILE
 }
@@ -757,7 +756,7 @@ ep_rt_session_provider_list_find_by_name (
 	const ep_rt_session_provider_list_t *list,
 	const ep_char8_t *name)
 {
-	SList<SListElem<EventPipeSessionProvider *>> *provider_list = (SList<SListElem<EventPipeSessionProvider *>> *)list;
+	SList<SListElem<EventPipeSessionProvider *>> *provider_list = list->list;
 	EventPipeSessionProvider *session_provider = NULL;
 	SListElem<EventPipeSessionProvider *> *element = provider_list->GetHead ();
 	while (element) {
@@ -995,8 +994,8 @@ ep_rt_thread_create (
 	bool result = false;
 
 	rt_coreclr_thread_params_internal_t *thread_params = new (nothrow) rt_coreclr_thread_params_internal_t ();
-	thread_params->thread_params.thread_type = thread_type;
 	if (thread_params) {
+		thread_params->thread_params.thread_type = thread_type;
 		if (thread_type == EP_THREAD_TYPE_SESSION || thread_type == EP_THREAD_TYPE_SAMPLING) {
 			thread_params->thread_params.thread = SetupUnstartedThread ();
 			thread_params->thread_params.thread_func = reinterpret_cast<LPTHREAD_START_ROUTINE>(thread_func);
@@ -1254,24 +1253,42 @@ ep_rt_os_environment_get_utf16 (ep_rt_env_array_utf16_t *env_array)
 
 static
 inline
-void
+bool
 ep_rt_lock_aquire (ep_rt_lock_handle_t *lock)
 {
-	if (lock) {
-		CrstBase::CrstHolderWithState holder(lock->lock);
-		holder.SuppressRelease ();
+	bool result = true;
+	EX_TRY
+	{
+		if (lock) {
+			CrstBase::CrstHolderWithState holder(lock->lock);
+			holder.SuppressRelease ();
+		}
 	}
+	EX_CATCH
+	{
+		result = false;
+	}
+	EX_END_CATCH(SwallowAllExceptions);
+
+	return result;
 }
 
 static
 inline
-void
+bool
 ep_rt_lock_release (ep_rt_lock_handle_t *lock)
 {
-	if (lock) {
-		CrstBase::UnsafeCrstInverseHolder holder(lock->lock);
-		holder.Clear ();
+	EX_TRY
+	{
+		if (lock) {
+			CrstBase::UnsafeCrstInverseHolder holder(lock->lock);
+			holder.SuppressRelease ();
+		}
 	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
+
+	return true;
 }
 
 #ifdef EP_CHECKED_BUILD
@@ -1318,20 +1335,22 @@ ep_rt_spin_lock_free (ep_rt_spin_lock_handle_t *spin_lock)
 
 static
 inline
-void
+bool
 ep_rt_spin_lock_aquire (ep_rt_spin_lock_handle_t *spin_lock)
 {
 	if (spin_lock && spin_lock->lock)
 		SpinLock::AcquireLock (spin_lock->lock);
+	return true;
 }
 
 static
 inline
-void
+bool
 ep_rt_spin_lock_release (ep_rt_spin_lock_handle_t *spin_lock)
 {
 	if (spin_lock && spin_lock->lock)
 		SpinLock::ReleaseLock (spin_lock->lock);
+	return true;
 }
 
 #ifdef EP_CHECKED_BUILD

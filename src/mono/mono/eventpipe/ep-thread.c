@@ -38,9 +38,9 @@ ep_thread_alloc (void)
 	instance->os_thread_id = ep_rt_current_thread_get_id ();
 	memset (instance->session_state, 0, sizeof (instance->session_state));
 
-	ep_rt_spin_lock_aquire (&_ep_threads_lock);
+	EP_SPIN_LOCK_ENTER (&_ep_threads_lock, section1)
 		ep_rt_thread_list_append (&_ep_threads, instance);
-	ep_rt_spin_lock_release (&_ep_threads_lock);
+	EP_SPIN_LOCK_EXIT (&_ep_threads_lock, section1)
 
 ep_on_exit:
 	return instance;
@@ -63,11 +63,10 @@ ep_thread_free (EventPipeThread *thread)
 		EP_ASSERT (thread->session_state [i] == NULL);
 	}
 #endif
-
-	ep_rt_spin_lock_aquire (&_ep_threads_lock);
+	bool found = false;
+	EP_SPIN_LOCK_ENTER (&_ep_threads_lock, section1)
 		// Remove ourselves from the global list
 		ep_rt_thread_list_iterator_t iterator = ep_rt_thread_list_iterator_begin (&_ep_threads);
-		bool found = false;
 		while (!ep_rt_thread_list_iterator_end (&_ep_threads, &iterator)) {
 			if (ep_rt_thread_list_iterator_value (&iterator) == thread) {
 				ep_rt_thread_list_remove (&_ep_threads, thread);
@@ -76,12 +75,17 @@ ep_thread_free (EventPipeThread *thread)
 			}
 			ep_rt_thread_list_iterator_next (&iterator);
 		}
-	ep_rt_spin_lock_release (&_ep_threads_lock);
+	EP_SPIN_LOCK_EXIT (&_ep_threads_lock, section1)
 
 	EP_ASSERT (found || !"We couldn't find ourselves in the global thread list");
 
+ep_on_exit:
 	ep_rt_spin_lock_free (&thread->rt_lock);
 	ep_rt_object_free (thread);
+	return;
+
+ep_on_error:
+	ep_exit_error_handler ();
 }
 
 void
@@ -109,9 +113,13 @@ ep_thread_init (void)
 void
 ep_thread_fini (void)
 {
-	EP_ASSERT (ep_rt_thread_list_is_empty (&_ep_threads) == true);
-	ep_rt_thread_list_free (&_ep_threads, NULL);
-	ep_rt_spin_lock_free (&_ep_threads_lock);
+	// If threads are still included in list (depending on runtime shutdown order),
+	// don't clean up since TLS destructor migh callback freeing items, no new
+	// threads should however not be added to list at this stage.
+	if (ep_rt_thread_list_is_empty (&_ep_threads)) {
+		ep_rt_thread_list_free (&_ep_threads, NULL);
+		ep_rt_spin_lock_free (&_ep_threads_lock);
+	}
 }
 
 EventPipeThread *
@@ -131,7 +139,7 @@ ep_thread_get_threads (ep_rt_thread_array_t *threads)
 {
 	EP_ASSERT (threads != NULL);
 
-	ep_rt_spin_lock_aquire (&_ep_threads_lock);
+	EP_SPIN_LOCK_ENTER (&_ep_threads_lock, section1)
 		ep_rt_thread_list_iterator_t threads_iterator = ep_rt_thread_list_iterator_begin (&_ep_threads);
 		while (!ep_rt_thread_list_iterator_end (&_ep_threads, &threads_iterator)) {
 			EventPipeThread *thread = ep_rt_thread_list_iterator_value (&threads_iterator);
@@ -142,7 +150,13 @@ ep_thread_get_threads (ep_rt_thread_array_t *threads)
 			}
 			ep_rt_thread_list_iterator_next (&threads_iterator);
 		}
-	ep_rt_spin_lock_release (&_ep_threads_lock);
+	EP_SPIN_LOCK_EXIT (&_ep_threads_lock, section1)
+
+ep_on_exit:
+	return;
+
+ep_on_error:
+	ep_exit_error_handler ();
 }
 
 void

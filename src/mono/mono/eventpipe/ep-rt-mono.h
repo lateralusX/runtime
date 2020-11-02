@@ -630,16 +630,15 @@ inline
 bool
 ep_rt_config_aquire (void)
 {
-	ep_rt_spin_lock_aquire (ep_rt_mono_config_lock_get ());
-	return true;
+	return ep_rt_spin_lock_aquire (ep_rt_mono_config_lock_get ());
 }
 
 static
 inline
-void
+bool
 ep_rt_config_release (void)
 {
-	ep_rt_spin_lock_release (ep_rt_mono_config_lock_get ());
+	return ep_rt_spin_lock_release (ep_rt_mono_config_lock_get ());
 }
 
 #ifdef EP_CHECKED_BUILD
@@ -1459,7 +1458,7 @@ ep_rt_spin_lock_free (ep_rt_spin_lock_handle_t *spin_lock)
 
 static
 inline
-void
+bool
 ep_rt_spin_lock_aquire (ep_rt_spin_lock_handle_t *spin_lock)
 {
 	if (spin_lock && spin_lock->lock) {
@@ -1469,11 +1468,12 @@ ep_rt_spin_lock_aquire (ep_rt_spin_lock_handle_t *spin_lock)
 		spin_lock->lock_is_held = true;
 #endif
 	}
+	return true;
 }
 
 static
 inline
-void
+bool
 ep_rt_spin_lock_release (ep_rt_spin_lock_handle_t *spin_lock)
 {
 	if (spin_lock && spin_lock->lock) {
@@ -1483,6 +1483,7 @@ ep_rt_spin_lock_release (ep_rt_spin_lock_handle_t *spin_lock)
 #endif
 		mono_coop_mutex_unlock (spin_lock->lock);
 	}
+	return true;
 }
 
 #ifdef EP_CHECKED_BUILD
