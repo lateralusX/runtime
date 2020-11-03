@@ -298,7 +298,7 @@ ep_file_stream_open_write (
 	ep_rt_file_handle_t rt_file = ep_rt_file_open_write (path);
 	ep_raise_error_if_nok (rt_file != NULL);
 
-	ep_file_stream_set_rt_file (file_stream, rt_file);
+	file_stream->rt_file = rt_file;
 	return true;
 
 ep_on_error:
@@ -309,7 +309,9 @@ bool
 ep_file_stream_close (FileStream *file_stream)
 {
 	ep_return_false_if_nok (file_stream != NULL);
-	return ep_rt_file_close (ep_file_stream_get_rt_file (file_stream));
+	bool result = ep_rt_file_close (file_stream->rt_file);
+	file_stream->rt_file = NULL;
+	return result;
 }
 
 bool
@@ -324,7 +326,7 @@ ep_file_stream_write (
 	EP_ASSERT (bytes_to_write > 0);
 	EP_ASSERT (bytes_written != NULL);
 
-	return ep_rt_file_write (ep_file_stream_get_rt_file (file_stream), buffer, bytes_to_write, bytes_written);
+	return ep_rt_file_write (file_stream->rt_file, buffer, bytes_to_write, bytes_written);
 }
 
 /*

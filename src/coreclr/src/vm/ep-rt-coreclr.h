@@ -972,23 +972,11 @@ ep_rt_execute_rundown (void)
 #undef ep_rt_object_array_alloc
 #define ep_rt_object_array_alloc(obj_type,size) (new (nothrow) obj_type [size])
 
-static
-inline
-void
-ep_rt_object_array_free (void *ptr)
-{
-	if (ptr)
-		delete [] ptr;
-}
+#undef ep_rt_object_array_free
+#define ep_rt_object_array_free(obj_ptr) do { if (obj_ptr) delete [] obj_ptr; } while(0)
 
-static
-inline
-void
-ep_rt_object_free (void *ptr)
-{
-	if (ptr)
-		delete ptr;
-}
+#undef ep_rt_object_free
+#define ep_rt_object_free(obj_ptr) do { if (obj_ptr) delete obj_ptr; } while(0)
 
 /*
  * PAL.
@@ -1210,6 +1198,8 @@ bool
 ep_rt_file_close (ep_rt_file_handle_t file_handle)
 {
 	// Closed in destructor.
+	if (file_handle)
+		delete file_handle;
 	return true;
 }
 
