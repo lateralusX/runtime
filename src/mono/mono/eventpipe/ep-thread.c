@@ -42,6 +42,8 @@ ep_thread_alloc (void)
 		ep_rt_thread_list_append (&_ep_threads, instance);
 	EP_SPIN_LOCK_EXIT (&_ep_threads_lock, section1)
 
+	instance->writing_event_in_progress = UINT32_MAX;
+
 ep_on_exit:
 	return instance;
 

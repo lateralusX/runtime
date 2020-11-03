@@ -849,12 +849,12 @@ session_requested_sampling (EventPipeSession *session)
 	return ep_rt_session_provider_list_find_by_name (ep_session_provider_list_get_providers_cref (ep_session_get_providers (session)), ep_config_get_sample_profiler_provider_name_utf8 ());
 }
 
-// TODO: Replace with diagnostic server port implementation.
 static
 bool
 ipc_stream_factory_any_suspended_ports (void)
 {
-	return false;
+	extern bool ds_ipc_stream_factory_any_suspended_ports (void);
+	return ds_ipc_stream_factory_any_suspended_ports ();
 }
 
 #ifdef EP_CHECKED_BUILD

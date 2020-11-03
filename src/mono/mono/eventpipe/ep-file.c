@@ -467,13 +467,14 @@ ep_file_write_sequence_point (
 {
 	EP_ASSERT (file != NULL);
 	EP_ASSERT (sequence_point != NULL);
-	EP_ASSERT (file->fast_serializer != NULL);
 
 	if (file->format < EP_SERIALIZATION_FORMAT_NETTRACE_V4)
 		return; // sequence points aren't used in NetPerf format
 
 	ep_file_flush (file, EP_FILE_FLUSH_FLAGS_ALL_BLOCKS);
 	ep_raise_error_if_nok (ep_file_has_errors (file) != true);
+
+	EP_ASSERT (file->fast_serializer != NULL);
 
 	EventPipeSequencePointBlock sequence_point_block;
 	ep_sequence_point_block_init (&sequence_point_block, sequence_point);
