@@ -171,7 +171,12 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item) { \
 		EP_ASSERT (ep_array->array != NULL); \
-		ep_array->array->Push (item); \
+		EX_TRY \
+		{ \
+			ep_array->array->Push (item); \
+		} \
+		EX_CATCH {} \
+		EX_END_CATCH(SwallowAllExceptions); \
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, clear) (array_type *ep_array) { \
 		EP_ASSERT (ep_array->array != NULL); \
@@ -255,7 +260,12 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add) (hash_map_type *hash_map, key_type key, value_type value) { \
 		EP_ASSERT (hash_map->table != NULL); \
-		hash_map->table->Add (hash_map_type::table_type_t::element_t (key, value)); \
+		EX_TRY \
+		{ \
+			hash_map->table->Add (hash_map_type::table_type_t::element_t (key, value)); \
+		} \
+		EX_CATCH {} \
+		EX_END_CATCH(SwallowAllExceptions); \
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove_all) (hash_map_type *hash_map) { \
 		EP_ASSERT (hash_map->table != NULL); \
