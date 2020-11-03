@@ -1280,6 +1280,7 @@ inline
 bool
 ep_rt_lock_aquire (ep_rt_lock_handle_t *lock)
 {
+	// NOTHROW
 	bool result = true;
 	EX_TRY
 	{
@@ -1302,6 +1303,7 @@ inline
 bool
 ep_rt_lock_release (ep_rt_lock_handle_t *lock)
 {
+	// NOTHROW
 	EX_TRY
 	{
 		if (lock) {
@@ -1321,6 +1323,7 @@ inline
 void
 ep_rt_lock_requires_lock_held (const ep_rt_lock_handle_t *lock)
 {
+	// NOTHROW
 	EP_ASSERT (((ep_rt_lock_handle_t *)lock)->lock->OwnedByCurrentThread ());
 }
 
@@ -1329,6 +1332,7 @@ inline
 void
 ep_rt_lock_requires_lock_not_held (const ep_rt_lock_handle_t *lock)
 {
+	// NOTHROW
 	EP_ASSERT (lock->lock == NULL || !((ep_rt_lock_handle_t *)lock)->lock->OwnedByCurrentThread ());
 }
 #endif
@@ -1342,8 +1346,14 @@ inline
 void
 ep_rt_spin_lock_alloc (ep_rt_spin_lock_handle_t *spin_lock)
 {
-	spin_lock->lock = new (nothrow) SpinLock();
-	spin_lock->lock->Init (LOCK_TYPE_DEFAULT);
+	// NOTHROW
+	EX_TRY
+	{
+		spin_lock->lock = new (nothrow) SpinLock();
+		spin_lock->lock->Init (LOCK_TYPE_DEFAULT);
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
 }
 
 static
@@ -1351,6 +1361,7 @@ inline
 void
 ep_rt_spin_lock_free (ep_rt_spin_lock_handle_t *spin_lock)
 {
+	// NOTHROW
 	if (spin_lock && spin_lock->lock) {
 		delete spin_lock->lock;
 		spin_lock->lock = NULL;
@@ -1362,6 +1373,7 @@ inline
 bool
 ep_rt_spin_lock_aquire (ep_rt_spin_lock_handle_t *spin_lock)
 {
+	// NOTHROW
 	if (spin_lock && spin_lock->lock)
 		SpinLock::AcquireLock (spin_lock->lock);
 	return true;
@@ -1372,6 +1384,7 @@ inline
 bool
 ep_rt_spin_lock_release (ep_rt_spin_lock_handle_t *spin_lock)
 {
+	// NOTHROW
 	if (spin_lock && spin_lock->lock)
 		SpinLock::ReleaseLock (spin_lock->lock);
 	return true;
@@ -1383,6 +1396,7 @@ inline
 void
 ep_rt_spin_lock_requires_lock_held (const ep_rt_spin_lock_handle_t *spin_lock)
 {
+	// NOTHROW
 	EP_ASSERT (spin_lock->lock->OwnedByCurrentThread ());
 }
 
@@ -1391,6 +1405,7 @@ inline
 void
 ep_rt_spin_lock_requires_lock_not_held (const ep_rt_spin_lock_handle_t *spin_lock)
 {
+	// NOTHROW
 	EP_ASSERT (spin_lock->lock == NULL || !spin_lock->lock->OwnedByCurrentThread ());
 }
 #endif

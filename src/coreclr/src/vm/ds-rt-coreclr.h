@@ -76,6 +76,7 @@ inline
 void
 ds_rt_auto_trace_init (void)
 {
+	// NOTHROW ?
 #ifdef FEATURE_AUTO_TRACE
 	auto_trace_init ();
 #endif
@@ -86,6 +87,7 @@ inline
 void
 ds_rt_auto_trace_launch (void)
 {
+	// NOTHROW ?
 #ifdef FEATURE_AUTO_TRACE
 	auto_trace_launch ();
 #endif
@@ -96,6 +98,7 @@ inline
 void
 ds_rt_auto_trace_signal (void)
 {
+	// NOTHROW ?
 #ifdef FEATURE_AUTO_TRACE
 	auto_trace_signal ();
 #endif
@@ -106,6 +109,7 @@ inline
 void
 ds_rt_auto_trace_wait (void)
 {
+	// NOTHROW ?
 #ifdef FEATURE_AUTO_TRACE
 	auto_trace_wait ();
 #endif
@@ -120,6 +124,7 @@ inline
 bool
 ds_rt_config_value_get_enable (void)
 {
+	// NOTHROW
 	return CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_EnableDiagnostics) != 0;
 }
 
@@ -128,6 +133,7 @@ inline
 ep_char8_t *
 ds_rt_config_value_get_ports (void)
 {
+	// NOTHROW
 	CLRConfigStringHolder value(CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_DOTNET_DiagnosticPorts));
 	return ep_rt_utf16_to_utf8_string (reinterpret_cast<ep_char16_t *>(value.GetValue ()), -1);
 }
@@ -137,6 +143,7 @@ inline
 uint32_t
 ds_rt_config_value_get_default_port_suspend (void)
 {
+	// NOTHROW
 	return static_cast<uint32_t>(CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_DOTNET_DefaultDiagnosticPortSuspend));
 }
 
@@ -149,6 +156,7 @@ inline
 uint32_t
 ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
 {
+	// THROWS
 	uint32_t result = DS_IPC_E_FAIL;
 #ifdef HOST_WIN32
 	if (GenerateCrashDump (reinterpret_cast<LPCWSTR>(ds_generate_core_dump_command_payload_get_dump_name (payload)),
@@ -182,6 +190,7 @@ ds_rt_transport_get_default_name (
 	const ep_char8_t *group_id,
 	const ep_char8_t *suffix)
 {
+	// NOTHROW
 #ifdef TARGET_UNIX
 	PAL_GetTransportName (name_len, name, prefix, id, group_id, suffix);
 #endif
@@ -218,6 +227,7 @@ inline
 uint32_t
 ds_rt_profiler_attach (DiagnosticsAttachProfilerCommandPayload *payload)
 {
+	// NOTHROW
 	if (!g_profControlBlock.fProfControlBlockInitialized)
 		return DS_IPC_E_RUNTIME_UNINITIALIZED;
 
