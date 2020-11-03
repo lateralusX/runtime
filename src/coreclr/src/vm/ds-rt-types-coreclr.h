@@ -11,6 +11,7 @@ typedef struct _rt_coreclr_array_iterator_internal_t<DiagnosticsPort *> ds_rt_po
 
 typedef struct _rt_coreclr_array_internal_t<ep_char8_t *> ds_rt_port_config_array_t;
 typedef struct _rt_coreclr_array_iterator_internal_t<ep_char8_t *> ds_rt_port_config_array_iterator_t;
+typedef struct _rt_coreclr_array_iterator_internal_t<ep_char8_t *> ds_rt_port_config_array_reverse_iterator_t;
 
 typedef struct _rt_coreclr_array_internal_t<DiagnosticsIpcPollHandle> ds_rt_ipc_poll_handle_array_t;
 typedef struct _rt_coreclr_array_iterator_internal_t<DiagnosticsIpcPollHandle> ds_rt_ipc_poll_handle_array_iterator_t;

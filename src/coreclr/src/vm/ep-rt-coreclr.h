@@ -207,11 +207,35 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 	} \
 	static item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_value) (const iterator_type *iterator) { \
 		EP_ASSERT (iterator->array != NULL); \
+		EP_ASSERT (iterator->index < iterator->array->Size ()); \
+		return iterator->array->operator[] (iterator->index); \
+	}
+
+#define EP_RT_DEFINE_ARRAY_REVERSE_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
+	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_begin) (const array_type *ep_array) { \
+		iterator_type temp; \
+		temp.array = ep_array->array; \
+		temp.index = static_cast<int32_t>(ep_array->array->Size () - 1); \
+		return temp; \
+	} \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_end) (const array_type *ep_array, const iterator_type *iterator) { \
+		EP_ASSERT (iterator->array != NULL); \
+		return (iterator->index < 0); \
+	} \
+	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_next) (iterator_type *iterator) { \
+		iterator->index--; \
+	} \
+	static item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_value) (const iterator_type *iterator) { \
+		EP_ASSERT (iterator->array != NULL); \
+		EP_ASSERT (iterator->index >= 0); \
 		return iterator->array->operator[] (iterator->index); \
 	}
 
 #define EP_RT_DEFINE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
 	EP_RT_DEFINE_ARRAY_ITERATOR_PREFIX(ep, array_name, array_type, iterator_type, item_type)
+
+#define EP_RT_DEFINE_ARRAY_REVERSE_ITERATOR(array_name, array_type, iterator_type, item_type) \
+	EP_RT_DEFINE_ARRAY_REVERSE_ITERATOR_PREFIX(ep, array_name, array_type, iterator_type, item_type)
 
 #define EP_RT_DEFINE_HASH_MAP_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, alloc) (hash_map_type *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)) { \
