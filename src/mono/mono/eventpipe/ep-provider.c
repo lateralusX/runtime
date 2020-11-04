@@ -403,7 +403,8 @@ provider_invoke_callback (EventPipeProviderCallbackData *provider_callback_data)
 	// If we want to add new ControlCode, we have to make corresponding change in ETW callback signature
 	// to address this. See https://github.com/dotnet/runtime/pull/36733 for more discussions on this.
 	if (callback_function && !ep_rt_process_shutdown ()) {
-		(*callback_function)(
+		ep_rt_provider_invoke_callback (
+			callback_function,
 			NULL, /* provider_id */
 			enabled ? 1 : 0, /* ControlCode */
 			(uint8_t)provider_level,

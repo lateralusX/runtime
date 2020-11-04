@@ -212,6 +212,18 @@ static
 void
 ep_rt_prepare_provider_invoke_callback (EventPipeProviderCallbackData *provider_callback_data);
 
+static
+void
+ep_rt_provider_invoke_callback (
+	EventPipeCallback callback_func,
+	const uint8_t *source_id,
+	unsigned long is_enabled,
+	uint8_t level,
+	uint64_t match_any_keywords,
+	uint64_t match_all_keywords,
+	EventFilterDescriptor *filter_data,
+	void *callback_data);
+
 /*
  * EventPipeBuffer.
  */

@@ -621,6 +621,36 @@ ep_rt_prepare_provider_invoke_callback (EventPipeProviderCallbackData *provider_
 #endif // defined(HOST_OSX) && defined(HOST_ARM64)
 }
 
+static
+inline
+void
+ep_rt_provider_invoke_callback (
+	EventPipeCallback callback_func,
+	const uint8_t *source_id,
+	unsigned long is_enabled,
+	uint8_t level,
+	uint64_t match_any_keywords,
+	uint64_t match_all_keywords,
+	EventFilterDescriptor *filter_data,
+	void *callback_data)
+{
+	EP_ASSERT (callback_func != NULL);
+
+	EX_TRY
+	{
+		(*callback_func)(
+			source_id,
+			is_enabled,
+			level,
+			match_any_keywords,
+			match_all_keywords,
+			filter_data,
+			callback_data);
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
+}
+
 /*
  * EventPipeBuffer.
  */

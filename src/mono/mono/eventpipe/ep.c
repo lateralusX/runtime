@@ -415,9 +415,7 @@ enable (
 {
 	EP_ASSERT (format < EP_SERIALIZATION_FORMAT_COUNT);
 	EP_ASSERT (session_type == EP_SESSION_TYPE_SYNCHRONOUS || circular_buffer_size_in_mb > 0);
-	EP_ASSERT (providers_len > 0);
-	EP_ASSERT (providers != NULL);
-	EP_ASSERT ((session_type == EP_SESSION_TYPE_FILE && output_path != NULL) ||(session_type == EP_SESSION_TYPE_IPCSTREAM && stream != NULL));
+	EP_ASSERT (providers_len > 0 && providers != NULL);
 
 	ep_requires_lock_held ();
 
