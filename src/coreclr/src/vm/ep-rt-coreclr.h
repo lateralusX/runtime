@@ -1670,7 +1670,12 @@ inline
 void
 ep_rt_thread_setup (void)
 {
-	SetupThread ();
+	EX_TRY
+	{
+		SetupThread ();
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
 }
 
 static
