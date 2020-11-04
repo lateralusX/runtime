@@ -118,6 +118,14 @@ static
 uint32_t
 ds_rt_profiler_attach (DiagnosticsAttachProfilerCommandPayload *payload);
 
+/*
+* DiagnosticServer.
+*/
+
+static
+void
+ds_rt_server_log_pause_message (void);
+
 #include DS_RT_H
 
 #endif /* ENABLE_PERFTRACING */

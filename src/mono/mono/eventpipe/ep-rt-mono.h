@@ -1675,42 +1675,6 @@ ep_rt_utf16_string_free (ep_char16_t *str)
 
 static
 inline
-wchar_t *
-ep_rt_utf8_to_wcs_string (
-	const ep_char8_t *str,
-	size_t len)
-{
-#if WCHAR_MAX == 0xFFFF
-	return (wchar_t *)ep_rt_utf8_to_utf16_string (str, len);
-#else
-	return (wchar_t *)g_utf8_to_ucs4 ((const gchar *)str, (glong)len, NULL, NULL, NULL);
-#endif
-}
-
-static
-inline
-ep_char8_t *
-ep_rt_wcs_to_utf8_string (
-	const wchar_t *str,
-	size_t len)
-{
-#if WCHAR_MAX == 0xFFFF
-	return ep_rt_utf16_to_utf8_string ((const ep_char16_t *)str, len);
-#else
-	return (ep_char8_t *)g_ucs4_to_utf8 ((const gunichar *)str, (glong)len, NULL, NULL, NULL);
-#endif
-}
-
-static
-inline
-void
-ep_rt_wcs_string_free (wchar_t *str)
-{
-	g_free (str);
-}
-
-static
-inline
 const ep_char8_t *
 ep_rt_managed_command_line_get (void)
 {

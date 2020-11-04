@@ -251,5 +251,26 @@ ds_rt_profiler_attach (DiagnosticsAttachProfilerCommandPayload *payload)
 }
 #endif // FEATURE_PROFAPI_ATTACH_DETACH
 
+/*
+* DiagnosticServer.
+*/
+
+static
+inline
+void
+ds_rt_server_log_pause_message (void)
+{
+	// NOTHROW
+	CLRConfigStringHolder ports(CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_DOTNET_DiagnosticPorts));
+	uint32_t port_suspended = ds_rt_config_value_get_default_port_suspend ();
+
+	WCHAR empty[] = W("");
+	DWORD dotnetDiagnosticPortSuspend = CLRConfig::GetConfigValue(CLRConfig::EXTERNAL_DOTNET_DefaultDiagnosticPortSuspend);
+	wprintf(W("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a Diagnostic Port.\n"));
+	wprintf(W("DOTNET_DiagnosticPorts=\"%s\"\n"), ports == nullptr ? empty : ports.GetValue());
+	wprintf(W("DOTNET_DefaultDiagnosticPortSuspend=%d\n"), port_suspended);
+	fflush(stdout);
+}
+
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */

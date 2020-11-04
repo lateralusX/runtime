@@ -241,32 +241,17 @@ ds_server_shutdown (void)
 void
 ds_server_pause_for_diagnostics_monitor (void)
 {
-	ep_char8_t *ports = NULL;
-	wchar_t *ports_wcs = NULL;
-	uint32_t port_suspended = 0;
-
 	if (ds_ipc_stream_factory_any_suspended_ports ()) {
 		EP_ASSERT (ep_rt_wait_event_is_valid (&_server_resume_runtime_startup_event));
 		DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command.");
 		if (ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, 5000, false) != 0) {
-			ports = ds_rt_config_value_get_ports ();
-			ports_wcs = ports ? ep_rt_utf8_to_wcs_string (ports, -1) : NULL;
-			port_suspended = ds_rt_config_value_get_default_port_suspend ();
-
-			printf ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a Diagnostic Port.\n");
-			printf ("DOTNET_DiagnosticPorts=\"%ls\"\n", ports_wcs == NULL ? L"" : ports_wcs);
-			printf("DOTNET_DefaultDiagnosticPortSuspend=%d\n", port_suspended);
-			fflush (stdout);
-
+			ds_rt_server_log_pause_message ();
 			DS_LOG_ALWAYS_0 ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command and has waited 5 seconds.");
 			ep_rt_wait_event_wait (&_server_resume_runtime_startup_event, EP_INFINITE_WAIT, false);
 		}
 	}
 
 	// allow wait failures to fall through and the runtime to continue coming up
-
-	ep_rt_wcs_string_free (ports_wcs);
-	ep_rt_utf8_string_free (ports);
 }
 
 void

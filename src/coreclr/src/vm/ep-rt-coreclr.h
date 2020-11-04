@@ -1600,45 +1600,6 @@ ep_rt_utf16_string_free (ep_char16_t *str)
 
 static
 inline
-wchar_t *
-ep_rt_utf8_to_wcs_string (
-	const ep_char8_t *str,
-	size_t len)
-{
-#if WCHAR_MAX == 0xFFFF
-	return reinterpret_cast<wchar_t *>(ep_rt_utf8_to_utf16_string (str, len));
-#else
-	//TODO: This needs a utf8 to utf32 conversion routine.
-	EP_ASSERT (!"Can not reach here");
-#endif
-}
-
-static
-inline
-ep_char8_t *
-ep_rt_wcs_to_utf8_string (
-	const wchar_t *str,
-	size_t len)
-{
-#if WCHAR_MAX == 0xFFFF
-	return ep_rt_utf16_to_utf8_string (reinterpret_cast<const ep_char16_t *>(str), len);
-#else
-	//TODO: This needs a utf32 to utf8 conversion routine.
-	EP_ASSERT (!"Can not reach here");
-#endif
-}
-
-static
-inline
-void
-ep_rt_wcs_string_free (wchar_t *str)
-{
-	if (str)
-		free (str);
-}
-
-static
-inline
 const ep_char8_t *
 ep_rt_managed_command_line_get (void)
 {

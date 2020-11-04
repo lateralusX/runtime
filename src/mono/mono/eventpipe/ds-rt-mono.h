@@ -203,5 +203,31 @@ ds_rt_profiler_attach (DiagnosticsAttachProfilerCommandPayload *payload)
 	return DS_IPC_E_NOTSUPPORTED;
 }
 
+/*
+* DiagnosticServer.
+*/
+
+static
+inline
+void
+ds_rt_server_log_pause_message (void)
+{
+	ep_char8_t * ports = ds_rt_config_value_get_ports ();
+#if WCHAR_MAX == 0xFFFF
+	wchar_t* ports_wcs = ports ? (wchar_t *)g_utf8_to_utf16 ((const gchar *)ports, -1, NULL, NULL, NULL) : NULL;
+#else
+	wchar_t* ports_wcs = ports ? (wchar_t *)g_utf8_to_ucs4 ((const gchar *)ports, -1, NULL, NULL, NULL) : NULL;
+#endif
+	uint32_t port_suspended = ds_rt_config_value_get_default_port_suspend ();
+
+	printf ("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a Diagnostic Port.\n");
+	printf ("DOTNET_DiagnosticPorts=\"%ls\"\n", ports_wcs == NULL ? L"" : ports_wcs);
+	printf("DOTNET_DefaultDiagnosticPortSuspend=%d\n", port_suspended);
+	fflush (stdout);
+
+	g_free (ports_wcs);
+	ep_rt_utf8_string_free (ports);
+}
+
 #endif /* ENABLE_PERFTRACING */
 #endif /* __DIAGNOSTICS_RT_MONO_H__ */
