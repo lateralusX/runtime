@@ -57,7 +57,7 @@ ds_generate_core_dump_command_payload_free (DiagnosticsGenerateCoreDumpCommandPa
  * DiagnosticsDumpProtocolHelper.
  */
 
-void
+bool
 ds_dump_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);

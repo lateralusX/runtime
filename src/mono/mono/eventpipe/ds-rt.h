@@ -75,7 +75,7 @@ ds_rt_config_value_get_default_port_suspend (void);
 */
 
 static
-uint32_t
+ds_ipc_result_t
 ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload);
 
 /*
@@ -83,7 +83,7 @@ ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload);
  */
 
 static
-void
+bool
 ds_rt_transport_get_default_name (
 	ep_char8_t *name,
 	int32_t name_len,

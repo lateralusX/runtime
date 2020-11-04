@@ -21,13 +21,13 @@ attach_profiler_command_try_parse_payload (
 	uint16_t buffer_len);
 
 static
-void
+bool
 profiler_protocol_helper_attach_profiler (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
 static
-void
+bool
 profiler_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
@@ -89,7 +89,7 @@ ds_attach_profiler_command_payload_free (DiagnosticsAttachProfilerCommandPayload
  */
 
 static
-void
+bool
 profiler_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -97,10 +97,11 @@ profiler_protocol_helper_unknown_command (
 	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (message)));
 	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 	ds_ipc_stream_free (stream);
+	return true;
 }
 
 static
-void
+bool
 profiler_protocol_helper_attach_profiler (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -109,8 +110,9 @@ profiler_protocol_helper_attach_profiler (
 	EP_ASSERT (stream != NULL);
 
 	if (!stream)
-		return;
+		return false;
 
+	bool result = false;
 	DiagnosticsAttachProfilerCommandPayload *payload;
 	payload = (DiagnosticsAttachProfilerCommandPayload *)ds_ipc_message_try_parse_payload (message, attach_profiler_command_try_parse_payload);
 
@@ -119,31 +121,36 @@ profiler_protocol_helper_attach_profiler (
 		ep_raise_error ();
 	}
 
-	uint32_t result;
-	result = ds_rt_profiler_attach (payload);
-	if (result != DS_IPC_S_OK) {
-		ds_ipc_message_send_error (stream, result);
+	ds_ipc_result_t ipc_result;
+	ipc_result = ds_rt_profiler_attach (payload);
+	if (ipc_result != DS_IPC_S_OK) {
+		ds_ipc_message_send_error (stream, ipc_result);
 		ep_raise_error ();
 	} else {
-		ds_ipc_message_send_success (stream, result);
+		ds_ipc_message_send_success (stream, ipc_result);
 	}
+
+	result = true;
 
 ep_on_exit:
 	ds_attach_profiler_command_payload_free (payload);
 	ds_ipc_stream_free (stream);
-	return;
+	return result;
 
 ep_on_error:
+	EP_ASSERT (result == false);
 	ep_exit_error_handler ();
 }
 
-void
+bool
 ds_profiler_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
 {
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
+
+	bool result = false;
 
 	if (!ep_rt_is_running ()) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_NOT_YET_AVAILABLE);
@@ -153,21 +160,22 @@ ds_profiler_protocol_helper_handle_ipc_message (
 
 	switch ((DiagnosticsProfilerCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
 	case DS_PROFILER_COMMANDID_ATTACH_PROFILER:
-		profiler_protocol_helper_attach_profiler (message, stream);
+		result = profiler_protocol_helper_attach_profiler (message, stream);
 		break;
 	default:
-		profiler_protocol_helper_unknown_command (message, stream);
+		result = profiler_protocol_helper_unknown_command (message, stream);
 		break;
 	}
 
 ep_on_exit:
-	return;
+	return result;
 
 ep_on_error:
+	EP_ASSERT (result == false);
 	ep_exit_error_handler ();
 }
 #else
-void
+bool
 ds_profiler_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -178,6 +186,8 @@ ds_profiler_protocol_helper_handle_ipc_message (
 	DS_LOG_WARNING_0 ("Attach profiler not implemented\n");
 	ds_ipc_message_send_error (stream, DS_IPC_E_NOTSUPPORTED);
 	ds_ipc_stream_free (stream);
+
+	return true;
 }
 #endif /* FEATURE_PROFAPI_ATTACH_DETACH */
 

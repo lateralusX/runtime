@@ -63,7 +63,7 @@ ds_attach_profiler_command_payload_free (DiagnosticsAttachProfilerCommandPayload
  * DiagnosticsProfilerProtocolHelper.
  */
 
-void
+bool
 ds_profiler_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);

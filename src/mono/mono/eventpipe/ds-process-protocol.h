@@ -92,7 +92,7 @@ ds_env_info_payload_fini (DiagnosticsEnvironmentInfoPayload *payload);
  * DiagnosticsProcessProtocolHelper.
  */
 
-void
+bool
 ds_process_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);

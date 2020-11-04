@@ -103,14 +103,15 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc) (array_type *ep_array) { ep_array->array = g_array_new (FALSE, FALSE, sizeof (item_type)); } \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc_capacity) (array_type *ep_array, size_t capacity) { ep_array->array = g_array_sized_new (FALSE, FALSE, sizeof (item_type), capacity); } \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, free) (array_type *ep_array) { g_array_free (ep_array->array, TRUE); } \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item) { g_array_append_val (ep_array->array, item); } \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item) { return g_array_append_val (ep_array->array, item) != NULL; } \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, clear) (array_type *ep_array) { g_array_set_size (ep_array->array, 0); } \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, remove) (array_type *ep_array, iterator_type *pos) { \
 		EP_ASSERT (pos->index < ep_array->array->len); \
 		ep_array->array = g_array_remove_index_fast (ep_array->array, pos->index); \
 	} \
 	static inline size_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, size) (const array_type *ep_array) { return ep_array->array->len; } \
-	static inline item_type * EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, data) (const array_type *ep_array) { return (item_type *)ep_array->array->data; }
+	static inline item_type * EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, data) (const array_type *ep_array) { return (item_type *)ep_array->array->data; } \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, is_valid) (const array_type *ep_array) { return (ep_array->array != NULL); }
 
 #define EP_RT_DEFINE_ARRAY(array_name, array_type, iterator_type, item_type) \
 	EP_RT_DEFINE_ARRAY_PREFIX(ep, array_name, array_type, iterator_type, item_type)

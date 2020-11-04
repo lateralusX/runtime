@@ -146,7 +146,7 @@ ds_rt_config_value_get_default_port_suspend (void)
 
 static
 inline
-uint32_t
+ds_ipc_result_t
 ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
 {
 	// TODO: Implement.
@@ -159,7 +159,7 @@ ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
 
 static
 inline
-void
+bool
 ds_rt_transport_get_default_name (
 	ep_char8_t *name,
 	int32_t name_len,
@@ -168,8 +168,8 @@ ds_rt_transport_get_default_name (
 	const ep_char8_t *group_id,
 	const ep_char8_t *suffix)
 {
-	extern void ipc_transport_get_default_name (ep_char8_t *name, uint32_t name_len, const ep_char8_t *prefix, int32_t id, const ep_char8_t *group_id, const ep_char8_t *suffix);
-	ipc_transport_get_default_name (name, name_len, prefix, id, group_id, suffix);
+	extern bool ipc_transport_get_default_name (ep_char8_t *name, uint32_t name_len, const ep_char8_t *prefix, int32_t id, const ep_char8_t *group_id, const ep_char8_t *suffix);
+	return ipc_transport_get_default_name (name, name_len, prefix, id, group_id, suffix);
 }
 
 /*

@@ -19,13 +19,13 @@ generate_core_dump_command_try_parse_payload (
 	uint16_t buffer_len);
 
 static
-void
+bool
 dump_protocol_helper_generate_core_dump (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
 static
-void
+bool
 dump_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
@@ -83,7 +83,7 @@ ds_generate_core_dump_command_payload_free (DiagnosticsGenerateCoreDumpCommandPa
  */
 
 static
-void
+bool
 dump_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -91,10 +91,11 @@ dump_protocol_helper_unknown_command (
 	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (message)));
 	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 	ds_ipc_stream_free (stream);
+	return true;
 }
 
 static
-void
+bool
 dump_protocol_helper_generate_core_dump (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -103,8 +104,9 @@ dump_protocol_helper_generate_core_dump (
 	EP_ASSERT (stream != NULL);
 
 	if (!stream)
-		return;
+		return false;
 
+	bool result = false;
 	DiagnosticsGenerateCoreDumpCommandPayload *payload;
 	payload = (DiagnosticsGenerateCoreDumpCommandPayload *)ds_ipc_message_try_parse_payload (message, generate_core_dump_command_try_parse_payload);
 
@@ -113,8 +115,8 @@ dump_protocol_helper_generate_core_dump (
 		ep_raise_error ();
 	}
 
-	uint32_t result;
-	result = ds_rt_generate_core_dump (payload);
+	ds_ipc_result_t ipc_result;
+	ipc_result = ds_rt_generate_core_dump (payload);
 	if (result != DS_IPC_S_OK) {
 		ds_ipc_message_send_error (stream, result);
 		ep_raise_error ();
@@ -122,16 +124,19 @@ dump_protocol_helper_generate_core_dump (
 		ds_ipc_message_send_success (stream, result);
 	}
 
+	result = true;
+
 ep_on_exit:
 	ds_generate_core_dump_command_payload_free (payload);
 	ds_ipc_stream_free (stream);
-	return;
+	return result;
 
 ep_on_error:
+	EP_ASSERT (result == false);
 	ep_exit_error_handler ();
 }
 
-void
+bool
 ds_dump_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -139,14 +144,17 @@ ds_dump_protocol_helper_handle_ipc_message (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
+	bool result = false;
+
 	switch ((DiagnosticsDumpCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
 	case DS_DUMP_COMMANDID_GENERATE_CORE_DUMP:
-		dump_protocol_helper_generate_core_dump (message, stream);
+		result = dump_protocol_helper_generate_core_dump (message, stream);
 		break;
 	default:
-		dump_protocol_helper_unknown_command (message, stream);
+		result = dump_protocol_helper_unknown_command (message, stream);
 		break;
 	}
+	return result;
 }
 
 #endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */

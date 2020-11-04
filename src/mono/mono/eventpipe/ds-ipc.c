@@ -155,28 +155,28 @@ ipc_stream_factory_build_and_add_port (
 	EP_ASSERT (builder != NULL);
 	EP_ASSERT (callback != NULL);
 
-	bool success = false;
+	bool result = false;
 	DiagnosticsIpc *ipc = NULL;
 
 	if (builder->type == DS_PORT_TYPE_LISTEN) {
 		ipc = ds_ipc_alloc (builder->path, DS_IPC_CONNECTION_MODE_LISTEN, callback);
 		ep_raise_error_if_nok (ipc != NULL);
 		ep_raise_error_if_nok (ds_ipc_listen (ipc, callback) == true);
-		ds_rt_port_array_append (&_ds_port_array, (DiagnosticsPort *)ds_listen_port_alloc (ipc, builder));
-		success = true;
+		ep_raise_error_if_nok (ds_rt_port_array_append (&_ds_port_array, (DiagnosticsPort *)ds_listen_port_alloc (ipc, builder)) == true);
 	} else if (builder->type == DS_PORT_TYPE_CONNECT) {
 		ipc = ds_ipc_alloc (builder->path, DS_IPC_CONNECTION_MODE_CONNECT, callback);
 		ep_raise_error_if_nok (ipc != NULL);
-		ds_rt_port_array_append (&_ds_port_array, (DiagnosticsPort *)ds_connect_port_alloc (ipc, builder));
-		success = true;
+		ep_raise_error_if_nok (ds_rt_port_array_append (&_ds_port_array, (DiagnosticsPort *)ds_connect_port_alloc (ipc, builder)) == true);
 	}
 
+	result = true;
+
 ep_on_exit:
-	return success;
+	return result;
 
 ep_on_error:
+	EP_ASSERT (result == false);
 	ds_ipc_free (ipc);
-	success = false;
 	ep_exit_error_handler ();
 }
 
@@ -206,10 +206,11 @@ ipc_log_poll_handles (ds_rt_ipc_poll_handle_array_t *ipc_poll_handles)
 	}
 }
 
-void
+bool
 ds_ipc_stream_factory_init (void)
 {
 	ds_rt_port_array_alloc (&_ds_port_array);
+	return ds_rt_port_array_is_valid (&_ds_port_array);
 }
 
 void
@@ -230,7 +231,7 @@ ds_ipc_stream_factory_fini (void)
 bool
 ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 {
-	bool success = true;
+	bool result = true;
 
 	ep_char8_t *ports = ds_rt_config_value_get_ports ();
 	if (ports) {
@@ -240,47 +241,53 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 		ds_rt_port_config_array_alloc (&port_configs);
 		ds_rt_port_config_array_alloc (&port_config_parts);
 
-		ipc_stream_factory_split_port_config (ports, ";", &port_configs);
+		if (ds_rt_port_config_array_is_valid (&port_configs) && ds_rt_port_config_array_is_valid (&port_config_parts)) {
+			ipc_stream_factory_split_port_config (ports, ";", &port_configs);
+			ds_rt_port_config_array_reverse_iterator_t port_configs_iterator = ds_rt_port_config_array_reverse_iterator_begin (&port_configs);
+			while (!ds_rt_port_config_array_reverse_iterator_end(&port_configs, &port_configs_iterator)) {
+				ep_char8_t *port_config = ds_rt_port_config_array_reverse_iterator_value (&port_configs_iterator);
+				DS_LOG_INFO_1 ("ds_ipc_stream_factory_configure - Attempted to create Diagnostic Port from \"%s\".\n", port_config ? port_config : "");
+				if (port_config) {
+					ds_rt_port_config_array_clear (&port_config_parts);
+					ipc_stream_factory_split_port_config (port_config, ",", &port_config_parts);
 
-		ds_rt_port_config_array_reverse_iterator_t port_configs_iterator = ds_rt_port_config_array_reverse_iterator_begin (&port_configs);
-		while (!ds_rt_port_config_array_reverse_iterator_end(&port_configs, &port_configs_iterator)) {
-			ep_char8_t *port_config = ds_rt_port_config_array_reverse_iterator_value (&port_configs_iterator);
-			DS_LOG_INFO_1 ("ds_ipc_stream_factory_configure - Attempted to create Diagnostic Port from \"%s\".\n", port_config ? port_config : "");
-			if (port_config) {
-				ds_rt_port_config_array_clear (&port_config_parts);
-				ipc_stream_factory_split_port_config (port_config, ",", &port_config_parts);
-
-				size_t port_config_parts_index = ds_rt_port_config_array_size (&port_config_parts);
-				if (port_config_parts_index != 0) {
-					DiagnosticsPortBuilder port_builder;
-					ds_port_builder_init (&port_builder);
-					ds_rt_port_config_array_reverse_iterator_t port_config_parts_iterator = ds_rt_port_config_array_reverse_iterator_begin (&port_config_parts);
-					while (!ds_rt_port_config_array_reverse_iterator_end(&port_config_parts, &port_config_parts_iterator)) {
-						if (port_config_parts_index == 1)
-							port_builder.path = ds_rt_port_config_array_reverse_iterator_value (&port_config_parts_iterator);
-						else
-							ds_port_builder_set_tag (&port_builder, ds_rt_port_config_array_reverse_iterator_value (&port_config_parts_iterator));
-						ds_rt_port_config_array_reverse_iterator_next (&port_config_parts_iterator);
-						port_config_parts_index--;
-					}
-					if (!ep_rt_utf8_string_is_null_or_empty (port_builder.path)) {
-						// Ignore listen type (see conversation in https://github.com/dotnet/runtime/pull/40499 for details)
-						if (port_builder.type != DS_PORT_TYPE_LISTEN) {
-							const bool build_success = ipc_stream_factory_build_and_add_port (&port_builder, callback);
-							DS_LOG_INFO_1 ("ds_ipc_stream_factory_configure - Diagnostic Port creation succeeded? %d \n", build_success);
-							success &= build_success;
+					size_t port_config_parts_index = ds_rt_port_config_array_size (&port_config_parts);
+					if (port_config_parts_index != 0) {
+						DiagnosticsPortBuilder port_builder;
+						if (ds_port_builder_init (&port_builder)) {
+							ds_rt_port_config_array_reverse_iterator_t port_config_parts_iterator = ds_rt_port_config_array_reverse_iterator_begin (&port_config_parts);
+							while (!ds_rt_port_config_array_reverse_iterator_end(&port_config_parts, &port_config_parts_iterator)) {
+								if (port_config_parts_index == 1)
+									port_builder.path = ds_rt_port_config_array_reverse_iterator_value (&port_config_parts_iterator);
+								else
+									ds_port_builder_set_tag (&port_builder, ds_rt_port_config_array_reverse_iterator_value (&port_config_parts_iterator));
+								ds_rt_port_config_array_reverse_iterator_next (&port_config_parts_iterator);
+								port_config_parts_index--;
+							}
+							if (!ep_rt_utf8_string_is_null_or_empty (port_builder.path)) {
+								// Ignore listen type (see conversation in https://github.com/dotnet/runtime/pull/40499 for details)
+								if (port_builder.type != DS_PORT_TYPE_LISTEN) {
+									const bool build_success = ipc_stream_factory_build_and_add_port (&port_builder, callback);
+									DS_LOG_INFO_1 ("ds_ipc_stream_factory_configure - Diagnostic Port creation succeeded? %d \n", build_success);
+									result &= build_success;
+								} else {
+									DS_LOG_INFO_0 ("ds_ipc_stream_factory_configure - Ignoring LISTEN port configuration \n");
+								}
+							} else {
+								DS_LOG_INFO_0("ds_ipc_stream_factory_configure - Ignoring port configuration with empty address\n");
+							}
+							ds_port_builder_fini (&port_builder);
 						} else {
-							DS_LOG_INFO_0 ("ds_ipc_stream_factory_configure - Ignoring LISTEN port configuration \n");
+							result &= false;
 						}
 					} else {
-						DS_LOG_INFO_0("ds_ipc_stream_factory_configure - Ignoring port configuration with empty address\n");
+						result &= false;
 					}
-					ds_port_builder_fini (&port_builder);
-				} else {
-					success &= false;
 				}
+				ds_rt_port_config_array_reverse_iterator_next (&port_configs_iterator);
 			}
-			ds_rt_port_config_array_reverse_iterator_next (&port_configs_iterator);
+		} else {
+			result &= false;
 		}
 
 		ds_rt_port_config_array_free (&port_config_parts);
@@ -291,19 +298,20 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 	uint32_t port_suspend = ds_rt_config_value_get_default_port_suspend ();
 
 	DiagnosticsPortBuilder default_port_builder;
-	ds_port_builder_init (&default_port_builder);
+	if (ds_port_builder_init (&default_port_builder)) {
+		default_port_builder.path = NULL;
+		default_port_builder.suspend_mode = port_suspend > 0 ? DS_PORT_SUSPEND_MODE_SUSPEND : DS_PORT_SUSPEND_MODE_NOSUSPEND;
+		default_port_builder.type = DS_PORT_TYPE_LISTEN;
 
-	default_port_builder.path = NULL;
-	default_port_builder.suspend_mode = port_suspend > 0 ? DS_PORT_SUSPEND_MODE_SUSPEND : DS_PORT_SUSPEND_MODE_NOSUSPEND;
-	default_port_builder.type = DS_PORT_TYPE_LISTEN;
+		result &= ipc_stream_factory_build_and_add_port (&default_port_builder, callback);
 
-	success &= ipc_stream_factory_build_and_add_port (&default_port_builder, callback);
-
-	ds_port_builder_fini (&default_port_builder);
+		ds_port_builder_fini (&default_port_builder);
+	} else {
+		result &= false;
+	}
 
 	ep_rt_utf8_string_free (ports);
-
-	return success;
+	return result;
 }
 
 DiagnosticsIpcStream *
@@ -323,6 +331,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 
 	// TODO: Convert to stack instance.
 	ds_rt_ipc_poll_handle_array_alloc (&ipc_poll_handles);
+	ep_raise_error_if_nok (ds_rt_ipc_poll_handle_array_is_valid (&ipc_poll_handles) == true);
 
 	while (!stream) {
 		connect_success = true;
@@ -330,7 +339,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 		while (!ds_rt_port_array_iterator_end (ports, &ports_iterator)) {
 			port = ds_rt_port_array_iterator_value (&ports_iterator);
 			if (ds_port_get_ipc_poll_handle_vcall (port, &ipc_poll_handle, callback))
-				ds_rt_ipc_poll_handle_array_append (&ipc_poll_handles, ipc_poll_handle);
+				ep_raise_error_if_nok (ds_rt_ipc_poll_handle_array_append (&ipc_poll_handles, ipc_poll_handle) == true);
 			else
 				connect_success = false;
 
@@ -444,11 +453,11 @@ ds_ipc_stream_factory_close_ports (ds_ipc_error_callback_func callback)
 	}
 }
 
-void
+bool
 ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback)
 {
 	if (load_shutting_down_state ())
-		return;
+		return true;
 
 	store_shutting_down_state (true);
 
@@ -459,6 +468,7 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback)
 	}
 
 	_ds_current_port = NULL;
+	return true;
 }
 
 /*

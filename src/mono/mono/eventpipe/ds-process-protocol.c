@@ -49,25 +49,25 @@ env_info_stream_env_block (
 	DiagnosticsIpcStream *stream);
 
 static
-void
+bool
 process_protocol_helper_get_process_info (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
 static
-void
+bool
 process_protocol_helper_get_process_env (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
 static
-void
+bool
 process_protocol_helper_resume_runtime_startup (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
 
 static
-void
+bool
 process_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
@@ -322,7 +322,7 @@ ds_env_info_payload_fini (DiagnosticsEnvironmentInfoPayload *payload)
  */
 
 static
-void
+bool
 process_protocol_helper_get_process_info (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -330,50 +330,59 @@ process_protocol_helper_get_process_info (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
+	bool result = false;
 	ep_char16_t *command_line = NULL;
 	ep_char16_t *os_info = NULL;
 	ep_char16_t *arch_info = NULL;
 
 	command_line = ep_rt_utf8_to_utf16_string (ep_rt_diagnostics_command_line_get (), -1);
+	ep_raise_error_if_nok (command_line != NULL);
 
-	// get OS + Arch info
 	os_info = ep_rt_utf8_to_utf16_string (ep_event_source_get_os_info (), -1);
+	ep_raise_error_if_nok (os_info != NULL);
+
 	arch_info = ep_rt_utf8_to_utf16_string (ep_event_source_get_arch_info (), -1);
+	ep_raise_error_if_nok (arch_info != NULL);
 
 	DiagnosticsProcessInfoPayload payload;
-	ds_process_info_payload_init (
+	DiagnosticsProcessInfoPayload *process_info_payload;
+	process_info_payload = ds_process_info_payload_init (
 		&payload,
 		command_line,
 		os_info,
 		arch_info,
 		ep_rt_current_process_get_id (),
 		ds_ipc_advertise_cookie_v1_get ());
+	ep_raise_error_if_nok (process_info_payload != NULL);
 
 	ep_raise_error_if_nok (ds_ipc_message_initialize_buffer (
 		message,
 		ds_ipc_header_get_generic_success (),
-		(void *)&payload,
-		process_info_payload_get_size (&payload),
+		(void *)process_info_payload,
+		process_info_payload_get_size (process_info_payload),
 		process_info_payload_flatten) == true);
 
-	ds_ipc_message_send (message, stream);
+	ep_raise_error_if_nok (ds_ipc_message_send (message, stream) == true);
+
+	result = true;
 
 ep_on_exit:
-	ds_process_info_payload_fini (&payload);
+	ds_process_info_payload_fini (process_info_payload);
 	ep_rt_utf16_string_free (arch_info);
 	ep_rt_utf16_string_free (os_info);
 	ep_rt_utf16_string_free (command_line);
 	ds_ipc_stream_free (stream);
-	return;
+	return result;
 
 ep_on_error:
+	EP_ASSERT (result == false);
 	ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
 	DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
 	ep_exit_error_handler ();
 }
 
 static
-void
+bool
 process_protocol_helper_get_process_env (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -381,32 +390,39 @@ process_protocol_helper_get_process_env (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
+	bool result = false;
 	DiagnosticsEnvironmentInfoPayload payload;
-	ds_env_info_payload_init (&payload);
+	DiagnosticsEnvironmentInfoPayload *env_info_payload;
+
+	env_info_payload = ds_env_info_payload_init (&payload);
+	ep_raise_error_if_nok (env_info_payload);
 
 	ep_raise_error_if_nok (ds_ipc_message_initialize_buffer (
 		message,
 		ds_ipc_header_get_generic_success (),
-		(void *)&payload,
-		env_info_payload_get_size (&payload),
+		(void *)env_info_payload,
+		env_info_payload_get_size (env_info_payload),
 		env_info_payload_flatten) == true);
 
-	ds_ipc_message_send (message, stream);
-	env_info_stream_env_block (&payload, stream);
+	ep_raise_error_if_nok (ds_ipc_message_send (message, stream) == true);
+	ep_raise_error_if_nok (env_info_stream_env_block (env_info_payload, stream) == true);
+
+	result = true;
 
 ep_on_exit:
-	ds_env_info_payload_fini (&payload);
+	ds_env_info_payload_fini (env_info_payload);
 	ds_ipc_stream_free (stream);
-	return;
+	return result;
 
 ep_on_error:
+	EP_ASSERT (result == false);
 	ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
 	DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
 	ep_exit_error_handler ();
 }
 
 static
-void
+bool
 process_protocol_helper_resume_runtime_startup (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -414,19 +430,22 @@ process_protocol_helper_resume_runtime_startup (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
+	bool result = false;
+
 	// no payload
 	ds_server_resume_runtime_startup ();
-	bool success = ds_ipc_message_send_success (stream, DS_IPC_S_OK);
-	if (!success) {
+	result = ds_ipc_message_send_success (stream, DS_IPC_S_OK);
+	if (!result) {
 		ds_ipc_message_send_error (stream, DS_IPC_E_FAIL);
 		DS_LOG_WARNING_0 ("Failed to send DiagnosticsIPC response");
 	}
 
 	ds_ipc_stream_free (stream);
+	return result;
 }
 
 static
-void
+bool
 process_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -434,9 +453,10 @@ process_protocol_helper_unknown_command (
 	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (message)));
 	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 	ds_ipc_stream_free (stream);
+	return true;
 }
 
-void
+bool
 ds_process_protocol_helper_handle_ipc_message (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -444,20 +464,24 @@ ds_process_protocol_helper_handle_ipc_message (
 	EP_ASSERT (message != NULL);
 	EP_ASSERT (stream != NULL);
 
+	bool result = false;
+
 	switch ((DiagnosticsProcessCommandId)ds_ipc_header_get_commandid (ds_ipc_message_get_header_ref (message))) {
 	case DS_PROCESS_COMMANDID_GET_PROCESS_INFO:
-		process_protocol_helper_get_process_info (message, stream);
+		result = process_protocol_helper_get_process_info (message, stream);
 		break;
 	case DS_PROCESS_COMMANDID_RESUME_RUNTIME:
-		process_protocol_helper_resume_runtime_startup (message, stream);
+		result = process_protocol_helper_resume_runtime_startup (message, stream);
 		break;
 	case DS_PROCESS_COMMANDID_GET_PROCESS_ENV:
-		process_protocol_helper_get_process_env (message, stream);
+		result = process_protocol_helper_get_process_env (message, stream);
 		break;
 	default:
-		process_protocol_helper_unknown_command (message, stream);
+		result = process_protocol_helper_unknown_command (message, stream);
 		break;
 	}
+
+	return result;
 }
 
 #endif /* !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES) */

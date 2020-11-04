@@ -131,14 +131,17 @@ typedef enum {
 #define DS_VAL64(x) x
 #endif // BIGENDIAN
 
-#define DS_IPC_S_OK ((uint32_t)(0L))
-#define DS_IPC_E_BAD_ENCODING ((uint32_t)(0x80131384L))
-#define DS_IPC_E_UNKNOWN_COMMAND ((uint32_t)(0x80131385L))
-#define DS_IPC_E_UNKNOWN_MAGIC ((uint32_t)(0x80131386L))
-#define DS_IPC_E_NOTSUPPORTED ((uint32_t)(0x80131515L))
-#define DS_IPC_E_FAIL ((uint32_t)(0x80004005L))
-#define DS_IPC_E_NOT_YET_AVAILABLE ((uint32_t)(0x8013135bL))
-#define DS_IPC_E_RUNTIME_UNINITIALIZED ((uint32_t)(0x80131371L))
+typedef int32_t ds_ipc_result_t;
+
+#define DS_IPC_S_OK ((ds_ipc_result_t)(0L))
+#define DS_IPC_E_BAD_ENCODING ((ds_ipc_result_t)(0x80131384L))
+#define DS_IPC_E_UNKNOWN_COMMAND ((ds_ipc_result_t)(0x80131385L))
+#define DS_IPC_E_UNKNOWN_MAGIC ((ds_ipc_result_t)(0x80131386L))
+#define DS_IPC_E_NOTSUPPORTED ((ds_ipc_result_t)(0x80131515L))
+#define DS_IPC_E_FAIL ((ds_ipc_result_t)(0x80004005L))
+#define DS_IPC_E_NOT_YET_AVAILABLE ((ds_ipc_result_t)(0x8013135bL))
+#define DS_IPC_E_RUNTIME_UNINITIALIZED ((ds_ipc_result_t)(0x80131371L))
+#define DS_IPC_E_INVALIDARG ((ds_ipc_result_t)(0x80070057L))
 
 // Polling timeout semantics
 // If client connection is opted in

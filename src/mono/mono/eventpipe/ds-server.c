@@ -61,7 +61,7 @@ server_warning_callback (
 	uint32_t code);
 
 static
-void
+bool
 server_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream);
@@ -91,7 +91,7 @@ server_error_callback_close (
 }
 
 static
-void
+bool
 server_protocol_helper_unknown_command (
 	DiagnosticsIpcMessage *message,
 	DiagnosticsIpcStream *stream)
@@ -99,6 +99,7 @@ server_protocol_helper_unknown_command (
 	DS_LOG_WARNING_1 ("Received unknown request type (%d)\n", ds_ipc_header_get_commandset (ds_ipc_message_get_header_ref (message)));
 	ds_ipc_message_send_error (stream, DS_IPC_E_UNKNOWN_COMMAND);
 	ds_ipc_stream_free (stream);
+	return true;
 }
 
 static
@@ -128,7 +129,9 @@ EP_RT_DEFINE_THREAD_FUNC (server_thread)
 		ds_rt_auto_trace_signal ();
 
 		DiagnosticsIpcMessage message;
-		ds_ipc_message_init (&message);
+		if (!ds_ipc_message_init (&message))
+			continue;
+
 		if (!ds_ipc_message_initialize_stream (&message, stream)) {
 			ds_ipc_message_send_error (stream, DS_IPC_E_BAD_ENCODING);
 			ds_ipc_stream_free (stream);
@@ -181,12 +184,13 @@ ds_server_disable (void)
 bool
 ds_server_init (void)
 {
-	ds_ipc_stream_factory_init ();
+	if (!ds_ipc_stream_factory_init ())
+		return false;
 
 	if (_server_disabled || !ds_rt_config_value_get_enable ())
 		return true;
 
-	bool success = false;
+	bool result = false;
 
 	// Initialize the RuntimeIndentifier before use
 	ds_ipc_advertise_cookie_v1_init ();
@@ -212,15 +216,16 @@ ds_server_init (void)
 			ep_raise_error ();
 		} else {
 			ds_rt_auto_trace_wait ();
-			success = true;
 		}
 	}
 
+	result = true;
+
 ep_on_exit:
-	return success;
+	return result;
 
 ep_on_error:
-	success = false;
+	EP_ASSERT (result == false);
 	ep_exit_error_handler ();
 }
 

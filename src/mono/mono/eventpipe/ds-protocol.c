@@ -145,16 +145,16 @@ ipc_message_try_send_string_utf16_t (
 	uint32_t total_written = 0;
 	uint32_t written = 0;
 
-	bool success = ds_ipc_stream_write (stream, (const uint8_t *)&string_len, (uint32_t)sizeof (string_len), &written, EP_INFINITE_WAIT);
+	bool result = ds_ipc_stream_write (stream, (const uint8_t *)&string_len, (uint32_t)sizeof (string_len), &written, EP_INFINITE_WAIT);
 	total_written += written;
 
-	if (success) {
-		success &= ds_ipc_stream_write (stream, (const uint8_t *)value, string_bytes, &written, EP_INFINITE_WAIT);
+	if (result) {
+		result &= ds_ipc_stream_write (stream, (const uint8_t *)value, string_bytes, &written, EP_INFINITE_WAIT);
 		total_written += written;
 	}
 
 	EP_ASSERT (total_bytes == total_written);
-	return success && (total_bytes == total_written);
+	return result && (total_bytes == total_written);
 }
 
 static
@@ -215,12 +215,12 @@ ipc_message_try_parse (
 	EP_ASSERT (stream != NULL);
 
 	uint8_t *buffer = NULL;
-	bool success = false;
+	bool result = false;
 
 	// Read out header first
 	uint32_t bytes_read;
-	success = ds_ipc_stream_read (stream, (uint8_t *)&message->header, sizeof (message->header), &bytes_read, EP_INFINITE_WAIT);
-	if (!success || (bytes_read < sizeof (message->header)))
+	result = ds_ipc_stream_read (stream, (uint8_t *)&message->header, sizeof (message->header), &bytes_read, EP_INFINITE_WAIT);
+	if (!result || (bytes_read < sizeof (message->header)))
 		ep_raise_error ();
 
 	if (message->header.size < sizeof (message->header))
@@ -235,8 +235,8 @@ ipc_message_try_parse (
 		uint8_t *buffer = ep_rt_byte_array_alloc (payload_len);
 		ep_raise_error_if_nok (buffer != NULL);
 
-		success = ds_ipc_stream_read (stream, buffer, payload_len, &bytes_read, EP_INFINITE_WAIT);
-		if (!success || (bytes_read < payload_len))
+		result = ds_ipc_stream_read (stream, buffer, payload_len, &bytes_read, EP_INFINITE_WAIT);
+		if (!result || (bytes_read < payload_len))
 			ep_raise_error ();
 
 		message->data = buffer;
@@ -244,11 +244,11 @@ ipc_message_try_parse (
 	}
 
 ep_on_exit:
-	return success;
+	return result;
 
 ep_on_error:
 	ep_rt_byte_array_free (buffer);
-	success = false;
+	result = false;
 	ep_exit_error_handler ();
 }
 
@@ -556,40 +556,40 @@ ds_ipc_message_send (
 	EP_ASSERT (stream != NULL);
 
 	uint32_t bytes_written;
-	bool success = ds_ipc_stream_write (stream, message->data, message->size, &bytes_written, EP_INFINITE_WAIT);
-	return (bytes_written == message->size) && success;
+	bool result = ds_ipc_stream_write (stream, message->data, message->size, &bytes_written, EP_INFINITE_WAIT);
+	return (bytes_written == message->size) && result;
 }
 
 bool
 ds_ipc_message_send_error (
 	DiagnosticsIpcStream *stream,
-	uint32_t error)
+	ds_ipc_result_t error)
 {
 	ep_return_false_if_nok (stream != NULL);
 
 	DiagnosticsIpcMessage error_message;
 	ds_ipc_message_init (&error_message);
-	bool success = ds_ipc_message_initialize_header_uint32_t_payload (&error_message, ds_ipc_header_get_generic_error (), error);
-	if (success)
+	bool result = ds_ipc_message_initialize_header_int32_t_payload (&error_message, ds_ipc_header_get_generic_error (), (int32_t)error);
+	if (result)
 		ds_ipc_message_send (&error_message, stream);
 	ds_ipc_message_fini (&error_message);
-	return success;
+	return result;
 }
 
 bool
 ds_ipc_message_send_success (
 	DiagnosticsIpcStream *stream,
-	uint32_t code)
+	ds_ipc_result_t code)
 {
 	ep_return_false_if_nok (stream != NULL);
 
 	DiagnosticsIpcMessage success_message;
 	ds_ipc_message_init (&success_message);
-	bool success = ds_ipc_message_initialize_header_uint32_t_payload (&success_message, ds_ipc_header_get_generic_success (), code);
-	if (success)
+	bool result = ds_ipc_message_initialize_header_int32_t_payload (&success_message, ds_ipc_header_get_generic_success (), (int32_t)code);
+	if (result)
 		ds_ipc_message_send (&success_message, stream);
 	ds_ipc_message_fini (&success_message);
-	return success;
+	return result;
 }
 
 const DiagnosticsIpcHeader *

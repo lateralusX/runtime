@@ -76,9 +76,14 @@ inline
 void
 ds_rt_auto_trace_init (void)
 {
-	// NOTHROW ?
+	// NOTHROW
 #ifdef FEATURE_AUTO_TRACE
-	auto_trace_init ();
+	EX_TRY
+	{
+		auto_trace_init ();
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
 #endif
 }
 
@@ -87,9 +92,14 @@ inline
 void
 ds_rt_auto_trace_launch (void)
 {
-	// NOTHROW ?
+	// NOTHROW
 #ifdef FEATURE_AUTO_TRACE
-	auto_trace_launch ();
+	EX_TRY
+	{
+		auto_trace_launch ();
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
 #endif
 }
 
@@ -98,9 +108,14 @@ inline
 void
 ds_rt_auto_trace_signal (void)
 {
-	// NOTHROW ?
+	// NOTHROW
 #ifdef FEATURE_AUTO_TRACE
-	auto_trace_signal ();
+	EX_TRY
+	{
+		auto_trace_signal ();
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
 #endif
 }
 
@@ -109,9 +124,14 @@ inline
 void
 ds_rt_auto_trace_wait (void)
 {
-	// NOTHROW ?
+	// NOTHROW
 #ifdef FEATURE_AUTO_TRACE
-	auto_trace_wait ();
+	EX_TRY
+	{
+		auto_trace_wait ();
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
 #endif
 }
 
@@ -153,25 +173,30 @@ ds_rt_config_value_get_default_port_suspend (void)
 
 static
 inline
-uint32_t
+ds_ipc_result_t
 ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
 {
-	// THROWS
-	uint32_t result = DS_IPC_E_FAIL;
+	// NOTHROW
+	ds_ipc_result_t result = DS_IPC_E_FAIL;
+	EX_TRY
+	{
 #ifdef HOST_WIN32
-	if (GenerateCrashDump (reinterpret_cast<LPCWSTR>(ds_generate_core_dump_command_payload_get_dump_name (payload)),
-		static_cast<int32_t>(ds_generate_core_dump_command_payload_get_dump_type (payload)),
-		(ds_generate_core_dump_command_payload_get_diagnostics (payload) != 0) ? true : false))
-		result = DS_IPC_S_OK;
-#else
-	MAKE_UTF8PTR_FROMWIDE_NOTHROW (dump_name, payload->dumpName);
-	if (dump_name != nullptr) {
-		if (PAL_GenerateCoreDump (dump_name,
+		if (GenerateCrashDump (reinterpret_cast<LPCWSTR>(ds_generate_core_dump_command_payload_get_dump_name (payload)),
 			static_cast<int32_t>(ds_generate_core_dump_command_payload_get_dump_type (payload)),
 			(ds_generate_core_dump_command_payload_get_diagnostics (payload) != 0) ? true : false))
 			result = DS_IPC_S_OK;
-	}
+#else
+		MAKE_UTF8PTR_FROMWIDE_NOTHROW (dump_name, payload->dumpName);
+		if (dump_name != nullptr) {
+			if (PAL_GenerateCoreDump (dump_name,
+				static_cast<int32_t>(ds_generate_core_dump_command_payload_get_dump_type (payload)),
+				(ds_generate_core_dump_command_payload_get_diagnostics (payload) != 0) ? true : false))
+				result = DS_IPC_S_OK;
+		}
 #endif
+	}
+	EX_CATCH {}
+	EX_END_CATCH(SwallowAllExceptions);
 	return result;
 }
 
@@ -181,7 +206,7 @@ ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
 
 static
 inline
-void
+bool
 ds_rt_transport_get_default_name (
 	ep_char8_t *name,
 	int32_t name_len,
@@ -194,6 +219,7 @@ ds_rt_transport_get_default_name (
 #ifdef TARGET_UNIX
 	PAL_GetTransportName (name_len, name, prefix, id, group_id, suffix);
 #endif
+	return true;
 }
 
 /*
@@ -264,10 +290,9 @@ ds_rt_server_log_pause_message (void)
 	CLRConfigStringHolder ports(CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_DOTNET_DiagnosticPorts));
 	uint32_t port_suspended = ds_rt_config_value_get_default_port_suspend ();
 
-	WCHAR empty[] = W("");
 	DWORD dotnetDiagnosticPortSuspend = CLRConfig::GetConfigValue(CLRConfig::EXTERNAL_DOTNET_DefaultDiagnosticPortSuspend);
 	wprintf(W("The runtime has been configured to pause during startup and is awaiting a Diagnostics IPC ResumeStartup command from a Diagnostic Port.\n"));
-	wprintf(W("DOTNET_DiagnosticPorts=\"%s\"\n"), ports == nullptr ? empty : ports.GetValue());
+	wprintf(W("DOTNET_DiagnosticPorts=\"%s\"\n"), ports == nullptr ? W("") : ports.GetValue());
 	wprintf(W("DOTNET_DefaultDiagnosticPortSuspend=%d\n"), port_suspended);
 	fflush(stdout);
 }

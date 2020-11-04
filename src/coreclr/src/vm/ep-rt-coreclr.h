@@ -39,6 +39,119 @@
 prefix_name ## _rt_ ## type_name ## _ ## func_name
 #endif
 
+template<typename ARRAY_TYPE, typename ITEM_TYPE>
+static inline void _rt_coreclr_array_alloc (ARRAY_TYPE *ep_array) {
+	ep_array->array = new (nothrow) CQuickArrayList<ITEM_TYPE> ();
+}
+
+template<typename ARRAY_TYPE, typename ITEM_TYPE>
+static inline void _rt_coreclr_array_alloc_capacity (ARRAY_TYPE *ep_array, size_t capacity) {
+	ep_array->array = new (nothrow) CQuickArrayList<ITEM_TYPE> ();
+	if (ep_array->array)
+		ep_array->array->AllocNoThrow (capacity);
+}
+
+template<typename ARRAY_TYPE>
+static inline void _rt_coreclr_array_free (ARRAY_TYPE *ep_array) {
+	if (ep_array && ep_array->array) {
+		delete ep_array->array;
+		ep_array->array = NULL;
+	}
+}
+
+template<typename ARRAY_TYPE, typename ITEM_TYPE>
+static inline bool _rt_coreclr_array_append (ARRAY_TYPE *ep_array, ITEM_TYPE item) {
+	EP_ASSERT (ep_array->array != NULL);
+	bool result = true;
+	EX_TRY
+	{
+		ep_array->array->Push (item); /* TODO: Change to nothrow */
+	}
+	EX_CATCH
+	{
+		result = false;
+	}
+	EX_END_CATCH(SwallowAllExceptions);
+	return result;
+}
+
+template<typename ARRAY_TYPE, typename ITEM_TYPE>
+static inline void _rt_coreclr_array_clear (ARRAY_TYPE *ep_array) {
+	EP_ASSERT (ep_array->array != NULL);
+	while (ep_array->array->Size () > 0)
+		ITEM_TYPE item = ep_array->array->Pop ();
+	ep_array->array->Shrink ();
+}
+
+template<typename ARRAY_TYPE>
+static inline size_t _rt_coreclr_array_size (const ARRAY_TYPE *ep_array) {
+	EP_ASSERT (ep_array->array != NULL);
+	return ep_array->array->Size ();
+}
+
+template<typename ARRAY_TYPE, typename ITEM_TYPE>
+static inline ITEM_TYPE * _rt_coreclr_array_data (const ARRAY_TYPE *ep_array) {
+	EP_ASSERT (ep_array->array != NULL);
+	return ep_array->array->Ptr ();
+}
+
+template<typename ARRAY_TYPE>
+static inline bool _rt_coreclr_array_is_valid (const ARRAY_TYPE *ep_array) {
+	return (ep_array->array != NULL);
+}
+
+template<typename ARRAY_TYPE, typename ITERATOR_TYPE>
+static inline ITERATOR_TYPE _rt_coreclr_array_iterator_begin (const ARRAY_TYPE *ep_array) {
+	ITERATOR_TYPE temp;
+	temp.array = ep_array->array;
+	temp.index = 0;
+	return temp;
+}
+
+template<typename ARRAY_TYPE, typename ITERATOR_TYPE>
+static inline bool _rt_coreclr_array_iterator_end (const ARRAY_TYPE *ep_array, const ITERATOR_TYPE *iterator) {
+	EP_ASSERT (iterator->array != NULL);
+	return (iterator->index >= iterator->array->Size ());
+}
+
+template<typename ITERATOR_TYPE>
+static inline void _rt_coreclr_array_iterator_next (ITERATOR_TYPE *iterator) {
+	iterator->index++;
+}
+
+template<typename ITERATOR_TYPE, typename ITEM_TYPE>
+static inline ITEM_TYPE _rt_coreclr_array_iterator_value (const ITERATOR_TYPE *iterator) {
+	EP_ASSERT (iterator->array != NULL);
+	EP_ASSERT (iterator->index < iterator->array->Size ());
+	return iterator->array->operator[] (iterator->index);
+}
+
+template<typename ARRAY_TYPE, typename ITERATOR_TYPE>
+static inline ITERATOR_TYPE _rt_coreclr_array_reverse_iterator_begin (const ARRAY_TYPE *ep_array) {
+	ITERATOR_TYPE temp;
+	temp.array = ep_array->array;
+	temp.index = static_cast<int32_t>(ep_array->array->Size () - 1);
+	return temp;
+}
+
+template<typename ARRAY_TYPE, typename ITERATOR_TYPE>
+static inline bool _rt_coreclr_array_reverse_iterator_end (const ARRAY_TYPE *ep_array, const ITERATOR_TYPE *iterator) {
+	EP_ASSERT (iterator->array != NULL);
+	return (iterator->index < 0);
+}
+
+template<typename ITERATOR_TYPE>
+static inline void _rt_coreclr_array_reverse_iterator_next (ITERATOR_TYPE *iterator) {
+	iterator->index--;
+}
+
+template<typename ITERATOR_TYPE, typename ITEM_TYPE>
+static inline ITEM_TYPE _rt_coreclr_array_reverse_iterator_value (const ITERATOR_TYPE *iterator) {
+	EP_ASSERT (iterator->array != NULL);
+	EP_ASSERT (iterator->index >= 0);
+	return iterator->array->operator[] (iterator->index);
+}
+
 #define EP_RT_DEFINE_LIST_PREFIX(prefix_name, list_name, list_type, item_type) \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, alloc) (list_type *list) { \
 		list->list = new (nothrow) list_type::list_type_t (); \
@@ -157,40 +270,28 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 
 #define EP_RT_DEFINE_ARRAY_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc) (array_type *ep_array) { \
-		ep_array->array = new (nothrow) CQuickArrayList<item_type> (); \
+		_rt_coreclr_array_alloc<array_type, item_type>(ep_array); \
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc_capacity) (array_type *ep_array, size_t capacity) { \
-		ep_array->array = new (nothrow) CQuickArrayList<item_type> (); \
-		if (ep_array->array) \
-			ep_array->array->AllocNoThrow (capacity);\
+		_rt_coreclr_array_alloc_capacity<array_type, item_type>(ep_array, capacity); \
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, free) (array_type *ep_array) { \
-		if (ep_array) \
-			delete ep_array->array; \
-		ep_array->array = NULL; \
+		_rt_coreclr_array_free<array_type>(ep_array); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item) { \
-		EP_ASSERT (ep_array->array != NULL); \
-		EX_TRY \
-		{ \
-			ep_array->array->Push (item); \
-		} \
-		EX_CATCH {} \
-		EX_END_CATCH(SwallowAllExceptions); \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item) { \
+		return _rt_coreclr_array_append<array_type, item_type> (ep_array, item); \
 	} \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, clear) (array_type *ep_array) { \
-		EP_ASSERT (ep_array->array != NULL); \
-		while (ep_array->array->Size () > 0) \
-			item_type item = ep_array->array->Pop (); \
-		ep_array->array->Shrink (); \
+		_rt_coreclr_array_clear<array_type, item_type> (ep_array); \
 	} \
 	static inline size_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, size) (const array_type *ep_array) { \
-		EP_ASSERT (ep_array->array != NULL); \
-		return ep_array->array->Size (); \
+		return _rt_coreclr_array_size<array_type> (ep_array); \
 	} \
 	static inline item_type * EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, data) (const array_type *ep_array) { \
-		EP_ASSERT (ep_array->array != NULL); \
-		return ep_array->array->Ptr (); \
+		return _rt_coreclr_array_data<array_type, item_type> (ep_array); \
+	} \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, is_valid) (const array_type *ep_array) { \
+		return _rt_coreclr_array_is_valid<array_type> (ep_array); \
 	}
 
 #define EP_RT_DEFINE_ARRAY(array_name, array_type, iterator_type, item_type) \
@@ -198,42 +299,30 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 
 #define EP_RT_DEFINE_ARRAY_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
 	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_begin) (const array_type *ep_array) { \
-		iterator_type temp; \
-		temp.array = ep_array->array; \
-		temp.index = 0; \
-		return temp; \
+		return _rt_coreclr_array_iterator_begin<array_type, iterator_type> (ep_array); \
 	} \
 	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_end) (const array_type *ep_array, const iterator_type *iterator) { \
-		EP_ASSERT (iterator->array != NULL); \
-		return (iterator->index >= iterator->array->Size ()); \
+		return _rt_coreclr_array_iterator_end<array_type, iterator_type> (ep_array, iterator); \
 	} \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_next) (iterator_type *iterator) { \
-		iterator->index++; \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_next) (iterator_type *iterator) { \
+		_rt_coreclr_array_iterator_next<iterator_type> (iterator); \
 	} \
-	static item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_value) (const iterator_type *iterator) { \
-		EP_ASSERT (iterator->array != NULL); \
-		EP_ASSERT (iterator->index < iterator->array->Size ()); \
-		return iterator->array->operator[] (iterator->index); \
+	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_value) (const iterator_type *iterator) { \
+		return _rt_coreclr_array_iterator_value<iterator_type, item_type> (iterator); \
 	}
 
 #define EP_RT_DEFINE_ARRAY_REVERSE_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
 	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_begin) (const array_type *ep_array) { \
-		iterator_type temp; \
-		temp.array = ep_array->array; \
-		temp.index = static_cast<int32_t>(ep_array->array->Size () - 1); \
-		return temp; \
+		return _rt_coreclr_array_reverse_iterator_begin<array_type, iterator_type> (ep_array); \
 	} \
 	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_end) (const array_type *ep_array, const iterator_type *iterator) { \
-		EP_ASSERT (iterator->array != NULL); \
-		return (iterator->index < 0); \
+		return _rt_coreclr_array_reverse_iterator_end<array_type, iterator_type> (ep_array, iterator); \
 	} \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_next) (iterator_type *iterator) { \
-		iterator->index--; \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_next) (iterator_type *iterator) { \
+		_rt_coreclr_array_reverse_iterator_next<iterator_type> (iterator); \
 	} \
-	static item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_value) (const iterator_type *iterator) { \
-		EP_ASSERT (iterator->array != NULL); \
-		EP_ASSERT (iterator->index >= 0); \
-		return iterator->array->operator[] (iterator->index); \
+	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_value) (const iterator_type *iterator) { \
+		return _rt_coreclr_array_reverse_iterator_value<iterator_type, item_type> (iterator); \
 	}
 
 #define EP_RT_DEFINE_ARRAY_ITERATOR(array_name, array_type, iterator_type, item_type) \
