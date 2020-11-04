@@ -475,7 +475,8 @@ config_create_provider (
 	
 	EventPipeProvider *provider = ep_provider_alloc (config, provider_name, callback_func, callback_data_free_func, callback_data);
 	ep_raise_error_if_nok (provider != NULL);
-	ep_raise_error_if_nok (config_register_provider (config, provider, provider_callback_data_queue) == true);
+
+	config_register_provider (config, provider, provider_callback_data_queue);
 
 ep_on_exit:
 	ep_requires_lock_held ();

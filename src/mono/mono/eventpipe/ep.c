@@ -1389,7 +1389,7 @@ ep_write_event (
 	const uint8_t *activity_id,
 	const uint8_t *related_activity_id)
 {
-	ep_return_void_if_nok (ep_event != NULL && data != NULL);
+	ep_return_void_if_nok (ep_event != NULL);
 
 	EventPipeEventPayload payload;
 	EventPipeEventPayload *event_payload = ep_event_payload_init (&payload, data, data_len);
@@ -1407,7 +1407,7 @@ ep_write_event_2 (
 	const uint8_t *activity_id,
 	const uint8_t *related_activity_id)
 {
-	ep_return_void_if_nok (ep_event != NULL && event_data != NULL);
+	ep_return_void_if_nok (ep_event != NULL);
 
 	EventPipeEventPayload payload;
 	EventPipeEventPayload *event_payload = ep_event_payload_init_2 (&payload, event_data, event_data_len);
