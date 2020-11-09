@@ -41,15 +41,9 @@ stack_walk_callback (
 	CrawlFrame *frame,
 	EventPipeStackContents *stack_contents)
 {
-	CONTRACTL
-	{
-		NOTHROW;
-		GC_NOTRIGGER;
-		MODE_ANY;
-		PRECONDITION(frame != NULL);
-		PRECONDITION(stack_contents != NULL);
-	}
-	CONTRACTL_END;
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (frame != NULL);
+	EP_ASSERT (stack_contents != NULL);
 
 	// Get the IP.
 	UINT_PTR control_pc = (UINT_PTR)frame->GetRegisterSet ()->ControlPC;
@@ -74,15 +68,9 @@ ep_rt_coreclr_walk_managed_stack_for_thread (
 	ep_rt_thread_handle_t thread,
 	EventPipeStackContents *stack_contents)
 {
-	CONTRACTL
-	{
-		NOTHROW;
-		GC_NOTRIGGER;
-		MODE_ANY;
-		PRECONDITION(thread != NULL);
-		PRECONDITION(stack_contents != NULL);
-	}
-	CONTRACTL_END;
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (thread != NULL);
+	EP_ASSERT (stack_contents != NULL);
 
 	// Calling into StackWalkFrames in preemptive mode violates the host contract,
 	// but this contract is not used on CoreCLR.
@@ -110,13 +98,8 @@ walk_managed_stack_for_threads (
 	ep_rt_thread_handle_t sampling_thread,
 	EventPipeEvent *sampling_event)
 {
-	CONTRACTL
-	{
-		NOTHROW;
-		GC_TRIGGERS;
-		MODE_PREEMPTIVE;
-	}
-	CONTRACTL_END;
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (sampling_thread != NULL);
 
 	Thread *target_thread = NULL;
 
@@ -160,6 +143,9 @@ ep_rt_coreclr_sample_profiler_write_sampling_event_for_threads (
 	ep_rt_thread_handle_t sampling_thread,
 	EventPipeEvent *sampling_event)
 {
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (sampling_thread != NULL);
+
 	// Check to see if we can suspend managed execution.
 	if (ThreadSuspend::SysIsSuspendInProgress () || (ThreadSuspend::GetSuspensionThread () != 0))
 		return;

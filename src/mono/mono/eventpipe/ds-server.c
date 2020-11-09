@@ -200,8 +200,10 @@ ds_server_init (void)
 	if (any_errors)
 		DS_LOG_ERROR_0 ("At least one Diagnostic Port failed to be configured.\n");
 
-	if (ds_ipc_stream_factory_any_suspended_ports ())
+	if (ds_ipc_stream_factory_any_suspended_ports ()) {
 		ep_rt_wait_event_alloc (&_server_resume_runtime_startup_event, true, false);
+		ep_raise_error_if_nok (ep_rt_wait_event_is_valid (&_server_resume_runtime_startup_event) == true);
+	}
 
 	if (ds_ipc_stream_factory_has_active_ports ()) {
 		ds_rt_auto_trace_init ();

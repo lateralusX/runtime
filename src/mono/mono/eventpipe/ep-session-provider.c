@@ -84,6 +84,7 @@ ep_session_provider_list_alloc (
 	ep_raise_error_if_nok (instance != NULL);
 
 	ep_rt_session_provider_list_alloc (&instance->providers);
+	ep_raise_error_if_nok (ep_rt_session_provider_list_is_valid (&instance->providers) == true);
 
 	instance->catch_all_provider = NULL;
 
@@ -104,7 +105,7 @@ ep_session_provider_list_alloc (
 				ep_provider_config_get_keywords (config),
 				ep_provider_config_get_logging_level (config),
 				ep_provider_config_get_filter_data (config));
-			ep_rt_session_provider_list_append (&instance->providers, session_provider);
+			ep_raise_error_if_nok (ep_rt_session_provider_list_append (&instance->providers, session_provider) == true);
 		}
 	}
 
@@ -141,7 +142,7 @@ ep_session_provider_list_is_empty (const EventPipeSessionProviderList *session_p
 	return (ep_rt_session_provider_list_is_empty (&session_provider_list->providers) && session_provider_list->catch_all_provider == NULL);
 }
 
-void
+bool
 ep_session_provider_list_add_session_provider (
 	EventPipeSessionProviderList *session_provider_list,
 	EventPipeSessionProvider *session_provider)
@@ -149,7 +150,7 @@ ep_session_provider_list_add_session_provider (
 	EP_ASSERT (session_provider_list != NULL);
 	EP_ASSERT (session_provider != NULL);
 
-	ep_rt_session_provider_list_append (&session_provider_list->providers, session_provider);
+	return ep_rt_session_provider_list_append (&session_provider_list->providers, session_provider);
 }
 
 #endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */

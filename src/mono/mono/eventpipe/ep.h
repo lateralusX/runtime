@@ -223,7 +223,7 @@ ep_delete_provider (EventPipeProvider *provider);
 EventPipeProvider *
 ep_get_provider (const ep_char8_t *provider_name);
 
-void
+bool
 ep_add_provider_to_session (
 	EventPipeSessionProvider *provider,
 	EventPipeSession *session);

@@ -268,8 +268,7 @@ ep_sequence_point_init (EventPipeSequencePoint *sequence_point)
 
 	sequence_point->timestamp = 0;
 	ep_rt_thread_sequence_number_map_alloc (&sequence_point->thread_sequence_numbers, NULL, NULL, NULL, NULL);
-
-	return sequence_point;
+	return ep_rt_thread_sequence_number_map_is_valid (&sequence_point->thread_sequence_numbers) ? sequence_point : NULL;
 }
 
 void

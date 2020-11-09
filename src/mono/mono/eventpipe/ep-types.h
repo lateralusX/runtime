@@ -343,7 +343,7 @@ ep_provider_callback_data_queue_init (EventPipeProviderCallbackDataQueue *provid
 void
 ep_provider_callback_data_queue_fini (EventPipeProviderCallbackDataQueue *provider_callback_data_queue);
 
-void
+bool
 ep_provider_callback_data_queue_enqueue (
 	EventPipeProviderCallbackDataQueue *provider_callback_data_queue,
 	EventPipeProviderCallbackData *provider_callback_data);

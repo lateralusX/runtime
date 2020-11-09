@@ -208,6 +208,8 @@ enable (void)
 
 		EP_ASSERT (!ep_rt_wait_event_is_valid (&_thread_shutdown_event));
 		ep_rt_wait_event_alloc (&_thread_shutdown_event, true, false);
+		if (!ep_rt_wait_event_is_valid (&_thread_shutdown_event))
+			EP_ASSERT (!"Unable to create sample profiler event.");
 
 		ep_rt_thread_id_t thread_id = 0;
 		if (!ep_rt_thread_create (sampling_thread, NULL, EP_THREAD_TYPE_SAMPLING, &thread_id))

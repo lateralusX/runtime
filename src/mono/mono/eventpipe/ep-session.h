@@ -98,7 +98,7 @@ ep_session_get_session_provider (
 	const EventPipeProvider *provider);
 
 // _Requires_lock_held (ep)
-void
+bool
 ep_session_enable_rundown (EventPipeSession *session);
 
 // _Requires_lock_held (ep)
@@ -129,7 +129,7 @@ ep_session_start_streaming (EventPipeSession *session);
 bool
 ep_session_is_valid (const EventPipeSession *session);
 
-void
+bool
 ep_session_add_session_provider (
 	EventPipeSession *session,
 	EventPipeSessionProvider *session_provider);

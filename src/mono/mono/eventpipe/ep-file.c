@@ -61,7 +61,7 @@ file_write_event_to_block (
 	bool is_sotred_event);
 
 static
-void
+bool
 file_save_metadata_id (
 	EventPipeFile *file,
 	EventPipeEvent *ep_event,
@@ -163,8 +163,11 @@ file_get_stack_id (
 		stack_id = file->stack_id_counter + 1;
 		file->stack_id_counter = stack_id;
 		entry = ep_stack_hash_entry_alloc (stack_contents, stack_id, ep_stack_hash_key_get_hash (&key));
-		if (entry)
-			ep_rt_stack_hash_add (stack_hash, ep_stack_hash_entry_get_key_ref (entry), entry);
+		if (entry) {
+			if (!ep_rt_stack_hash_add (stack_hash, ep_stack_hash_entry_get_key_ref (entry), entry))
+				ep_stack_hash_entry_free (entry);
+			entry = NULL;
+		}
 
 		if (!ep_stack_block_write_stack (stack_block, stack_id, stack_contents)) {
 			// we can't write this stack to the current block (it's full)
@@ -248,7 +251,7 @@ file_write_event_to_block (
 }
 
 static
-void
+bool
 file_save_metadata_id (
 	EventPipeFile *file,
 	EventPipeEvent *ep_event,
@@ -264,7 +267,7 @@ file_save_metadata_id (
 		ep_rt_metadata_labels_hash_remove (&file->metadata_ids, ep_event);
 
 	// Add the metadata label.
-	ep_rt_metadata_labels_hash_add (&file->metadata_ids, ep_event, metadata_id);
+	return ep_rt_metadata_labels_hash_add (&file->metadata_ids, ep_event, metadata_id);
 }
 
 static
@@ -336,8 +339,10 @@ ep_file_alloc (
 	instance->sampling_rate_in_ns = (uint32_t)ep_sample_profiler_get_sampling_rate ();
 
 	ep_rt_metadata_labels_hash_alloc (&instance->metadata_ids, NULL, NULL, NULL, NULL);
+	ep_raise_error_if_nok (ep_rt_metadata_labels_hash_is_valid (&instance->metadata_ids) == true);
 
 	ep_rt_stack_hash_alloc (&instance->stack_hash, ep_stack_hash_key_hash, ep_stack_hash_key_equal, NULL, stack_hash_value_free_func);
+	ep_raise_error_if_nok (ep_rt_stack_hash_is_valid (&instance->stack_hash) == true);
 
 	// Start at 0 - The value is always incremented prior to use, so the first ID will be 1.
 	ep_rt_volatile_store_uint32_t (&instance->metadata_id_counter, 0);
@@ -447,7 +452,7 @@ ep_file_write_event (
 		ep_raise_error_if_nok (metadata_instance != NULL);
 
 		file_write_event_to_block (file, (EventPipeEventInstance *)metadata_instance, 0, 0, 0, 0, true); // metadataId=0 breaks recursion and represents the metadata event.
-		file_save_metadata_id (file, ep_event_instance_get_ep_event (event_instance), metadata_id);
+		ep_raise_error_if_nok (file_save_metadata_id (file, ep_event_instance_get_ep_event (event_instance), metadata_id) == true);
 	}
 
 	file_write_event_to_block (file, event_instance, metadata_id, capture_thread_id, sequence_number, stack_id, is_sorted_event);

@@ -214,7 +214,7 @@ ep_provider_callback_data_queue_init (EventPipeProviderCallbackDataQueue *provid
 {
 	EP_ASSERT (provider_callback_data_queue != NULL);
 	ep_rt_provider_callback_data_queue_alloc (&provider_callback_data_queue->queue);
-	return provider_callback_data_queue;
+	return ep_rt_provider_callback_data_queue_is_valid (&provider_callback_data_queue->queue) ? provider_callback_data_queue : NULL;
 }
 
 void
@@ -459,7 +459,7 @@ enable (
 	ep_sample_profiler_init (provider_callback_data_queue);
 
 	// Enable the EventPipe EventSource.
-	ep_event_source_enable (ep_event_source_get (), session);
+	ep_raise_error_if_nok (ep_event_source_enable (ep_event_source_get (), session) == true);
 
 	// Save the session.
 	if (ep_volatile_load_session_without_barrier (ep_session_get_index (session)) != NULL) {
@@ -1213,24 +1213,29 @@ ep_on_error:
 	ep_exit_error_handler ();
 }
 
-void
+bool
 ep_add_provider_to_session (
 	EventPipeSessionProvider *provider,
 	EventPipeSession *session)
 {
-	ep_return_void_if_nok (provider != NULL && session != NULL);
+	ep_return_false_if_nok (provider != NULL && session != NULL);
 
 	ep_requires_lock_not_held ();
 
+	bool result = false;
+
 	EP_LOCK_ENTER (section1)
-		ep_session_add_session_provider (session, provider);
+		ep_raise_error_if_nok_holding_lock (ep_session_add_session_provider (session, provider) == true, section1);
 	EP_LOCK_EXIT (section1)
+
+	result = true;
 
 ep_on_exit:
 	ep_requires_lock_not_held ();
-	return;
+	return result;
 
 ep_on_error:
+	EP_ASSERT (result == false);
 	ep_exit_error_handler ();
 }
 
@@ -1463,13 +1468,21 @@ ep_get_wait_handle (EventPipeSessionID session_id)
  * EventPipeProviderCallbackDataQueue.
  */
 
-void
+bool
 ep_provider_callback_data_queue_enqueue (
 	EventPipeProviderCallbackDataQueue *provider_callback_data_queue,
 	EventPipeProviderCallbackData *provider_callback_data)
 {
 	EP_ASSERT (provider_callback_data_queue != NULL);
-	ep_rt_provider_callback_data_queue_push_tail (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue), ep_provider_callback_data_alloc_copy (provider_callback_data));
+	EventPipeProviderCallbackData *provider_callback_data_copy = ep_provider_callback_data_alloc_copy (provider_callback_data);
+	ep_raise_error_if_nok (provider_callback_data_copy != NULL);
+	ep_raise_error_if_nok (ep_rt_provider_callback_data_queue_push_tail (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue), provider_callback_data_copy) == true);
+
+	return true;
+
+ep_on_error:
+	ep_provider_callback_data_free (provider_callback_data_copy);
+	return false;
 }
 
 bool
@@ -1482,11 +1495,14 @@ ep_provider_callback_data_queue_try_dequeue (
 	ep_return_false_if_nok (ep_rt_provider_callback_data_queue_is_empty (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue)) != true);
 
 	EventPipeProviderCallbackData *value = NULL;
-	ep_rt_provider_callback_data_queue_pop_head (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue), &value);
+	ep_raise_error_if_nok (ep_rt_provider_callback_data_queue_pop_head (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue), &value) == true);
 	ep_provider_callback_data_init_copy (provider_callback_data, value);
 	ep_provider_callback_data_free (value);
 
 	return true;
+
+ep_on_error:
+	return false;
 }
 
 /*

@@ -33,13 +33,13 @@ ep_thread_alloc (void)
 	ep_raise_error_if_nok (instance != NULL);
 
 	ep_rt_spin_lock_alloc (&instance->rt_lock);
-	ep_raise_error_if_nok (instance->rt_lock.lock != NULL);
+	ep_raise_error_if_nok (ep_rt_spin_lock_is_valid (&instance->rt_lock) == true);
 
 	instance->os_thread_id = ep_rt_current_thread_get_id ();
 	memset (instance->session_state, 0, sizeof (instance->session_state));
 
 	EP_SPIN_LOCK_ENTER (&_ep_threads_lock, section1)
-		ep_rt_thread_list_append (&_ep_threads, instance);
+		ep_raise_error_if_nok_holding_spin_lock (ep_rt_thread_list_append (&_ep_threads, instance) == true, section1);
 	EP_SPIN_LOCK_EXIT (&_ep_threads_lock, section1)
 
 	instance->writing_event_in_progress = UINT32_MAX;
@@ -109,7 +109,12 @@ void
 ep_thread_init (void)
 {
 	ep_rt_spin_lock_alloc (&_ep_threads_lock);
+	if (!ep_rt_spin_lock_is_valid (&_ep_threads_lock))
+		EP_ASSERT (!"Failed to allocate threads lock.");
+
 	ep_rt_thread_list_alloc (&_ep_threads);
+	if (!ep_rt_thread_list_is_valid (&_ep_threads))
+		EP_ASSERT (!"Failed to allocate threads list.");
 }
 
 void

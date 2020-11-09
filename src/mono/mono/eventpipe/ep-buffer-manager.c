@@ -29,7 +29,7 @@ buffer_list_fini (EventPipeBufferList *buffer_list);
 
 // _Requires_lock_held (buffer_manager)
 static
-void
+bool
 buffer_manager_enqueue_sequence_point (
 	EventPipeBufferManager *buffer_manager,
 	EventPipeSequencePoint *sequence_point);
@@ -313,7 +313,7 @@ ep_buffer_list_ensure_consistency (EventPipeBufferList *buffer_list)
  */
 
 static
-void
+bool
 buffer_manager_enqueue_sequence_point (
 	EventPipeBufferManager *buffer_manager,
 	EventPipeSequencePoint *sequence_point)
@@ -323,7 +323,7 @@ buffer_manager_enqueue_sequence_point (
 
 	ep_buffer_manager_requires_lock_held (buffer_manager);
 
-	ep_rt_sequence_point_list_append (&buffer_manager->sequence_points, sequence_point);
+	return ep_rt_sequence_point_list_append (&buffer_manager->sequence_points, sequence_point);
 }
 
 static
@@ -425,7 +425,7 @@ buffer_manager_allocate_buffer_for_thread (
 			thread_buffer_list = ep_buffer_list_alloc (buffer_manager, ep_thread_session_state_get_thread (thread_session_state));
 			ep_raise_error_if_nok_holding_spin_lock (thread_buffer_list != NULL, section1);
 
-			ep_rt_thread_session_state_list_append (&buffer_manager->thread_session_state_list, thread_session_state);
+			ep_raise_error_if_nok_holding_spin_lock (ep_rt_thread_session_state_list_append (&buffer_manager->thread_session_state_list, thread_session_state) == true, section1);
 			ep_thread_session_state_set_buffer_list (thread_session_state, thread_buffer_list);
 			thread_buffer_list = NULL;
 		}
@@ -474,7 +474,7 @@ buffer_manager_allocate_buffer_for_thread (
 					sequence_point = ep_sequence_point_alloc ();
 					if (sequence_point) {
 						buffer_manager_init_sequence_point_thread_list (buffer_manager, sequence_point);
-						buffer_manager_enqueue_sequence_point (buffer_manager, sequence_point);
+						ep_raise_error_if_nok_holding_spin_lock (buffer_manager_enqueue_sequence_point (buffer_manager, sequence_point) == true, section1);
 						sequence_point = NULL;
 					}
 					buffer_manager->remaining_sequence_point_alloc_budget = buffer_manager->sequence_point_alloc_budget;
@@ -773,11 +773,16 @@ ep_buffer_manager_alloc (
 	ep_raise_error_if_nok (instance != NULL);
 
 	ep_rt_thread_session_state_list_alloc (&instance->thread_session_state_list);
+	ep_raise_error_if_nok (ep_rt_thread_session_state_list_is_valid (&instance->thread_session_state_list) == true);
+
 	ep_rt_sequence_point_list_alloc (&instance->sequence_points);
+	ep_raise_error_if_nok (ep_rt_sequence_point_list_is_valid (&instance->sequence_points) == true);
 
 	ep_rt_spin_lock_alloc (&instance->rt_lock);
+	ep_raise_error_if_nok (ep_rt_spin_lock_is_valid (&instance->rt_lock) == true);
 
 	ep_rt_wait_event_alloc (&instance->rt_wait_event, false, true);
+	ep_raise_error_if_nok (ep_rt_wait_event_is_valid (&instance->rt_wait_event) == true);
 
 	instance->session = session;
 	instance->size_of_all_buffers = 0;

@@ -102,7 +102,8 @@ config_register_provider (
 		return false;
 
 	// The provider has not been registered, so register it.
-	ep_rt_provider_list_append (&config->provider_list, provider);
+	if (!ep_rt_provider_list_append (&config->provider_list, provider))
+		return false;
 
 	int64_t keyword_for_all_sessions;
 	EventPipeEventLevel level_for_all_sessions;
@@ -173,6 +174,7 @@ ep_config_init (EventPipeConfiguration *config)
 	EventPipeProviderCallbackDataQueue *provider_callback_data_queue = ep_provider_callback_data_queue_init (&callback_data_queue);
 
 	ep_rt_provider_list_alloc (&config->provider_list);
+	ep_raise_error_if_nok (ep_rt_provider_list_is_valid (&config->provider_list) == true);
 
 	EP_LOCK_ENTER (section1)
 		config->config_provider = provider_create (ep_config_get_default_provider_name_utf8 (), NULL, NULL, NULL, provider_callback_data_queue);

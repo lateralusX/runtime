@@ -76,7 +76,7 @@ inline
 void
 ds_rt_auto_trace_init (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 #ifdef FEATURE_AUTO_TRACE
 	EX_TRY
 	{
@@ -92,7 +92,7 @@ inline
 void
 ds_rt_auto_trace_launch (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 #ifdef FEATURE_AUTO_TRACE
 	EX_TRY
 	{
@@ -108,7 +108,7 @@ inline
 void
 ds_rt_auto_trace_signal (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 #ifdef FEATURE_AUTO_TRACE
 	EX_TRY
 	{
@@ -124,7 +124,7 @@ inline
 void
 ds_rt_auto_trace_wait (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 #ifdef FEATURE_AUTO_TRACE
 	EX_TRY
 	{
@@ -144,7 +144,7 @@ inline
 bool
 ds_rt_config_value_get_enable (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 	return CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_EnableDiagnostics) != 0;
 }
 
@@ -153,7 +153,7 @@ inline
 ep_char8_t *
 ds_rt_config_value_get_ports (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 	CLRConfigStringHolder value(CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_DOTNET_DiagnosticPorts));
 	return ep_rt_utf16_to_utf8_string (reinterpret_cast<ep_char16_t *>(value.GetValue ()), -1);
 }
@@ -163,7 +163,7 @@ inline
 uint32_t
 ds_rt_config_value_get_default_port_suspend (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 	return static_cast<uint32_t>(CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_DOTNET_DefaultDiagnosticPortSuspend));
 }
 
@@ -176,7 +176,7 @@ inline
 ds_ipc_result_t
 ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 	ds_ipc_result_t result = DS_IPC_E_FAIL;
 	EX_TRY
 	{
@@ -215,7 +215,7 @@ ds_rt_transport_get_default_name (
 	const ep_char8_t *group_id,
 	const ep_char8_t *suffix)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 #ifdef TARGET_UNIX
 	PAL_GetTransportName (name_len, name, prefix, id, group_id, suffix);
 #endif
@@ -253,7 +253,7 @@ inline
 uint32_t
 ds_rt_profiler_attach (DiagnosticsAttachProfilerCommandPayload *payload)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 	if (!g_profControlBlock.fProfControlBlockInitialized)
 		return DS_IPC_E_RUNTIME_UNINITIALIZED;
 
@@ -286,7 +286,7 @@ inline
 void
 ds_rt_server_log_pause_message (void)
 {
-	// NOTHROW
+	STATIC_CONTRACT_NOTHROW;
 	CLRConfigStringHolder ports(CLRConfig::GetConfigValue (CLRConfig::EXTERNAL_DOTNET_DiagnosticPorts));
 	uint32_t port_suspended = ds_rt_config_value_get_default_port_suspend ();
 

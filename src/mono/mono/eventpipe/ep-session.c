@@ -91,6 +91,8 @@ session_create_ipc_streaming_thread (EventPipeSession *session)
 
 	ep_session_set_ipc_streaming_enabled (session, true);
 	ep_rt_wait_event_alloc (&session->rt_thread_shutdown_event, true, false);
+	if (!ep_rt_wait_event_is_valid (&session->rt_thread_shutdown_event))
+		EP_ASSERT (!"Unable to create IPC stream flushing thread shutdown event.");
 
 	ep_rt_thread_id_t thread_id = 0;
 	if (!ep_rt_thread_create ((void *)streaming_thread, (void *)session, EP_THREAD_TYPE_SESSION, &thread_id))
@@ -252,12 +254,14 @@ ep_session_get_session_provider (
 	return session_provider;
 }
 
-void
+bool
 ep_session_enable_rundown (EventPipeSession *session)
 {
 	EP_ASSERT (session != NULL);
 
 	ep_requires_lock_held ();
+
+	bool result = false;
 
 	//! This is CoreCLR specific keywords for native ETW events (ending up in event pipe).
 	//! The keywords below seems to correspond to:
@@ -286,13 +290,19 @@ ep_session_enable_rundown (EventPipeSession *session)
 			ep_provider_config_get_logging_level (config),
 			ep_provider_config_get_filter_data (config));
 
-		ep_session_add_session_provider (session, session_provider);
+		ep_raise_error_if_nok (ep_session_add_session_provider (session, session_provider) == true);
 	}
 
 	ep_session_set_rundown_enabled (session, true);
+	result = true;
 
+ep_on_exit:
 	ep_requires_lock_held ();
-	return;
+	return result;
+
+ep_on_error:
+	EP_ASSERT (result == false);
+	ep_exit_error_handler ();
 }
 
 void
@@ -388,14 +398,14 @@ ep_session_is_valid (const EventPipeSession *session)
 	return !ep_session_provider_list_is_empty (session->providers);
 }
 
-void
+bool
 ep_session_add_session_provider (EventPipeSession *session, EventPipeSessionProvider *session_provider)
 {
 	EP_ASSERT (session != NULL);
 
 	ep_requires_lock_held ();
 
-	ep_session_provider_list_add_session_provider (session->providers, session_provider);
+	return ep_session_provider_list_add_session_provider (session->providers, session_provider);
 }
 
 void
