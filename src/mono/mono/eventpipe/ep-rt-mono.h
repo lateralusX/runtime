@@ -1567,7 +1567,7 @@ ep_rt_os_environment_get_utf16 (ep_rt_env_array_utf16_t *env_array)
 #else
 	gchar **next = NULL;
 	for (next = environ; *next != NULL; ++next)
-		ep_rt_env_array_utf16_append (env_array, ep_rt_utf8_to_utf16_string (next, -1));
+		ep_rt_env_array_utf16_append (env_array, ep_rt_utf8_to_utf16_string (*next, -1));
 #endif
 }
 

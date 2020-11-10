@@ -1,4 +1,4 @@
-#include "rt-config.h"
+#include <config.h>
 
 #ifdef ENABLE_PERFTRACING
 #ifndef HOST_WIN32

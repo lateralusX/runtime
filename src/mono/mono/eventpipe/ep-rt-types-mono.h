@@ -12,13 +12,13 @@
 #include <mono/utils/mono-coop-mutex.h>
 #include <mono/utils/checked-build.h>
 
-//#ifdef ENABLE_CHECKED_BUILD
+#ifdef ENABLE_CHECKED_BUILD
 #define EP_CHECKED_BUILD
-//#endif
+#endif
 
 #undef EP_ASSERT
-//#define EP_ASSERT(expr) g_assert_checked(expr)
-#define EP_ASSERT(expr) g_assert(expr)
+#define EP_ASSERT(expr) g_assert_checked(expr)
+//#define EP_ASSERT(expr) g_assert(expr)
 
 #undef EP_LIKELY
 #define EP_LIKELY(expr) G_LIKELY(expr)

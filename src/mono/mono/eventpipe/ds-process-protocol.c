@@ -334,6 +334,8 @@ process_protocol_helper_get_process_info (
 	ep_char16_t *command_line = NULL;
 	ep_char16_t *os_info = NULL;
 	ep_char16_t *arch_info = NULL;
+	DiagnosticsProcessInfoPayload payload;
+	DiagnosticsProcessInfoPayload *process_info_payload = NULL;
 
 	command_line = ep_rt_utf8_to_utf16_string (ep_rt_diagnostics_command_line_get (), -1);
 	ep_raise_error_if_nok (command_line != NULL);
@@ -344,8 +346,6 @@ process_protocol_helper_get_process_info (
 	arch_info = ep_rt_utf8_to_utf16_string (ep_event_source_get_arch_info (), -1);
 	ep_raise_error_if_nok (arch_info != NULL);
 
-	DiagnosticsProcessInfoPayload payload;
-	DiagnosticsProcessInfoPayload *process_info_payload;
 	process_info_payload = ds_process_info_payload_init (
 		&payload,
 		command_line,

@@ -512,7 +512,7 @@ ep_session_get_wait_event (EventPipeSession *session)
 
 	if (!session->buffer_manager) {
 		EP_ASSERT (!"Shouldn't call get_wait_event on a synchronous session.");
-		return (EventPipeWaitHandle)NULL;
+		return NULL;
 	}
 
 	return ep_buffer_manager_get_rt_wait_event_ref (session->buffer_manager);

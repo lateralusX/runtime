@@ -40,23 +40,23 @@ EP_RT_DEFINE_THREAD_FUNC (sampling_thread);
 
 static
 void
-set_time_granularity (void);
+sample_profiler_set_time_granularity (void);
 
 static
 void
-reset_time_granularity (void);
+sample_profiler_reset_time_granularity (void);
 
 static
 bool
-load_dependecies (void);
+sample_profiler_load_dependecies (void);
 
 static
 void
-unload_dependecies (void);
+sample_profiler_unload_dependecies (void);
 
 static
 void
-enable (void);
+sample_profiler_enable (void);
 
 /*
  * EventPipeSampleProfiler.
@@ -65,7 +65,7 @@ enable (void);
 static
 inline
 bool
-load_profiling_enabled (void)
+sample_profiler_load_profiling_enabled (void)
 {
 	return (ep_rt_volatile_load_uint32_t (&_profiling_enabled) != 0) ? true : false;
 }
@@ -73,7 +73,7 @@ load_profiling_enabled (void)
 static
 inline
 void
-store_profiling_enabled (bool enabled)
+sample_profiler_store_profiling_enabled (bool enabled)
 {
 	ep_rt_volatile_store_uint32_t (&_profiling_enabled, enabled ? 1 : 0);
 }
@@ -81,7 +81,7 @@ store_profiling_enabled (bool enabled)
 static
 inline
 bool
-load_can_start_sampling (void)
+sample_profiler_load_can_start_sampling (void)
 {
 	return (ep_rt_volatile_load_uint32_t (&_can_start_sampling) != 0) ? true : false;
 }
@@ -89,7 +89,7 @@ load_can_start_sampling (void)
 static
 inline
 void
-store_can_start_sampling (bool start_sampling)
+sample_profiler_store_can_start_sampling (bool start_sampling)
 {
 	ep_rt_volatile_store_uint32_t (&_can_start_sampling, start_sampling ? 1 : 0);
 }
@@ -104,7 +104,7 @@ EP_RT_DEFINE_THREAD_FUNC (sampling_thread)
 
 	if (thread_params->thread && ep_rt_thread_has_started (thread_params->thread)) {
 		EP_GCX_PREEMP_ENTER
-			while (load_profiling_enabled ()) {
+			while (sample_profiler_load_profiling_enabled ()) {
 				// Sample all threads.
 				ep_rt_sample_profiler_write_sampling_event_for_threads (thread_params->thread, _thread_time_event);
 				// Wait until it's time to sample again.
@@ -121,7 +121,7 @@ EP_RT_DEFINE_THREAD_FUNC (sampling_thread)
 
 static
 void
-set_time_granularity (void)
+sample_profiler_set_time_granularity (void)
 {
 #ifdef HOST_WIN32
 	// Attempt to set the systems minimum timer period to the sampling rate
@@ -139,7 +139,7 @@ set_time_granularity (void)
 
 static
 void
-reset_time_granularity (void)
+sample_profiler_reset_time_granularity (void)
 {
 #ifdef HOST_WIN32
 	// End the modifications we had to the timer period in enable.
@@ -153,7 +153,7 @@ reset_time_granularity (void)
 
 static
 bool
-load_dependecies (void)
+sample_profiler_load_dependecies (void)
 {
 #ifdef HOST_WIN32
 	if (_ref_count > 0)
@@ -178,7 +178,7 @@ load_dependecies (void)
 
 static
 void
-unload_dependecies (void)
+sample_profiler_unload_dependecies (void)
 {
 #ifdef HOST_WIN32
 	if (_multimedia_library_handle != NULL) {
@@ -192,18 +192,18 @@ unload_dependecies (void)
 
 static
 void
-enable (void)
+sample_profiler_enable (void)
 {
 	EP_ASSERT (_sampling_provider != NULL);
 	EP_ASSERT (_thread_time_event != NULL);
 
 	ep_requires_lock_held ();
 
-	const bool result = load_dependecies ();
+	const bool result = sample_profiler_load_dependecies ();
 	EP_ASSERT (result == true);
 
-	if (!load_profiling_enabled ()) {
-		store_profiling_enabled (true);
+	if (!sample_profiler_load_profiling_enabled ()) {
+		sample_profiler_store_profiling_enabled (true);
 
 		EP_ASSERT (!ep_rt_wait_event_is_valid (&_thread_shutdown_event));
 		ep_rt_wait_event_alloc (&_thread_shutdown_event, true, false);
@@ -214,7 +214,7 @@ enable (void)
 		if (!ep_rt_thread_create (sampling_thread, NULL, EP_THREAD_TYPE_SAMPLING, &thread_id))
 			EP_ASSERT (!"Unable to create sample profiler thread.");
 
-		set_time_granularity ();
+		sample_profiler_set_time_granularity ();
 	}
 }
 
@@ -275,7 +275,7 @@ ep_sample_profiler_enable (void)
 		return;
 
 	if (_can_start_sampling)
-		enable ();
+		sample_profiler_enable ();
 
 	++_ref_count;
 	EP_ASSERT (_ref_count > 0);
@@ -289,7 +289,7 @@ ep_sample_profiler_disable (void)
 	ep_requires_lock_held ();
 
 	// Bail early if profiling is not enabled.
-	if (!load_profiling_enabled ())
+	if (!sample_profiler_load_profiling_enabled ())
 		return;
 
 	if (_ref_count == 1) {
@@ -297,16 +297,16 @@ ep_sample_profiler_disable (void)
 
 		// The sampling thread will watch this value and exit
 		// when profiling is disabled.
-		store_profiling_enabled (false);
+		sample_profiler_store_profiling_enabled (false);
 
 		// Wait for the sampling thread to clean itself up.
 		ep_rt_wait_event_wait (&_thread_shutdown_event, EP_INFINITE_WAIT, false);
 		ep_rt_wait_event_free (&_thread_shutdown_event);
 
 		if (_time_period_is_set)
-			reset_time_granularity ();
+			sample_profiler_reset_time_granularity ();
 
-		unload_dependecies ();
+		sample_profiler_unload_dependecies ();
 	}
 
 	--_ref_count;
@@ -318,9 +318,9 @@ ep_sample_profiler_can_start_sampling (void)
 {
 	ep_requires_lock_held ();
 
-	store_can_start_sampling (true);
+	sample_profiler_store_can_start_sampling (true);
 	if (_ref_count > 0)
-		enable ();
+		sample_profiler_enable ();
 }
 
 void
@@ -330,12 +330,12 @@ ep_sample_profiler_set_sampling_rate (uint64_t nanoseconds)
 	// make sure to change it back before changing our period
 	// and losing track of what we set it to
 	if (_time_period_is_set)
-		reset_time_granularity ();
+		sample_profiler_reset_time_granularity ();
 
 	_sampling_rate_in_ns = nanoseconds;
 
 	if (!_time_period_is_set)
-		set_time_granularity ();
+		sample_profiler_set_time_granularity ();
 }
 
 uint64_t
