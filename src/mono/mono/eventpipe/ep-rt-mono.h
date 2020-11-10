@@ -1322,9 +1322,9 @@ ep_rt_thread_create (
 		thread_params->thread_params.thread_params = params;
 		thread_params->background_thread = true;
 #ifdef EP_RT_MONO_USE_STATIC_RUNTIME
-		return (bool)mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, thread_params, NULL, (ep_rt_thread_id_t *)id);
+		return (bool)mono_thread_platform_create_thread (ep_rt_thread_mono_start_func, thread_params, NULL, (ep_rt_thread_id_t *)id);
 #else
-		return (bool)ep_rt_mono_func_table_get ()->ep_rt_mono_thread_platform_create_thread ((ep_rt_thread_start_func)thread_func, thread_params, NULL, (ep_rt_thread_id_t *)id);
+		return (bool)ep_rt_mono_func_table_get ()->ep_rt_mono_thread_platform_create_thread (ep_rt_thread_mono_start_func, thread_params, NULL, (ep_rt_thread_id_t *)id);
 #endif
 	}
 
@@ -1887,8 +1887,8 @@ inline
 const uint8_t *
 ep_rt_thread_get_activity_id_cref (ep_rt_thread_activity_id_handle_t activity_id_handle)
 {
-	EP_ASSERT (activity_id_handle != NULL);
-	return &activity_id_handle->activity_id [0];
+	EP_ASSERT (!"EP_THREAD_INCLUDE_ACTIVITY_ID should have been defined on Mono");
+	return NULL;
 }
 
 static
@@ -1903,7 +1903,7 @@ ep_rt_thread_get_activity_id (
 	EP_ASSERT (activity_id != NULL);
 	EP_ASSERT (activity_id_len == EP_ACTIVITY_ID_SIZE);
 
-	memcpy (activity_id, ep_rt_thread_get_activity_id_cref (activity_id_handle), EP_ACTIVITY_ID_SIZE);
+	memcpy (activity_id, ep_thread_get_activity_id_cref (activity_id_handle), EP_ACTIVITY_ID_SIZE);
 }
 
 static
@@ -1918,7 +1918,7 @@ ep_rt_thread_set_activity_id (
 	EP_ASSERT (activity_id != NULL);
 	EP_ASSERT (activity_id_len == EP_ACTIVITY_ID_SIZE);
 
-	memcpy (&activity_id_handle->activity_id [0], activity_id, EP_ACTIVITY_ID_SIZE);
+	memcpy (ep_thread_get_activity_id_ref (activity_id_handle), activity_id, EP_ACTIVITY_ID_SIZE);
 }
 
 static

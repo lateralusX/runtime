@@ -374,10 +374,10 @@ public:
 
 #ifdef FEATURE_PERFTRACING_C_LIB
 		return ep_session_provider_alloc (
-			config[0].provider_name,
-			config[0].keywords,
-			(EventPipeEventLevel)config[0].logging_level,
-			config[0].filter_data);
+			ep_provider_config_get_provider_name (&config[0]),
+			ep_provider_config_get_keywords (&config[0]),
+			(EventPipeEventLevel)ep_provider_config_get_logging_level (&config[0]),
+			ep_provider_config_get_filter_data (&config[0]));
 #else
 		return new EventPipeSessionProvider(
 			config[0].GetProviderName(),

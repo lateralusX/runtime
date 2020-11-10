@@ -54,6 +54,18 @@ struct _EventPipeThread {
 };
 #endif
 
+#ifdef EP_THREAD_INCLUDE_ACTIVITY_ID
+EP_DEFINE_GETTER_ARRAY_REF(EventPipeThread *, thread, uint8_t *, const uint8_t *, activity_id, activity_id[0]);
+#else
+static
+inline
+const uint8_t *
+ep_thread_get_activity_id_cref (ep_rt_thread_activity_id_handle_t activity_id_handle)
+{
+	return ep_rt_thread_get_activity_id_cref (activity_id_handle);
+}
+#endif
+
 EP_DEFINE_GETTER(EventPipeThread *, thread, EventPipeSession *, rundown_session);
 EP_DEFINE_SETTER(EventPipeThread *, thread, EventPipeSession *, rundown_session);
 EP_DEFINE_GETTER_REF(EventPipeThread *, thread, ep_rt_spin_lock_handle_t *, rt_lock);
@@ -103,14 +115,6 @@ ep_rt_thread_activity_id_handle_t
 ep_thread_get_activity_id_handle (void)
 {
 	return ep_rt_thread_get_activity_id_handle ();
-}
-
-static
-inline
-const uint8_t *
-ep_thread_get_activity_id_cref (ep_rt_thread_activity_id_handle_t activity_id_handle)
-{
-	return ep_rt_thread_get_activity_id_cref (activity_id_handle);
 }
 
 static

@@ -196,7 +196,6 @@ enable (void)
 {
 	EP_ASSERT (_sampling_provider != NULL);
 	EP_ASSERT (_thread_time_event != NULL);
-	EP_ASSERT ((_sampling_thread == NULL && _ref_count == 0) || (_sampling_thread != NULL && _ref_count > 0));
 
 	ep_requires_lock_held ();
 
