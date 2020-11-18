@@ -1,7 +1,6 @@
-#include <config.h>
+#include "ep-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
 #if !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES)
 
 #define EP_IMPL_SESSION_GETTER_SETTER
@@ -92,11 +91,11 @@ session_create_ipc_streaming_thread (EventPipeSession *session)
 	ep_session_set_ipc_streaming_enabled (session, true);
 	ep_rt_wait_event_alloc (&session->rt_thread_shutdown_event, true, false);
 	if (!ep_rt_wait_event_is_valid (&session->rt_thread_shutdown_event))
-		EP_ASSERT (!"Unable to create IPC stream flushing thread shutdown event.");
+		EP_UNREACHABLE ("Unable to create IPC stream flushing thread shutdown event.");
 
 	ep_rt_thread_id_t thread_id = ep_rt_uint64_t_to_thread_id_t (0);
 	if (!ep_rt_thread_create ((void *)streaming_thread, (void *)session, EP_THREAD_TYPE_SESSION, &thread_id))
-		EP_ASSERT (!"Unable to create IPC stream flushing thread.");
+		EP_UNREACHABLE ("Unable to create IPC stream flushing thread.");
 }
 
 static

@@ -1,10 +1,10 @@
-#include <config.h>
+#include "ds-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
-#include "ds-rt-config.h"
 #if !defined(DS_INCLUDE_SOURCE_FILES) || defined(DS_FORCE_INCLUDE_SOURCE_FILES)
 
 #define DS_IMPL_IPC_GETTER_SETTER
+#define DS_IMPL_IPC_PAL_GETTER_SETTER
 #include "ds-ipc.h"
 #include "ds-protocol.h"
 #include "ds-rt.h"
@@ -355,7 +355,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 
 		ipc_log_poll_handles (&ipc_poll_handles);
 
-		int32_t ret_val = ds_ipc_poll (&ipc_poll_handles, poll_timeout_ms, callback);
+		int32_t ret_val = ds_ipc_poll (ds_rt_ipc_poll_handle_array_data (&ipc_poll_handles), ds_rt_ipc_poll_handle_array_size (&ipc_poll_handles), poll_timeout_ms, callback);
 		bool saw_error = false;
 
 		if (ret_val != 0) {

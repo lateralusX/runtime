@@ -1,7 +1,6 @@
-#include <config.h>
+#include "ep-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
 
 // Option to include all internal source files into ep.c.
 #ifdef EP_INCLUDE_SOURCE_FILES
