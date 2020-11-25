@@ -175,7 +175,7 @@ file_get_stack_id (
 			ep_file_flush (file, EP_FILE_FLUSH_FLAGS_STACK_BLOCK);
 			bool result = ep_stack_block_write_stack (stack_block, stack_id, stack_contents);
 			if (!result)
-				EP_ASSERT (!"Should never fail to add event to a clear block. If we do the max size is too small.");
+				EP_UNREACHABLE ("Should never fail to add event to a clear block. If we do the max size is too small.");
 		}
 	} else {
 		stack_id = ep_stack_hash_entry_get_id (entry);
@@ -247,7 +247,7 @@ file_write_event_to_block (
 
 	bool result = ep_event_block_base_write_event (block, event_instance, capture_thread_id, sequence_number, stack_id, is_sotred_event);
 	if (!result)
-		EP_ASSERT (!"Should never fail to add event to a clear block. If we do the max size is too small.");
+		EP_UNREACHABLE ("Should never fail to add event to a clear block. If we do the max size is too small.");
 }
 
 static

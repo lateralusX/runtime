@@ -435,6 +435,7 @@ set(VM_HEADERS_WKS
     eetoprofinterfaceimpl.h
     eetoprofinterfaceimpl.inl
     eventpipeadapter.h
+    eventpipeadaptertypes.h
     eventpipeinternal.h
     eventstore.hpp
     fcall.h

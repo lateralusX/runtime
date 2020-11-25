@@ -6,6 +6,7 @@
 #ifdef ENABLE_PERFTRACING
 
 #define EP_ASSERT(expr) ep_rt_redefine
+#define EP_UNREACHABLE(msg) ep_rt_redefine
 #define EP_LIKELY(expr) ep_rt_redefine
 #define EP_UNLIKELY(expr) ep_rt_redefine
 

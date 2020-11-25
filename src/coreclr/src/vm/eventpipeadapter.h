@@ -44,7 +44,7 @@
 #define EP_EVENT_LEVEL_CRITICAL EventPipeEventLevel::Critical
 #define EP_EVENT_LEVEL_ERROR EventPipeEventLevel::Error
 #define EP_EVENT_LEVEL_WARNING EventPipeEventLevel::Warning
-#define EP_EVENT_LEVEL_IFORMATIONAL EventPipeEventLevel::Informational
+#define EP_EVENT_LEVEL_INFORMATIONAL EventPipeEventLevel::Informational
 #define EP_EVENT_LEVEL_VERBOSE EventPipeEventLevel::Verbose
 #endif
 
@@ -53,6 +53,12 @@ class EventPipeProviderConfigurationAdapter final
 public:
 	EventPipeProviderConfigurationAdapter(const COR_PRF_EVENTPIPE_PROVIDER_CONFIG *providerConfigs, uint32_t providerConfigsLen)
 	{
+		CONTRACTL
+		{
+			NOTHROW;
+		}
+		CONTRACTL_END;
+
 #ifdef FEATURE_PERFTRACING_C_LIB
 		m_providerConfigs = new (nothrow) EventPipeProviderConfiguration[providerConfigsLen];
 		m_providerConfigsLen = providerConfigsLen;
@@ -73,13 +79,19 @@ public:
 			&& offsetof(EventPipeProviderConfiguration, m_pFilterData) == offsetof(COR_PRF_EVENTPIPE_PROVIDER_CONFIG, filterData)
 			&& sizeof(EventPipeProviderConfiguration) == sizeof(COR_PRF_EVENTPIPE_PROVIDER_CONFIG),
 		"Layouts of EventPipeProviderConfiguration type and COR_PRF_EVENTPIPE_PROVIDER_CONFIG type do not match!");
-		m_providerConfigs = reinterpret_cast<EventPipeProviderConfiguration *>(providerConfigs);
+		m_providerConfigs = reinterpret_cast<const EventPipeProviderConfiguration *>(providerConfigs);
 		m_providerConfigsLen = providerConfigsLen;
 #endif
 	}
 
 	~EventPipeProviderConfigurationAdapter()
 	{
+		CONTRACTL
+		{
+			NOTHROW;
+		}
+		CONTRACTL_END;
+
 #ifdef FEATURE_PERFTRACING_C_LIB
 		if (m_providerConfigs) {
 			for (uint32_t i = 0; i < m_providerConfigsLen; ++i) {
@@ -91,18 +103,24 @@ public:
 #endif
 	}
 
-	const EventPipeProviderConfiguration * GetProviderConfigs() const
+	inline const EventPipeProviderConfiguration * GetProviderConfigs() const
 	{
+		STATIC_CONTRACT_NOTHROW;
 		return m_providerConfigs;
 	}
 
-	uint32_t GetProviderConfigsLen() const
+	inline uint32_t GetProviderConfigsLen() const
 	{
+		STATIC_CONTRACT_NOTHROW;
 		return m_providerConfigsLen;
 	}
 
 private:
+#ifdef FEATURE_PERFTRACING_C_LIB
 	EventPipeProviderConfiguration *m_providerConfigs;
+#else
+	const EventPipeProviderConfiguration *m_providerConfigs;
+#endif
 	uint32_t m_providerConfigsLen;
 };
 
@@ -111,6 +129,12 @@ class EventPipeParameterDescAdapter final
 public:
 	EventPipeParameterDescAdapter(COR_PRF_EVENTPIPE_PARAM_DESC *params, uint32_t paramsLen)
 	{
+		CONTRACTL
+		{
+			NOTHROW;
+		}
+		CONTRACTL_END;
+
 #ifdef FEATURE_PERFTRACING_C_LIB
 #ifdef EP_INLINE_GETTER_SETTER
 		static_assert(offsetof(EventPipeParameterDesc, type) == offsetof(COR_PRF_EVENTPIPE_PARAM_DESC, type)
@@ -130,13 +154,15 @@ public:
 		m_paramsLen = paramsLen;
 	}
 
-	const EventPipeParameterDesc * GetParams() const
+	inline const EventPipeParameterDesc * GetParams() const
 	{
+		STATIC_CONTRACT_NOTHROW;
 		return m_params;
 	}
 
-	uint32_t GetParamsLen() const
+	inline uint32_t GetParamsLen() const
 	{
+		STATIC_CONTRACT_NOTHROW;
 		return m_paramsLen;
 	}
 
@@ -150,6 +176,12 @@ class EventDataAdapter final
 public:
 	EventDataAdapter(COR_PRF_EVENT_DATA *data, uint32_t dataLen)
 	{
+		CONTRACTL
+		{
+			NOTHROW;
+		}
+		CONTRACTL_END;
+
 #ifdef FEATURE_PERFTRACING_C_LIB
 #ifdef EP_INLINE_GETTER_SETTER
 		static_assert(offsetof(EventData, ptr) == offsetof(COR_PRF_EVENT_DATA, ptr)
@@ -167,13 +199,15 @@ public:
 		m_dataLen = dataLen;
 	}
 
-	const EventData * GetData() const
+	inline const EventData * GetData() const
 	{
+		STATIC_CONTRACT_NOTHROW;
 		return m_data;
 	}
 
-	uint32_t GetDataLen() const
+	inline uint32_t GetDataLen() const
 	{
+		STATIC_CONTRACT_NOTHROW;
 		return m_dataLen;
 	}
 
@@ -188,6 +222,12 @@ public:
 	static inline void Initialize()
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+		}
+		CONTRACTL_END;
+
 		ep_init();
 #else
 		EventPipe::Initialize();
@@ -197,6 +237,12 @@ public:
 	static inline void FinishInitialize()
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+		}
+		CONTRACTL_END;
+
 		ep_finish_init();
 #else
 		EventPipe::FinishInitialize();
@@ -206,6 +252,14 @@ public:
 	static inline void Shutdown()
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		ep_shutdown();
 #else
 		EventPipe::Shutdown();
@@ -215,13 +269,14 @@ public:
 	static inline bool Enabled()
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_enabled();
 #else
 		return EventPipe::Enabled();
 #endif
 	}
 
-	static EventPipeSessionID Enable(
+	static inline EventPipeSessionID Enable(
 		LPCWSTR outputPath,
 		uint32_t circularBufferSizeInMB,
 		const EventPipeProviderConfigurationAdapter &providerConfigs,
@@ -232,6 +287,14 @@ public:
 		EventPipeSessionSynchronousCallback callback)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_PREEMPTIVE;
+		}
+		CONTRACTL_END;
+
 		ep_char8_t *outputPathUTF8 = NULL;
 		if (outputPath)
 			outputPathUTF8 = ep_rt_utf16_to_utf8_string (reinterpret_cast<const ep_char16_t *>(outputPath), -1);
@@ -264,6 +327,14 @@ public:
 	static inline void Disable(EventPipeSessionID id)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		ep_disable(id);
 #else
 		EventPipe::Disable(id);
@@ -273,6 +344,14 @@ public:
 	static inline void StartStreaming(EventPipeSessionID id)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		ep_start_streaming(id);
 #else
 		EventPipe::StartStreaming(id);
@@ -282,6 +361,7 @@ public:
 	static inline EventPipeSession * GetSession(EventPipeSessionID id)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_get_session(id);
 #else
 		return EventPipe::GetSession(id);
@@ -291,6 +371,7 @@ public:
 	static inline HANDLE GetWaitHandle(EventPipeSessionID id)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return reinterpret_cast<HANDLE>(ep_get_wait_handle(id));
 #else
 		return EventPipe::GetWaitHandle(id);
@@ -299,25 +380,32 @@ public:
 
 	static inline FILETIME GetSessionStartTime(EventPipeSession *session)
 	{
-		_ASSERTE(session != NULL);
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
+
 		FILETIME fileTime;
 		LARGE_INTEGER largeValue;
+
+		_ASSERTE(session != NULL);
 		largeValue.QuadPart = ep_session_get_session_start_time(session);
 		fileTime.dwLowDateTime = largeValue.LowPart;
 		fileTime.dwHighDateTime = largeValue.HighPart;
 		return fileTime;
 #else
+		_ASSERTE(session != NULL);
 		return session->GetStartTime();
 #endif
 	}
 
 	static inline LONGLONG GetSessionStartTimestamp(EventPipeSession *session)
 	{
-		_ASSERTE(session != NULL);
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
+
+		_ASSERTE(session != NULL);
 		return ep_session_get_session_start_timestamp(session);
 #else
+		_ASSERTE(session != NULL);
 		return session->GetStartTimeStamp().QuadPart;
 #endif
 	}
@@ -325,6 +413,14 @@ public:
 	static inline void AddProviderToSession(EventPipeSessionProvider *provider, EventPipeSession *session)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_PREEMPTIVE;
+		}
+		CONTRACTL_END;
+
 		ep_add_provider_to_session (provider, session);
 #else
 		EventPipe::AddProviderToSession(provider, session);
@@ -334,9 +430,16 @@ public:
 	static inline EventPipeProvider * CreateProvider(const SString &providerName, EventPipeCallback callback)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		StackScratchBuffer conversion;
-		const ep_char8_t *providerNameUTF8 = reinterpret_cast<const ep_char8_t *>(providerName.GetUTF8(conversion));
-		return ep_create_provider (providerNameUTF8, callback, NULL, NULL);
+		return ep_create_provider (reinterpret_cast<const ep_char8_t *>(providerName.GetUTF8(conversion)), callback, NULL, NULL);
 #else
 		return EventPipe::CreateProvider(providerName, callback, NULL);
 #endif
@@ -344,30 +447,57 @@ public:
 
 	static inline void DeleteProvider (EventPipeProvider * provider)
 	{
-		_ASSERTE(provider != NULL);
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		ep_delete_provider (provider);
 #else
-		EventPipe::DeleteProvider(provider)
+		EventPipe::DeleteProvider(provider);
 #endif
 	}
 
 	static inline EventPipeProvider * GetProvider (LPCWSTR providerName)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_NOTRIGGER;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
+		if (!providerName)
+			return NULL;
+
 		ep_char8_t *providerNameUTF8 = ep_rt_utf16_to_utf8_string(reinterpret_cast<const ep_char16_t *>(providerName), -1);
 		EventPipeProvider * provider = ep_get_provider (providerNameUTF8);
 		ep_rt_utf8_string_free(providerNameUTF8);
 		return provider;
 #else
-		EventPipe::GetProvider(providerName)
+		return EventPipe::GetProvider(providerName);
 #endif
 	}
 
-	static inline EventPipeSessionProvider * CreateSessionProvider(const EventPipeProviderConfigurationAdapter &providerConfig)
+	static EventPipeSessionProvider * CreateSessionProvider(const EventPipeProviderConfigurationAdapter &providerConfig)
 	{
-		_ASSERTE (providerConfig.GetProviderConfigs() != NULL && providerConfig.GetProviderConfigsLen() == 1);
+#ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_NOTRIGGER;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+#endif
 
+		_ASSERTE (providerConfig.GetProviderConfigs() != NULL && providerConfig.GetProviderConfigsLen() == 1);
 		const EventPipeProviderConfiguration *config = providerConfig.GetProviderConfigs();
 		if (!config)
 			return NULL;
@@ -389,10 +519,16 @@ public:
 
 	static HRESULT GetProviderName(const EventPipeProvider *provider, ULONG numNameChars, ULONG *numNameCharsOut, LPWSTR name)
 	{
+#ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+		}
+		CONTRACTL_END;
+
 		_ASSERTE(provider != NULL);
 
 		HRESULT hr = S_OK;
-#ifdef FEATURE_PERFTRACING_C_LIB
 		const ep_char16_t *providerName = ep_provider_get_provider_name_utf16 (provider);
 		if (providerName) {
 			uint32_t numProviderNameChars = (uint32_t)(ep_rt_utf16_string_len (providerName) + 1);
@@ -404,6 +540,9 @@ public:
 				memcpy (name, providerName, numProviderNameChars * sizeof (ep_char16_t));
 		}
 #else
+		_ASSERTE(provider != NULL);
+
+		HRESULT hr = S_OK;
 		const SString &providerName = provider->GetProviderName();
 		ULONG numProviderNameChars = providerName.GetCount() + 1;
 		if (numNameCharsOut != NULL)
@@ -436,11 +575,17 @@ public:
 		const EventPipeParameterDescAdapter &params,
 		bool needStack)
 	{
-		_ASSERTE(provider != NULL);
-
-		size_t metadataLen;
-		EventPipeEvent *realEvent = NULL;
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
+		size_t metadataLen = 0;
+		EventPipeEvent *realEvent = NULL;
 		uint8_t *metadata = ep_metadata_generator_generate_event_metadata (
 			eventID,
 			reinterpret_cast<const ep_char16_t *>(eventName),
@@ -465,6 +610,10 @@ public:
 		}
 		return realEvent;
 #else
+		_ASSERTE(provider != NULL);
+
+		size_t metadataLen = 0;
+		EventPipeEvent *realEvent = NULL;
 		NewArrayHolder<BYTE> metadata = EventPipeMetadataGenerator::GenerateEventMetadata(
 			eventID,
 			eventName,
@@ -501,10 +650,18 @@ public:
 		BYTE *metadata = NULL,
 		uint32_t metadataLen = 0)
 	{
-		_ASSERTE(provider != NULL);
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		return ep_provider_add_event(provider, eventID, keywords, eventVersion, level, needStack, metadata, metadataLen);
 #else
+		_ASSERTE(provider != NULL);
 		return provider->AddEvent(eventID, keywords, eventVersion, level, needStack, metadata, metadataLen);
 #endif
 	}
@@ -516,9 +673,15 @@ public:
 		LPCGUID activityId,
 		LPCGUID relatedActivityId)
 	{
-		_ASSERTE(ep_event != NULL);
-
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_NOTRIGGER;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		ep_write_event(
 			ep_event,
 			data,
@@ -542,9 +705,15 @@ public:
 		LPCGUID activityId,
 		LPCGUID relatedActivityId)
 	{
-		_ASSERTE(ep_event != NULL);
-
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_NOTRIGGER;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		ep_write_event_2(
 			ep_event,
 			data,
@@ -567,7 +736,6 @@ public:
 		LPCGUID activityId,
 		LPCGUID relatedActivityId)
 	{
-		_ASSERTE(ep_event != NULL);
 		WriteEvent(
 			ep_event,
 			(EventData*)data.GetData(),
@@ -579,15 +747,24 @@ public:
 	static inline bool EventIsEnabled (const EventPipeEvent *epEvent)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_event_is_enabled(epEvent);
 #else
-		return epEvent->IsEnbled();
+		return epEvent->IsEnabled();
 #endif
 	}
 
 	static inline EventPipeEventInstance * GetNextEvent (EventPipeSessionID id)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		CONTRACTL
+		{
+			NOTHROW;
+			GC_TRIGGERS;
+			MODE_PREEMPTIVE;
+		}
+		CONTRACTL_END;
+
 		return ep_get_next_event(id);
 #else
 		return EventPipe::GetNextEvent(id);
@@ -597,6 +774,7 @@ public:
 	static inline EventPipeProvider * GetEventProvider (EventPipeEventInstance *eventInstance)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_event_get_provider(ep_event_instance_get_ep_event(eventInstance));
 #else
 		return eventInstance->GetEvent()->GetProvider();
@@ -606,6 +784,7 @@ public:
 	static inline uint32_t GetEventID (EventPipeEventInstance *eventInstance)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_event_get_event_id(ep_event_instance_get_ep_event(eventInstance));
 #else
 		return eventInstance->GetEvent()->GetEventID();
@@ -615,6 +794,7 @@ public:
 	static inline uint64_t GetEventThreadID (EventPipeEventInstance *eventInstance)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_event_instance_get_thread_id(eventInstance);
 #else
 		return eventInstance->GetThreadId64();
@@ -624,6 +804,7 @@ public:
 	static inline int64_t GetEventTimestamp (EventPipeEventInstance *eventInstance)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_event_instance_get_timestamp(eventInstance);
 #else
 		return eventInstance->GetTimeStamp()->QuadPart;
@@ -632,8 +813,9 @@ public:
 
 	static inline LPCGUID GetEventActivityID (EventPipeEventInstance *eventInstance)
 	{
-		static_assert(sizeof(GUID) == EP_ACTIVITY_ID_SIZE, "Size missmatch, sizeof(GUID) should be equal to EP_ACTIVITY_ID_SIZE");
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
+		static_assert(sizeof(GUID) == EP_ACTIVITY_ID_SIZE, "Size missmatch, sizeof(GUID) should be equal to EP_ACTIVITY_ID_SIZE");
 		return reinterpret_cast<LPCGUID>(ep_event_instance_get_activity_id_cref(eventInstance));
 #else
 		return eventInstance->GetActivityId();
@@ -642,8 +824,9 @@ public:
 
 	static inline LPCGUID GetEventRelativeActivityID (EventPipeEventInstance *eventInstance)
 	{
-		static_assert(sizeof(GUID) == EP_ACTIVITY_ID_SIZE, "Size missmatch, sizeof(GUID) should be equal to EP_ACTIVITY_ID_SIZE");
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
+		static_assert(sizeof(GUID) == EP_ACTIVITY_ID_SIZE, "Size missmatch, sizeof(GUID) should be equal to EP_ACTIVITY_ID_SIZE");
 		return reinterpret_cast<LPCGUID>(ep_event_instance_get_related_activity_id_cref(eventInstance));
 #else
 		return eventInstance->GetRelatedActivityId();
@@ -653,6 +836,7 @@ public:
 	static inline const BYTE * GetEventData (EventPipeEventInstance *eventInstance)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_event_instance_get_data(eventInstance);
 #else
 		return eventInstance->GetData();
@@ -662,6 +846,7 @@ public:
 	static inline uint32_t GetEventDataLen (EventPipeEventInstance *eventInstance)
 	{
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		return ep_event_instance_get_data_len(eventInstance);
 #else
 		return eventInstance->GetDataLength();
@@ -670,25 +855,26 @@ public:
 
 	static inline void ResumeSession (EventPipeSession *session)
 	{
-		_ASSERTE(session != NULL);
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		ep_session_resume (session);
 #else
+		_ASSERTE(session != NULL);
 		session->Resume();
 #endif
 	}
 
 	static inline void PauseSession (EventPipeSession *session)
 	{
-		_ASSERTE(session != NULL);
 #ifdef FEATURE_PERFTRACING_C_LIB
+		STATIC_CONTRACT_NOTHROW;
 		ep_session_pause (session);
 #else
+		_ASSERTE(session != NULL);
 		session->Pause();
 #endif
 	}
 };
 
 #endif // FEATURE_PERFTRACING && !CROSSGEN_COMPILE
-
 #endif // __EVENTPIPE_ADAPTER_H__

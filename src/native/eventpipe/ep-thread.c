@@ -110,11 +110,11 @@ ep_thread_init (void)
 {
 	ep_rt_spin_lock_alloc (&_ep_threads_lock);
 	if (!ep_rt_spin_lock_is_valid (&_ep_threads_lock))
-		EP_ASSERT (!"Failed to allocate threads lock.");
+		EP_UNREACHABLE ("Failed to allocate threads lock.");
 
 	ep_rt_thread_list_alloc (&_ep_threads);
 	if (!ep_rt_thread_list_is_valid (&_ep_threads))
-		EP_ASSERT (!"Failed to allocate threads list.");
+		EP_UNREACHABLE ("Failed to allocate threads list.");
 }
 
 void

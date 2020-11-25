@@ -11,8 +11,14 @@
 #endif
 
 #undef EP_ASSERT
-//#define EP_ASSERT(expr) 
+#ifdef EP_CHECKED_BUILD
 #define EP_ASSERT(expr) _ASSERTE(expr)
+#else
+#define EP_ASSERT(expr)
+#endif
+
+#undef EP_UNREACHABLE
+#define EP_UNREACHABLE(msg) UNREACHABLE_MSG(msg)
 
 #undef EP_LIKELY
 #define EP_LIKELY(expr) expr
@@ -55,7 +61,7 @@ typedef struct _rt_coreclr_table_callbacks_t {
 
 template<typename T1, typename T2>
 struct _rt_coreclr_table_default_internal_t {
-	typedef typename SHash<NoRemoveSHashTraits< MapSHashTraits <T1, T2> >> table_type_t;
+	typedef typename SHash<NoRemoveSHashTraits< MapSHashTraits <T1, T2> > > table_type_t;
 	rt_coreclr_table_callbacks_t callbacks;
 	table_type_t *table;
 };
@@ -67,7 +73,7 @@ struct _rt_coreclr_table_remove_internal_t {
 	table_type_t *table;
 };
 
-class EventPipeCoreCLRStackHashTraits : public NoRemoveSHashTraits<MapSHashTraits<StackHashKey *, StackHashEntry *>>
+class EventPipeCoreCLRStackHashTraits : public NoRemoveSHashTraits< MapSHashTraits<StackHashKey *, StackHashEntry *> >
 {
 public:
 	typedef typename MapSHashTraits<StackHashKey *, StackHashEntry *>::element_t element_t;

@@ -40,14 +40,27 @@ prefix_name ## _rt_ ## type_name ## _ ## func_name
 #endif
 
 template<typename LIST_TYPE>
-static inline void _rt_coreclr_list_alloc (LIST_TYPE *list) {
+static
+inline
+void
+_rt_coreclr_list_alloc (LIST_TYPE *list) {
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL);
+
 	list->list = new (nothrow) LIST_TYPE::list_type_t ();
 }
 
 template<typename LIST_TYPE>
-static inline void _rt_coreclr_list_free (LIST_TYPE *list, void (*callback)(void *)) {
+static
+inline
+void
+_rt_coreclr_list_free (
+	LIST_TYPE *list,
+	void (*callback)(void *))
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL);
+
 	if (list->list) {
 		while (!list->list->IsEmpty ()) {
 				LIST_TYPE::element_type_t *current = list->list->RemoveHead ();
@@ -61,8 +74,16 @@ static inline void _rt_coreclr_list_free (LIST_TYPE *list, void (*callback)(void
 }
 
 template<typename LIST_TYPE>
-static inline void _rt_coreclr_list_clear (LIST_TYPE *list, void (*callback)(void *)) {
+static
+inline
+void
+_rt_coreclr_list_clear (
+	LIST_TYPE *list,
+	void (*callback)(void *))
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL);
+
 	while (!list->list->IsEmpty ()) {
 		LIST_TYPE::element_type_t *current = list->list->RemoveHead ();
 		if (callback)
@@ -72,8 +93,16 @@ static inline void _rt_coreclr_list_clear (LIST_TYPE *list, void (*callback)(voi
 }
 
 template<typename LIST_TYPE, typename LIST_ITEM>
-static inline bool _rt_coreclr_list_append (LIST_TYPE *list, LIST_ITEM item) {
+static
+inline
+bool
+_rt_coreclr_list_append (
+	LIST_TYPE *list,
+	LIST_ITEM item)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL);
+
 	LIST_TYPE::element_type_t *node = new (nothrow) LIST_TYPE::element_type_t (item);
 	if (node)
 		list->list->InsertTail (node);
@@ -81,8 +110,16 @@ static inline bool _rt_coreclr_list_append (LIST_TYPE *list, LIST_ITEM item) {
 }
 
 template<typename LIST_TYPE, typename LIST_ITEM, typename CONST_LIST_ITEM = LIST_ITEM>
-static inline void _rt_coreclr_list_remove (LIST_TYPE *list, CONST_LIST_ITEM item) {
+static
+inline
+void
+_rt_coreclr_list_remove (
+	LIST_TYPE *list,
+	CONST_LIST_ITEM item)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL);
+
 	LIST_TYPE::element_type_t *current = list->list->GetHead ();
 	while (current) {
 		if (current->GetValue () == item) {
@@ -95,9 +132,18 @@ static inline void _rt_coreclr_list_remove (LIST_TYPE *list, CONST_LIST_ITEM ite
 }
 
 template<typename LIST_TYPE, typename LIST_ITEM, typename CONST_LIST_TYPE = const LIST_TYPE, typename CONST_LIST_ITEM = const LIST_ITEM>
-static inline bool _rt_coreclr_list_find (CONST_LIST_TYPE *list, CONST_LIST_ITEM item_to_find, LIST_ITEM *found_item) {
+static
+inline
+bool
+_rt_coreclr_list_find (
+	CONST_LIST_TYPE *list,
+	CONST_LIST_ITEM item_to_find,
+	LIST_ITEM *found_item)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL);
 	EP_ASSERT (found_item != NULL);
+
 	bool found = false;
 	LIST_TYPE::element_type_t *current = list->list->GetHead ();
 	while (current) {
@@ -112,70 +158,137 @@ static inline bool _rt_coreclr_list_find (CONST_LIST_TYPE *list, CONST_LIST_ITEM
 }
 
 template<typename LIST_TYPE, typename CONST_LIST_TYPE = const LIST_TYPE>
-static inline bool _rt_coreclr_list_is_empty (CONST_LIST_TYPE *list) {
+static
+inline
+bool
+_rt_coreclr_list_is_empty (CONST_LIST_TYPE *list)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL);
+
 	return (list->list == NULL || list->list->IsEmpty ());
 }
 
 template<typename LIST_TYPE, typename CONST_LIST_TYPE = const LIST_TYPE>
-static inline bool _rt_coreclr_list_is_valid (CONST_LIST_TYPE *list) {
+static
+inline
+bool
+_rt_coreclr_list_is_valid (CONST_LIST_TYPE *list)
+{
+	STATIC_CONTRACT_NOTHROW;
 	return (list != NULL && list->list != NULL);
 }
 
 template<typename LIST_TYPE, typename ITERATOR_TYPE, typename CONST_LIST_TYPE = const LIST_TYPE>
-static inline ITERATOR_TYPE _rt_coreclr_list_iterator_begin (CONST_LIST_TYPE *list) {
+static
+inline
+ITERATOR_TYPE
+_rt_coreclr_list_iterator_begin (CONST_LIST_TYPE *list)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL);
+
 	return list->list->begin ();
 }
 
 template<typename LIST_TYPE, typename ITERATOR_TYPE, typename CONST_LIST_TYPE = const LIST_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline bool _rt_coreclr_list_iterator_end (CONST_LIST_TYPE *list, CONST_ITERATOR_TYPE *iterator) {
+static
+inline
+bool
+_rt_coreclr_list_iterator_end (
+	CONST_LIST_TYPE *list,
+	CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL && iterator != NULL);
+
 	return (*iterator == list->list->end ());
 }
 
 template<typename ITERATOR_TYPE>
-static inline void _rt_coreclr_list_iterator_next (ITERATOR_TYPE *iterator) {
+static
+inline
+void
+_rt_coreclr_list_iterator_next (ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL);
+
 	(*iterator)++;
 }
 
 template<typename ITERATOR_TYPE, typename ITEM_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline ITEM_TYPE _rt_coreclr_list_iterator_value (CONST_ITERATOR_TYPE *iterator) {
+static
+inline
+ITEM_TYPE
+_rt_coreclr_list_iterator_value (CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL);
+
 	return const_cast<ITERATOR_TYPE *>(iterator)->operator*();
 }
 
 template<typename QUEUE_TYPE>
-static inline void _rt_coreclr_queue_alloc (QUEUE_TYPE *queue) {
+static
+inline
+void
+_rt_coreclr_queue_alloc (QUEUE_TYPE *queue)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL);
+
 	queue->queue = new (nothrow) QUEUE_TYPE::queue_type_t ();
 }
 
 template<typename QUEUE_TYPE>
-static inline void _rt_coreclr_queue_free (QUEUE_TYPE *queue) {
+static
+inline
+void
+_rt_coreclr_queue_free (QUEUE_TYPE *queue)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL);
+
 	if (queue->queue)
 		delete queue->queue;
 	queue->queue = NULL;
 }
 
 template<typename QUEUE_TYPE, typename ITEM_TYPE>
-static inline bool _rt_coreclr_queue_pop_head (QUEUE_TYPE *queue, ITEM_TYPE *item) {
-	EP_ASSERT (queue != NULL && queue->queue != NULL);
+static
+inline
+bool
+_rt_coreclr_queue_pop_head (
+	QUEUE_TYPE *queue,
+	ITEM_TYPE *item)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (queue != NULL && queue->queue != NULL && item != NULL);
+
+	bool found = true;
 	QUEUE_TYPE::element_type_t *node = queue->queue->RemoveHead ();
 	if (node) {
 		*item = node->m_Value;
 		delete node;
 	} else {
 		*item = NULL;
+		found = false;
 	}
-	return (node != NULL);
+	return found;
 }
 
 template<typename QUEUE_TYPE, typename ITEM_TYPE>
-static inline bool _rt_coreclr_queue_push_head (QUEUE_TYPE *queue, ITEM_TYPE item) {
+static
+inline
+bool
+_rt_coreclr_queue_push_head (
+	QUEUE_TYPE *queue,
+	ITEM_TYPE item)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL && queue->queue != NULL);
+
 	QUEUE_TYPE::element_type_t *node = new (nothrow) QUEUE_TYPE::element_type_t (item);
 	if (node)
 		queue->queue->InsertHead (node);
@@ -183,8 +296,16 @@ static inline bool _rt_coreclr_queue_push_head (QUEUE_TYPE *queue, ITEM_TYPE ite
 }
 
 template<typename QUEUE_TYPE, typename ITEM_TYPE>
-static inline bool _rt_coreclr_queue_push_tail (QUEUE_TYPE *queue, ITEM_TYPE item) {
+static
+inline
+bool
+_rt_coreclr_queue_push_tail (
+	QUEUE_TYPE *queue,
+	ITEM_TYPE item)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL && queue->queue != NULL);
+
 	QUEUE_TYPE::element_type_t *node = new (nothrow) QUEUE_TYPE::element_type_t (item);
 	if (node)
 		queue->queue->InsertTail (node);
@@ -192,33 +313,64 @@ static inline bool _rt_coreclr_queue_push_tail (QUEUE_TYPE *queue, ITEM_TYPE ite
 }
 
 template<typename QUEUE_TYPE, typename CONST_QUEUE_TYPE = const QUEUE_TYPE>
-static inline bool _rt_coreclr_queue_is_empty (CONST_QUEUE_TYPE *queue) {
+static
+inline
+bool
+_rt_coreclr_queue_is_empty (CONST_QUEUE_TYPE *queue)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL && queue->queue != NULL);
+
 	return (queue->queue != NULL && queue->queue->IsEmpty ());
 }
 
 template<typename QUEUE_TYPE, typename CONST_QUEUE_TYPE = const QUEUE_TYPE>
-static inline bool _rt_coreclr_queue_is_valid (CONST_QUEUE_TYPE *queue) {
+static
+inline
+bool
+_rt_coreclr_queue_is_valid (CONST_QUEUE_TYPE *queue)
+{
+	STATIC_CONTRACT_NOTHROW;
 	return (queue != NULL && queue->queue != NULL);
 }
 
 template<typename ARRAY_TYPE>
-static inline void _rt_coreclr_array_alloc (ARRAY_TYPE *ep_array) {
+static
+inline
+void
+_rt_coreclr_array_alloc (ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL);
+
 	ep_array->array = new (nothrow) ARRAY_TYPE::array_type_t ();
 }
 
 template<typename ARRAY_TYPE>
-static inline void _rt_coreclr_array_alloc_capacity (ARRAY_TYPE *ep_array, size_t capacity) {
+static
+inline
+void
+_rt_coreclr_array_alloc_capacity (
+	ARRAY_TYPE *ep_array,
+	size_t capacity)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL);
+
 	ep_array->array = new (nothrow) ARRAY_TYPE::array_type_t ();
 	if (ep_array->array)
 		ep_array->array->AllocNoThrow (capacity);
 }
 
 template<typename ARRAY_TYPE>
-static inline void _rt_coreclr_array_free (ARRAY_TYPE *ep_array) {
+static
+inline
+void
+_rt_coreclr_array_free (ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL);
+
 	if (ep_array->array) {
 		delete ep_array->array;
 		ep_array->array = NULL;
@@ -226,50 +378,78 @@ static inline void _rt_coreclr_array_free (ARRAY_TYPE *ep_array) {
 }
 
 template<typename ARRAY_TYPE, typename ITEM_TYPE>
-static inline bool _rt_coreclr_array_append (ARRAY_TYPE *ep_array, ITEM_TYPE item) {
+static
+inline
+bool
+_rt_coreclr_array_append (
+	ARRAY_TYPE *ep_array,
+	ITEM_TYPE item)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && ep_array->array != NULL);
-	bool result = true;
-	EX_TRY
-	{
-		// TODO: Change to nothrow.
-		ep_array->array->Push (item);
-	}
-	EX_CATCH
-	{
-		result = false;
-	}
-	EX_END_CATCH(SwallowAllExceptions);
-	return result;
+
+	ep_array->array->Push (item);
+	return true;
+	//return ep_array->array->PushNoThrow (item);
 }
 
 template<typename ARRAY_TYPE, typename ITEM_TYPE>
-static inline void _rt_coreclr_array_clear (ARRAY_TYPE *ep_array) {
+static
+inline
+void
+_rt_coreclr_array_clear (ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && ep_array->array != NULL);
+
 	while (ep_array->array->Size () > 0)
 		ITEM_TYPE item = ep_array->array->Pop ();
 	ep_array->array->Shrink ();
 }
 
 template<typename ARRAY_TYPE, typename CONST_ARRAY_TYPE = const ARRAY_TYPE>
-static inline size_t _rt_coreclr_array_size (CONST_ARRAY_TYPE *ep_array) {
+static
+inline
+size_t
+_rt_coreclr_array_size (CONST_ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && ep_array->array != NULL);
+
 	return ep_array->array->Size ();
 }
 
 template<typename ARRAY_TYPE, typename ITEM_TYPE, typename CONST_ARRAY_TYPE = const ARRAY_TYPE>
-static inline ITEM_TYPE * _rt_coreclr_array_data (CONST_ARRAY_TYPE *ep_array) {
+static
+inline
+ITEM_TYPE *
+_rt_coreclr_array_data (CONST_ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && ep_array->array != NULL);
+
 	return ep_array->array->Ptr ();
 }
 
 template<typename ARRAY_TYPE, typename CONST_ARRAY_TYPE = const ARRAY_TYPE>
-static inline bool _rt_coreclr_array_is_valid (CONST_ARRAY_TYPE *ep_array) {
+static
+inline
+bool
+_rt_coreclr_array_is_valid (CONST_ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	return (ep_array->array != NULL);
 }
 
 template<typename ARRAY_TYPE, typename ITERATOR_TYPE, typename CONST_ARRAY_TYPE = const ARRAY_TYPE>
-static inline ITERATOR_TYPE _rt_coreclr_array_iterator_begin (CONST_ARRAY_TYPE *ep_array) {
+static
+inline
+ITERATOR_TYPE
+_rt_coreclr_array_iterator_begin (CONST_ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && ep_array->array != NULL);
+
 	ITERATOR_TYPE temp;
 	temp.array = ep_array->array;
 	temp.index = 0;
@@ -277,27 +457,53 @@ static inline ITERATOR_TYPE _rt_coreclr_array_iterator_begin (CONST_ARRAY_TYPE *
 }
 
 template<typename ARRAY_TYPE, typename ITERATOR_TYPE, typename CONST_ARRAY_TYPE = const ARRAY_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline bool _rt_coreclr_array_iterator_end (CONST_ARRAY_TYPE *ep_array, CONST_ITERATOR_TYPE *iterator) {
+static
+inline
+bool
+_rt_coreclr_array_iterator_end (
+	CONST_ARRAY_TYPE *ep_array,
+	CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && iterator != NULL && iterator->array != NULL);
+
 	return (iterator->index >= iterator->array->Size ());
 }
 
 template<typename ITERATOR_TYPE>
-static inline void _rt_coreclr_array_iterator_next (ITERATOR_TYPE *iterator) {
+static
+inline
+void
+_rt_coreclr_array_iterator_next (ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL);
+
 	iterator->index++;
 }
 
 template<typename ITERATOR_TYPE, typename ITEM_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline ITEM_TYPE _rt_coreclr_array_iterator_value (const CONST_ITERATOR_TYPE *iterator) {
+static
+inline
+ITEM_TYPE
+_rt_coreclr_array_iterator_value (const CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL && iterator->array != NULL);
 	EP_ASSERT (iterator->index < iterator->array->Size ());
+
 	return iterator->array->operator[] (iterator->index);
 }
 
 template<typename ARRAY_TYPE, typename ITERATOR_TYPE, typename CONST_ARRAY_TYPE = const ARRAY_TYPE>
-static inline ITERATOR_TYPE _rt_coreclr_array_reverse_iterator_begin (CONST_ARRAY_TYPE *ep_array) {
+static
+inline
+ITERATOR_TYPE
+_rt_coreclr_array_reverse_iterator_begin (CONST_ARRAY_TYPE *ep_array)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && ep_array->array != NULL);
+
 	ITERATOR_TYPE temp;
 	temp.array = ep_array->array;
 	temp.index = static_cast<int32_t>(ep_array->array->Size () - 1);
@@ -305,35 +511,74 @@ static inline ITERATOR_TYPE _rt_coreclr_array_reverse_iterator_begin (CONST_ARRA
 }
 
 template<typename ARRAY_TYPE, typename ITERATOR_TYPE, typename CONST_ARRAY_TYPE = const ARRAY_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline bool _rt_coreclr_array_reverse_iterator_end (CONST_ARRAY_TYPE *ep_array, CONST_ITERATOR_TYPE *iterator) {
+static
+inline
+bool
+_rt_coreclr_array_reverse_iterator_end (
+	CONST_ARRAY_TYPE *ep_array,
+	CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && iterator != NULL && iterator->array != NULL);
+
 	return (iterator->index < 0);
 }
 
 template<typename ITERATOR_TYPE>
-static inline void _rt_coreclr_array_reverse_iterator_next (ITERATOR_TYPE *iterator) {
+static
+inline
+void
+_rt_coreclr_array_reverse_iterator_next (ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL);
+
 	iterator->index--;
 }
 
 template<typename ITERATOR_TYPE, typename ITEM_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline ITEM_TYPE _rt_coreclr_array_reverse_iterator_value (CONST_ITERATOR_TYPE *iterator) {
+static
+inline
+ITEM_TYPE
+_rt_coreclr_array_reverse_iterator_value (CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL && iterator->array != NULL);
 	EP_ASSERT (iterator->index >= 0);
+
 	return iterator->array->operator[] (iterator->index);
 }
 
 template<typename HASH_MAP_TYPE>
-static inline void _rt_coreclr_hash_map_alloc (HASH_MAP_TYPE *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)) {
+static
+inline
+void
+_rt_coreclr_hash_map_alloc (
+	HASH_MAP_TYPE *hash_map,
+	uint32_t (*hash_callback)(const void *),
+	bool (*eq_callback)(const void *, const void *),
+	void (*key_free_callback)(void *),
+	void (*value_free_callback)(void *))
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && key_free_callback == NULL);
+
 	hash_map->table = new (nothrow) HASH_MAP_TYPE::table_type_t ();
 	hash_map->callbacks.key_free_func = key_free_callback;
 	hash_map->callbacks.value_free_func = value_free_callback;
 }
 
 template<typename HASH_MAP_TYPE>
-static inline void _rt_coreclr_hash_map_free (HASH_MAP_TYPE *hash_map) {
+static
+inline
+void
+_rt_coreclr_hash_map_free (HASH_MAP_TYPE *hash_map)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL);
+
 	if (hash_map->table) {
 		if (hash_map->callbacks.value_free_func) {
 			for (HASH_MAP_TYPE::table_type_t::Iterator iterator = hash_map->table->Begin (); iterator != hash_map->table->End (); ++iterator)
@@ -344,24 +589,31 @@ static inline void _rt_coreclr_hash_map_free (HASH_MAP_TYPE *hash_map) {
 }
 
 template<typename HASH_MAP_TYPE, typename KEY_TYPE, typename VALUE_TYPE>
-static inline bool _rt_coreclr_hash_map_add (HASH_MAP_TYPE *hash_map, KEY_TYPE key, VALUE_TYPE value) {
+static
+inline
+bool
+_rt_coreclr_hash_map_add (
+	HASH_MAP_TYPE *hash_map,
+	KEY_TYPE key,
+	VALUE_TYPE value)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
-	bool result = true;
-	EX_TRY
-	{
-		hash_map->table->Add (HASH_MAP_TYPE::table_type_t::element_t (key, value));
-	}
-	EX_CATCH
-	{
-		result = false;
-	}
-	EX_END_CATCH(SwallowAllExceptions);
-	return result;
+
+	return hash_map->table->AddNoThrow (HASH_MAP_TYPE::table_type_t::element_t (key, value));
 }
 
 template<typename HASH_MAP_TYPE>
-static inline void _rt_coreclr_hash_map_remove_all (HASH_MAP_TYPE *hash_map) { \
+static
+inline
+void
+_rt_coreclr_hash_map_remove_all (HASH_MAP_TYPE *hash_map)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
+
 	if (hash_map->callbacks.value_free_func) {
 		for (HASH_MAP_TYPE::table_type_t::Iterator iterator = hash_map->table->Begin (); iterator != hash_map->table->End (); ++iterator)
 			hash_map->callbacks.value_free_func (reinterpret_cast<void *>((ptrdiff_t)(iterator->Value ())));
@@ -370,8 +622,18 @@ static inline void _rt_coreclr_hash_map_remove_all (HASH_MAP_TYPE *hash_map) { \
 }
 
 template<typename HASH_MAP_TYPE, typename KEY_TYPE, typename VALUE_TYPE, typename CONST_HASH_MAP_TYPE = const HASH_MAP_TYPE, typename CONST_KEY_TYPE = const KEY_TYPE>
-static inline bool _rt_coreclr_hash_map_lookup (CONST_HASH_MAP_TYPE *hash_map, CONST_KEY_TYPE key, VALUE_TYPE *value) {
+static
+inline
+bool
+_rt_coreclr_hash_map_lookup (
+	CONST_HASH_MAP_TYPE *hash_map,
+	CONST_KEY_TYPE key,
+	VALUE_TYPE *value)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
+
 	const HASH_MAP_TYPE::table_type_t::element_t *ret = hash_map->table->LookupPtr ((KEY_TYPE)key);
 	if (ret == NULL)
 		return false;
@@ -380,19 +642,42 @@ static inline bool _rt_coreclr_hash_map_lookup (CONST_HASH_MAP_TYPE *hash_map, C
 }
 
 template<typename HASH_MAP_TYPE, typename CONST_HASH_MAP_TYPE = const HASH_MAP_TYPE>
-static inline uint32_t _rt_coreclr_hash_map_count (CONST_HASH_MAP_TYPE *hash_map) {
+static
+inline
+uint32_t
+_rt_coreclr_hash_map_count (CONST_HASH_MAP_TYPE *hash_map)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
+
 	return hash_map->table->GetCount ();
 }
 
 template<typename HASH_MAP_TYPE, typename CONST_HASH_MAP_TYPE = const HASH_MAP_TYPE>
-static inline bool _rt_coreclr_hash_map_is_valid (CONST_HASH_MAP_TYPE *hash_map) {
+static
+inline
+bool
+_rt_coreclr_hash_map_is_valid (CONST_HASH_MAP_TYPE *hash_map)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
+
 	return (hash_map != NULL && hash_map->table != NULL);
 }
 
 template<typename HASH_MAP_TYPE, typename KEY_TYPE, typename CONST_KEY_TYPE = const KEY_TYPE>
-static inline void _rt_coreclr_hash_map_remove (HASH_MAP_TYPE *hash_map, CONST_KEY_TYPE key) {
+static
+inline
+void
+_rt_coreclr_hash_map_remove (
+	HASH_MAP_TYPE *hash_map,
+	CONST_KEY_TYPE key)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
+
 	const HASH_MAP_TYPE::table_type_t::element_t *ret = NULL;
 	if (hash_map->callbacks.value_free_func)
 		ret = hash_map->table->LookupPtr ((KEY_TYPE)key);
@@ -402,65 +687,110 @@ static inline void _rt_coreclr_hash_map_remove (HASH_MAP_TYPE *hash_map, CONST_K
 }
 
 template<typename HASH_MAP_TYPE, typename ITERATOR_TYPE, typename CONST_HASH_MAP_TYPE = const HASH_MAP_TYPE>
-static inline ITERATOR_TYPE _rt_coreclr_hash_map_iterator_begin (CONST_HASH_MAP_TYPE *hash_map) {
+static
+inline
+ITERATOR_TYPE
+_rt_coreclr_hash_map_iterator_begin (CONST_HASH_MAP_TYPE *hash_map)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
+
 	return hash_map->table->Begin ();
 }
 
 template<typename HASH_MAP_TYPE, typename ITERATOR_TYPE, typename CONST_HASH_MAP_TYPE = const HASH_MAP_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline bool _rt_coreclr_hash_map_iterator_end (CONST_HASH_MAP_TYPE *hash_map, CONST_ITERATOR_TYPE *iterator) {
+static
+inline
+bool
+_rt_coreclr_hash_map_iterator_end (
+	CONST_HASH_MAP_TYPE *hash_map,
+	CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL && iterator != NULL);
+
 	return (hash_map->table->End () == *iterator);
 }
 
-template<typename ITERATOR_TYPE>
-static inline void _rt_coreclr_hash_map_iterator_next (ITERATOR_TYPE *iterator) {
+template<typename HASH_MAP_TYPE, typename ITERATOR_TYPE>
+static
+inline
+void
+_rt_coreclr_hash_map_iterator_next (ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (iterator != NULL);
+
 	(*iterator)++;
 }
 
-template<typename ITERATOR_TYPE, typename KEY_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline KEY_TYPE _rt_coreclr_hash_map_iterator_key (CONST_ITERATOR_TYPE *iterator) {
+template<typename HASH_MAP_TYPE, typename ITERATOR_TYPE, typename KEY_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
+static
+inline
+KEY_TYPE
+_rt_coreclr_hash_map_iterator_key (CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (iterator != NULL);
+
 	return (*iterator)->Key ();
 }
 
-template<typename ITERATOR_TYPE, typename VALUE_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
-static inline VALUE_TYPE _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYPE *iterator) {
+template<typename HASH_MAP_TYPE, typename ITERATOR_TYPE, typename VALUE_TYPE, typename CONST_ITERATOR_TYPE = const ITERATOR_TYPE>
+static
+inline
+VALUE_TYPE
+_rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYPE *iterator)
+{
+	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (iterator != NULL);
+
 	return (*iterator)->Value ();
 }
 
 #define EP_RT_DEFINE_LIST_PREFIX(prefix_name, list_name, list_type, item_type) \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, alloc) (list_type *list) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, alloc) (list_type *list) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_list_alloc<list_type>(list); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, free) (list_type *list, void (*callback)(void *)) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, free) (list_type *list, void (*callback)(void *)) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_list_free<list_type>(list, callback); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, clear) (list_type *list, void (*callback)(void *)) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, clear) (list_type *list, void (*callback)(void *)) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_list_clear<list_type>(list, callback); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, append) (list_type *list, item_type item) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, append) (list_type *list, item_type item) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_list_append<list_type, item_type>(list, item); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, remove) (list_type *list, const item_type item) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, remove) (list_type *list, const item_type item) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_list_remove<list_type, item_type>(list, item); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, find) (const list_type *list, const item_type item_to_find, item_type *found_item) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, find) (const list_type *list, const item_type item_to_find, item_type *found_item) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_list_find<list_type, item_type>(list, item_to_find, found_item); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, is_empty) (const list_type *list) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, is_empty) (const list_type *list) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_list_is_empty<list_type>(list); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, is_valid) (const list_type *list) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, is_valid) (const list_type *list) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_list_is_valid<list_type>(list); \
 	}
@@ -469,19 +799,23 @@ static inline VALUE_TYPE _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYP
 	EP_RT_DEFINE_LIST_PREFIX(ep, list_name, list_type, item_type)
 
 #define EP_RT_DEFINE_LIST_ITERATOR_PREFIX(prefix_name, list_name, list_type, iterator_type, item_type) \
-	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_begin) (const list_type *list) { \
+	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_begin) (const list_type *list) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_list_iterator_begin<list_type, iterator_type>(list); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_end) (const list_type *list, const iterator_type *iterator) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_end) (const list_type *list, const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_list_iterator_end<list_type, iterator_type>(list, iterator); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_next) (iterator_type *iterator) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_next) (iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_list_iterator_next<iterator_type>(iterator); \
 	} \
-	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_value) (const iterator_type *iterator) { \
+	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, list_name, iterator_value) (const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_list_iterator_value<iterator_type, item_type>(iterator); \
 	}
@@ -490,31 +824,38 @@ static inline VALUE_TYPE _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYP
 	EP_RT_DEFINE_LIST_ITERATOR_PREFIX(ep, list_name, list_type, iterator_type, item_type)
 
 #define EP_RT_DEFINE_QUEUE_PREFIX(prefix_name, queue_name, queue_type, item_type) \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, alloc) (queue_type *queue) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, alloc) (queue_type *queue) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_queue_alloc<queue_type>(queue); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, free) (queue_type *queue) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, free) (queue_type *queue) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_queue_free<queue_type>(queue); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, pop_head) (queue_type *queue, item_type *item) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, pop_head) (queue_type *queue, item_type *item) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_queue_pop_head<queue_type, item_type>(queue, item); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_head) (queue_type *queue, item_type item) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_head) (queue_type *queue, item_type item) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_queue_push_head<queue_type, item_type>(queue, item); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_tail) (queue_type *queue, item_type item) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_tail) (queue_type *queue, item_type item) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_queue_push_tail<queue_type, item_type>(queue, item); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_empty) (const queue_type *queue) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_empty) (const queue_type *queue) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_queue_is_empty<queue_type>(queue); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_valid) (const queue_type *queue) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_valid) (const queue_type *queue) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_queue_is_valid<queue_type>(queue); \
 	}
@@ -523,35 +864,43 @@ static inline VALUE_TYPE _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYP
 	EP_RT_DEFINE_QUEUE_PREFIX(ep, queue_name, queue_type, item_type)
 
 #define EP_RT_DEFINE_ARRAY_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc) (array_type *ep_array) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc) (array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_array_alloc<array_type>(ep_array); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc_capacity) (array_type *ep_array, size_t capacity) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, alloc_capacity) (array_type *ep_array, size_t capacity) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_array_alloc_capacity<array_type>(ep_array, capacity); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, free) (array_type *ep_array) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, free) (array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_array_free<array_type>(ep_array); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, append) (array_type *ep_array, item_type item) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_append<array_type, item_type> (ep_array, item); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, clear) (array_type *ep_array) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, clear) (array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_array_clear<array_type, item_type> (ep_array); \
 	} \
-	static inline size_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, size) (const array_type *ep_array) { \
+	static inline size_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, size) (const array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_size<array_type> (ep_array); \
 	} \
-	static inline item_type * EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, data) (const array_type *ep_array) { \
+	static inline item_type * EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, data) (const array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_data<array_type, item_type> (ep_array); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, is_valid) (const array_type *ep_array) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, is_valid) (const array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_is_valid<array_type> (ep_array); \
 	}
@@ -560,37 +909,45 @@ static inline VALUE_TYPE _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYP
 	EP_RT_DEFINE_ARRAY_PREFIX(ep, array_name, array_type, iterator_type, item_type)
 
 #define EP_RT_DEFINE_ARRAY_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
-	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_begin) (const array_type *ep_array) { \
+	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_begin) (const array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_iterator_begin<array_type, iterator_type> (ep_array); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_end) (const array_type *ep_array, const iterator_type *iterator) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_end) (const array_type *ep_array, const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_iterator_end<array_type, iterator_type> (ep_array, iterator); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_next) (iterator_type *iterator) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_next) (iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_array_iterator_next<iterator_type> (iterator); \
 	} \
-	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_value) (const iterator_type *iterator) { \
+	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, iterator_value) (const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_iterator_value<iterator_type, item_type> (iterator); \
 	}
 
 #define EP_RT_DEFINE_ARRAY_REVERSE_ITERATOR_PREFIX(prefix_name, array_name, array_type, iterator_type, item_type) \
-	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_begin) (const array_type *ep_array) { \
+	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_begin) (const array_type *ep_array) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_reverse_iterator_begin<array_type, iterator_type> (ep_array); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_end) (const array_type *ep_array, const iterator_type *iterator) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_end) (const array_type *ep_array, const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_reverse_iterator_end<array_type, iterator_type> (ep_array, iterator); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_next) (iterator_type *iterator) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_next) (iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_array_reverse_iterator_next<iterator_type> (iterator); \
 	} \
-	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_value) (const iterator_type *iterator) { \
+	static inline item_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, array_name, reverse_iterator_value) (const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_array_reverse_iterator_value<iterator_type, item_type> (iterator); \
 	}
@@ -602,41 +959,49 @@ static inline VALUE_TYPE _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYP
 	EP_RT_DEFINE_ARRAY_REVERSE_ITERATOR_PREFIX(ep, array_name, array_type, iterator_type, item_type)
 
 #define EP_RT_DEFINE_HASH_MAP_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, alloc) (hash_map_type *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, alloc) (hash_map_type *hash_map, uint32_t (*hash_callback)(const void *), bool (*eq_callback)(const void *, const void *), void (*key_free_callback)(void *), void (*value_free_callback)(void *)) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_hash_map_alloc<hash_map_type>(hash_map, hash_callback, eq_callback, key_free_callback, value_free_callback); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, free) (hash_map_type *hash_map) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, free) (hash_map_type *hash_map) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_hash_map_free<hash_map_type>(hash_map); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add) (hash_map_type *hash_map, key_type key, value_type value) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add) (hash_map_type *hash_map, key_type key, value_type value) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_hash_map_add<hash_map_type, key_type, value_type>(hash_map, key, value); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove_all) (hash_map_type *hash_map) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove_all) (hash_map_type *hash_map) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		_rt_coreclr_hash_map_remove_all<hash_map_type>(hash_map); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, lookup) (const hash_map_type *hash_map, const key_type key, value_type *value) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, lookup) (const hash_map_type *hash_map, const key_type key, value_type *value) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_hash_map_lookup<hash_map_type, key_type, value_type>(hash_map, key, value); \
 	} \
-	static inline uint32_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, count) (const hash_map_type *hash_map) { \
+	static inline uint32_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, count) (const hash_map_type *hash_map) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_hash_map_count<hash_map_type>(hash_map); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, is_valid) (const hash_map_type *hash_map) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, is_valid) (const hash_map_type *hash_map) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_hash_map_is_valid<hash_map_type>(hash_map); \
 	}
 
 #define EP_RT_DEFINE_HASH_MAP_REMOVE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-		EP_RT_DEFINE_HASH_MAP_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-		static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove) (hash_map_type *hash_map, const key_type key) { \
-			STATIC_CONTRACT_NOTHROW; \
-			_rt_coreclr_hash_map_remove<hash_map_type, key_type>(hash_map, key); \
-		}
+	EP_RT_DEFINE_HASH_MAP_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove) (hash_map_type *hash_map, const key_type key) \
+	{ \
+		STATIC_CONTRACT_NOTHROW; \
+		_rt_coreclr_hash_map_remove<hash_map_type, key_type>(hash_map, key); \
+	}
 
 #define EP_RT_DEFINE_HASH_MAP(hash_map_name, hash_map_type, key_type, value_type) \
 	EP_RT_DEFINE_HASH_MAP_PREFIX(ep, hash_map_name, hash_map_type, key_type, value_type)
@@ -645,34 +1010,41 @@ static inline VALUE_TYPE _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYP
 	EP_RT_DEFINE_HASH_MAP_REMOVE_PREFIX(ep, hash_map_name, hash_map_type, key_type, value_type)
 
 #define EP_RT_DEFINE_HASH_MAP_ITERATOR_PREFIX(prefix_name, hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
-	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_begin) (const hash_map_type *hash_map) { \
+	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_begin) (const hash_map_type *hash_map) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_hash_map_iterator_begin<hash_map_type, iterator_type>(hash_map); \
 	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_end) (const hash_map_type *hash_map, const iterator_type *iterator) { \
+	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_end) (const hash_map_type *hash_map, const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
 		return _rt_coreclr_hash_map_iterator_end<hash_map_type, iterator_type>(hash_map, iterator); \
 	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_next) (iterator_type *iterator) { \
+	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_next) (iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
-		_rt_coreclr_hash_map_iterator_next<iterator_type>(iterator); \
+		_rt_coreclr_hash_map_iterator_next<hash_map_type, iterator_type>(iterator); \
 	} \
-	static inline key_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_key) (const iterator_type *iterator) { \
+	static inline key_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_key) (const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
-		return _rt_coreclr_hash_map_iterator_key<iterator_type, key_type>(iterator); \
+		return _rt_coreclr_hash_map_iterator_key<hash_map_type, iterator_type, key_type>(iterator); \
 	} \
-	static inline value_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_value) (const iterator_type *iterator) { \
+	static inline value_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_value) (const iterator_type *iterator) \
+	{ \
 		STATIC_CONTRACT_NOTHROW; \
-		return _rt_coreclr_hash_map_iterator_value<iterator_type, value_type>(iterator); \
+		return _rt_coreclr_hash_map_iterator_value<hash_map_type, iterator_type, value_type>(iterator); \
 	}
 
 #define EP_RT_DEFINE_HASH_MAP_ITERATOR(hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
 	EP_RT_DEFINE_HASH_MAP_ITERATOR_PREFIX(ep, hash_map_name, hash_map_type, iterator_type, key_type, value_type)
 
+//TODO: Move types into type API.
 typedef DWORD (WINAPI *ep_rt_thread_start_func)(LPVOID lpThreadParameter);
 typedef DWORD ep_rt_thread_start_func_return_t;
 typedef DWORD ep_rt_thread_id_t;
 
+//TODO: Should be a redefinable define.
 #define EP_RT_DEFINE_THREAD_FUNC(name) static ep_rt_thread_start_func_return_t WINAPI name (LPVOID data)
 
 static
@@ -702,6 +1074,7 @@ diagnostics_command_line_lazy_init (void)
 {
 	STATIC_CONTRACT_NOTHROW;
 
+	//TODO: Real lazy init implementation.
 	if (!*diagnostics_command_line_get_ref ())
 		*diagnostics_command_line_get_ref () = diagnostics_command_line_get ();
 }
@@ -713,6 +1086,7 @@ diagnostics_command_line_lazy_clean (void)
 {
 	STATIC_CONTRACT_NOTHROW;
 
+	//TODO: Real lazy clean up implementation.
 	ep_rt_utf8_string_free (*diagnostics_command_line_get_ref ());
 	*diagnostics_command_line_get_ref () = NULL;
 }
@@ -812,7 +1186,6 @@ thread_holder_free_func (EventPipeThreadHolder * thread_holder)
 }
 
 static
-inline
 void
 ep_rt_init (void)
 {
@@ -925,7 +1298,6 @@ ep_rt_method_get_simple_assembly_name (
 }
 
 static
-inline
 bool
 ep_rt_method_get_full_name (
 	ep_rt_method_desc_t *method,
@@ -975,7 +1347,6 @@ ep_rt_provider_config_init (EventPipeProviderConfiguration *provider_config)
 }
 
 static
-inline
 void
 ep_rt_init_providers_and_events (void)
 {
@@ -1016,7 +1387,6 @@ ep_rt_prepare_provider_invoke_callback (EventPipeProviderCallbackData *provider_
 }
 
 static
-inline
 void
 ep_rt_provider_invoke_callback (
 	EventPipeCallback callback_func,
@@ -1085,7 +1455,6 @@ EP_RT_DEFINE_LIST_ITERATOR (provider_list, ep_rt_provider_list_t, ep_rt_provider
 EP_RT_DEFINE_QUEUE (provider_callback_data_queue, ep_rt_provider_callback_data_queue_t, EventPipeProviderCallbackData *)
 
 static
-inline
 EventPipeProvider *
 ep_rt_provider_list_find_by_name (
 	const ep_rt_provider_list_t *list,
@@ -1094,7 +1463,7 @@ ep_rt_provider_list_find_by_name (
 	STATIC_CONTRACT_NOTHROW;
 
 	// The provider list should be non-NULL, but can be NULL on shutdown.
-	if (list){
+	if (list) {
 		SList<SListElem<EventPipeProvider *>> *provider_list = list->list;
 		SListElem<EventPipeProvider *> *element = provider_list->GetHead ();
 		while (element) {
@@ -1161,7 +1530,9 @@ ep_rt_config_value_get_circular_mb (void)
 static
 inline
 void
-ep_rt_sample_profiler_write_sampling_event_for_threads (ep_rt_thread_handle_t sampling_thread, EventPipeEvent *sampling_event)
+ep_rt_sample_profiler_write_sampling_event_for_threads (
+	ep_rt_thread_handle_t sampling_thread,
+	EventPipeEvent *sampling_event)
 {
 	STATIC_CONTRACT_NOTHROW;
 
@@ -1170,6 +1541,7 @@ ep_rt_sample_profiler_write_sampling_event_for_threads (ep_rt_thread_handle_t sa
 }
 
 static
+inline
 void
 ep_rt_notify_profiler_provider_created (EventPipeProvider *provider)
 {
@@ -1218,7 +1590,6 @@ EP_RT_DEFINE_ARRAY (thread_session_state_array, ep_rt_thread_session_state_array
 EP_RT_DEFINE_ARRAY_ITERATOR (thread_session_state_array, ep_rt_thread_session_state_array_t, ep_rt_thread_session_state_array_iterator_t, EventPipeThreadSessionState *)
 
 static
-inline
 EventPipeSessionProvider *
 ep_rt_session_provider_list_find_by_name (
 	const ep_rt_session_provider_list_t *list,
@@ -1270,7 +1641,6 @@ ep_rt_byte_array_free (uint8_t *ptr)
  */
 
 static
-inline
 void
 ep_rt_wait_event_alloc (
 	ep_rt_wait_event_handle_t *wait_event,
@@ -1278,6 +1648,7 @@ ep_rt_wait_event_alloc (
 	bool initial)
 {
 	STATIC_CONTRACT_NOTHROW;
+
 	EP_ASSERT (wait_event != NULL);
 	EP_ASSERT (wait_event->event == NULL);
 
@@ -1321,7 +1692,6 @@ ep_rt_wait_event_set (ep_rt_wait_event_handle_t *wait_event)
 }
 
 static
-inline
 int32_t
 ep_rt_wait_event_wait (
 	ep_rt_wait_event_handle_t *wait_event,
@@ -1352,7 +1722,7 @@ ep_rt_wait_event_get_wait_handle (ep_rt_wait_event_handle_t *wait_event)
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (wait_event != NULL && wait_event->event != NULL);
 
-	return reinterpret_cast<EventPipeWaitHandle>(wait_event->event->GetHandleUNHOSTED());
+	return reinterpret_cast<EventPipeWaitHandle>(wait_event->event->GetHandleUNHOSTED ());
 }
 
 static
@@ -1472,7 +1842,8 @@ typedef struct _rt_coreclr_thread_params_internal_t {
 } rt_coreclr_thread_params_internal_t;
 
 static
-DWORD WINAPI ep_rt_thread_coreclr_start_func (LPVOID params)
+DWORD WINAPI
+ep_rt_thread_coreclr_start_func (LPVOID params)
 {
 	STATIC_CONTRACT_NOTHROW;
 
@@ -1485,7 +1856,6 @@ DWORD WINAPI ep_rt_thread_coreclr_start_func (LPVOID params)
 }
 
 static
-inline
 bool
 ep_rt_thread_create (
 	void *thread_func,
@@ -1681,13 +2051,12 @@ const ep_char8_t *
 ep_rt_os_command_line_get (void)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (!"Can not reach here");
+	EP_UNREACHABLE ("Can not reach here");
 
 	return NULL;
 }
 
 static
-inline
 ep_rt_file_handle_t
 ep_rt_file_open_write (const ep_char8_t *path)
 {
@@ -1696,9 +2065,8 @@ ep_rt_file_open_write (const ep_char8_t *path)
 	ep_char16_t *path_utf16 = ep_rt_utf8_to_utf16_string (path, -1);
 	ep_return_null_if_nok (path_utf16 != NULL);
 
-	CFileStream *file_stream = new (nothrow) CFileStream();
-	if (FAILED (file_stream->OpenForWrite (reinterpret_cast<LPWSTR>(path_utf16))))
-	{
+	CFileStream *file_stream = new (nothrow) CFileStream ();
+	if (file_stream && FAILED (file_stream->OpenForWrite (reinterpret_cast<LPWSTR>(path_utf16)))) {
 		delete file_stream;
 		file_stream = NULL;
 	}
@@ -1770,7 +2138,7 @@ ep_rt_temp_path_get (
 	uint32_t buffer_len)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (!"Can not reach here");
+	EP_UNREACHABLE ("Can not reach here");
 
 	return 0;
 }
@@ -1779,7 +2147,6 @@ EP_RT_DEFINE_ARRAY (env_array_utf16, ep_rt_env_array_utf16_t, ep_rt_env_array_ut
 EP_RT_DEFINE_ARRAY_ITERATOR (env_array_utf16, ep_rt_env_array_utf16_t, ep_rt_env_array_utf16_iterator_t, ep_char16_t *)
 
 static
-inline
 void
 ep_rt_os_environment_get_utf16 (ep_rt_env_array_utf16_t *env_array)
 {
@@ -1802,7 +2169,6 @@ ep_rt_os_environment_get_utf16 (ep_rt_env_array_utf16_t *env_array)
 */
 
 static
-inline
 bool
 ep_rt_lock_aquire (ep_rt_lock_handle_t *lock)
 {
@@ -1812,7 +2178,7 @@ ep_rt_lock_aquire (ep_rt_lock_handle_t *lock)
 	EX_TRY
 	{
 		if (lock) {
-			CrstBase::CrstHolderWithState holder(lock->lock);
+			CrstBase::CrstHolderWithState holder (lock->lock);
 			holder.SuppressRelease ();
 		}
 	}
@@ -1826,23 +2192,26 @@ ep_rt_lock_aquire (ep_rt_lock_handle_t *lock)
 }
 
 static
-inline
 bool
 ep_rt_lock_release (ep_rt_lock_handle_t *lock)
 {
 	STATIC_CONTRACT_NOTHROW;
 
+	bool result = true;
 	EX_TRY
 	{
 		if (lock) {
-			CrstBase::UnsafeCrstInverseHolder holder(lock->lock);
+			CrstBase::UnsafeCrstInverseHolder holder (lock->lock);
 			holder.SuppressRelease ();
 		}
 	}
-	EX_CATCH {}
+	EX_CATCH
+	{
+		result = false;
+	}
 	EX_END_CATCH(SwallowAllExceptions);
 
-	return true;
+	return result;
 }
 
 #ifdef EP_CHECKED_BUILD
@@ -1870,7 +2239,6 @@ ep_rt_lock_requires_lock_not_held (const ep_rt_lock_handle_t *lock)
 */
 
 static
-inline
 void
 ep_rt_spin_lock_alloc (ep_rt_spin_lock_handle_t *spin_lock)
 {
@@ -1878,7 +2246,7 @@ ep_rt_spin_lock_alloc (ep_rt_spin_lock_handle_t *spin_lock)
 
 	EX_TRY
 	{
-		spin_lock->lock = new (nothrow) SpinLock();
+		spin_lock->lock = new (nothrow) SpinLock ();
 		spin_lock->lock->Init (LOCK_TYPE_DEFAULT);
 	}
 	EX_CATCH {}
@@ -1964,6 +2332,8 @@ ep_rt_utf8_string_compare (
 	const ep_char8_t *str2)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str1 != NULL && str2 != NULL);
+
 	return strcmp (reinterpret_cast<const char *>(str1), reinterpret_cast<const char *>(str2));
 }
 
@@ -1975,6 +2345,8 @@ ep_rt_utf8_string_compare_ignore_case (
 	const ep_char8_t *str2)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str1 != NULL && str2 != NULL);
+
 	return _stricmp (reinterpret_cast<const char *>(str1), reinterpret_cast<const char *>(str2));
 }
 
@@ -1997,31 +2369,32 @@ ep_rt_utf8_string_is_null_or_empty (const ep_char8_t *str)
 }
 
 static
-inline
 ep_char16_t *
 ep_rt_utf8_to_utf16_string (
 	const ep_char8_t *str,
 	size_t len)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str != NULL);
 
-	COUNT_T length = WszMultiByteToWideChar (CP_UTF8, 0, str, static_cast<int>(len), 0, 0);
-	if (length == 0)
+	COUNT_T len_utf16 = WszMultiByteToWideChar (CP_UTF8, 0, str, static_cast<int>(len), 0, 0);
+	if (len_utf16 == 0)
 		return NULL;
 
 	if (static_cast<int>(len) != -1)
-		length += 1;
+		len_utf16 += 1;
 
-	ep_char16_t *str_utf16 = reinterpret_cast<ep_char16_t *>(malloc (length * sizeof (ep_char16_t)));
+	ep_char16_t *str_utf16 = reinterpret_cast<ep_char16_t *>(malloc (len_utf16 * sizeof (ep_char16_t)));
 	if (!str_utf16)
 		return NULL;
 
-	length = WszMultiByteToWideChar (CP_UTF8, 0, str, static_cast<int>(len), reinterpret_cast<LPWSTR>(str_utf16), length);
-	if (length == 0) {
+	len_utf16 = WszMultiByteToWideChar (CP_UTF8, 0, str, static_cast<int>(len), reinterpret_cast<LPWSTR>(str_utf16), len_utf16);
+	if (len_utf16 == 0) {
 		free (str_utf16);
 		return NULL;
 	}
-	str_utf16 [length - 1] = 0;
+
+	str_utf16 [len_utf16 - 1] = 0;
 	return str_utf16;
 }
 
@@ -2031,6 +2404,8 @@ ep_char8_t *
 ep_rt_utf8_string_dup (const ep_char8_t *str)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str != NULL);
+
 	return _strdup (str);
 }
 
@@ -2043,6 +2418,8 @@ ep_rt_utf8_string_strtok (
 	ep_char8_t **context)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str != NULL && delimiter != NULL && context != NULL);
+
 	return strtok_s (str, delimiter, context);
 }
 
@@ -2060,6 +2437,7 @@ ep_char16_t *
 ep_rt_utf16_string_dup (const ep_char16_t *str)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str != NULL);
 
 	size_t str_size = (ep_rt_utf16_string_len (str) + 1) * sizeof (ep_char16_t);
 	ep_char16_t *str_dup = reinterpret_cast<ep_char16_t *>(malloc (str_size));
@@ -2085,35 +2463,38 @@ size_t
 ep_rt_utf16_string_len (const ep_char16_t *str)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str != NULL);
+
 	return wcslen (reinterpret_cast<const wchar_t *>(str));
 }
 
 static
-inline
 ep_char8_t *
 ep_rt_utf16_to_utf8_string (
 	const ep_char16_t *str,
 	size_t len)
 {
 	STATIC_CONTRACT_NOTHROW;
+	EP_ASSERT (str != NULL);
 
-	COUNT_T length = WszWideCharToMultiByte (CP_UTF8, 0, reinterpret_cast<LPCWSTR>(str), static_cast<int>(len), NULL, 0, NULL, NULL);
-	if (length == 0)
+	COUNT_T size_utf8 = WszWideCharToMultiByte (CP_UTF8, 0, reinterpret_cast<LPCWSTR>(str), static_cast<int>(len), NULL, 0, NULL, NULL);
+	if (size_utf8 == 0)
 		return NULL;
 
 	if (static_cast<int>(len) != -1)
-		length += 1;
+		size_utf8 += 1;
 
-	ep_char8_t *str_utf8 = reinterpret_cast<ep_char8_t *>(malloc (length));
+	ep_char8_t *str_utf8 = reinterpret_cast<ep_char8_t *>(malloc (size_utf8));
 	if (!str_utf8)
 		return NULL;
 
-	length = WszWideCharToMultiByte (CP_UTF8, 0, reinterpret_cast<LPCWSTR>(str), static_cast<int>(len), reinterpret_cast<LPSTR>(str_utf8), length, NULL, NULL);
-	if (length == 0) {
+	size_utf8 = WszWideCharToMultiByte (CP_UTF8, 0, reinterpret_cast<LPCWSTR>(str), static_cast<int>(len), reinterpret_cast<LPSTR>(str_utf8), size_utf8, NULL, NULL);
+	if (size_utf8 == 0) {
 		free (str_utf8);
 		return NULL;
 	}
-	str_utf8 [length - 1] = 0;
+
+	str_utf8 [size_utf8 - 1] = 0;
 	return str_utf8;
 }
 
@@ -2134,7 +2515,7 @@ const ep_char8_t *
 ep_rt_managed_command_line_get (void)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (!"Can not reach here");
+	EP_UNREACHABLE ("Can not reach here");
 
 	return NULL;
 }
@@ -2145,9 +2526,8 @@ ep_rt_diagnostics_command_line_get (void)
 {
 	STATIC_CONTRACT_NOTHROW;
 
-	// TODO: Real lazy init implementation.
 	diagnostics_command_line_lazy_init ();
-	return diagnostics_command_line_get ();
+	return *diagnostics_command_line_get_ref ();
 }
 
 /*
@@ -2165,8 +2545,7 @@ public:
 	{
 		STATIC_CONTRACT_NOTHROW;
 
-		if (m_threadHolder)
-		{
+		if (m_threadHolder) {
 			ep_thread_holder_free (m_threadHolder);
 			m_threadHolder = NULL;
 		}
@@ -2182,8 +2561,7 @@ public:
 	{
 		STATIC_CONTRACT_NOTHROW;
 
-		if (g_threadHolderTLS.m_threadHolder)
-		{
+		if (g_threadHolderTLS.m_threadHolder) {
 			ep_thread_holder_free (g_threadHolderTLS.m_threadHolder);
 			g_threadHolderTLS.m_threadHolder = NULL;
 		}
@@ -2196,7 +2574,6 @@ private:
 };
 
 static
-inline
 void
 ep_rt_thread_setup (void)
 {
@@ -2408,7 +2785,7 @@ ep_rt_volatile_store_uint64_t_without_barrier (
 	uint64_t value)
 {
 	STATIC_CONTRACT_NOTHROW;
-	VolatileStoreWithoutBarrier ((uint64_t *)ptr, value);
+	VolatileStoreWithoutBarrier<uint64_t> ((uint64_t *)ptr, value);
 }
 
 static
@@ -2448,7 +2825,7 @@ ep_rt_volatile_store_int64_t_without_barrier (
 	int64_t value)
 {
 	STATIC_CONTRACT_NOTHROW;
-	VolatileStoreWithoutBarrier ((int64_t *)ptr, value);
+	VolatileStoreWithoutBarrier<int64_t> ((int64_t *)ptr, value);
 }
 
 static

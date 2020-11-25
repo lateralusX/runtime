@@ -543,11 +543,7 @@ public:
 #if defined(FEATURE_EVENT_TRACE)
 
 #ifdef FEATURE_PERFTRACING
-#ifdef FEATURE_PERFTRACING_C_LIB
-typedef struct _EventFilterDescriptor EventFilterDescriptor;
-#else
-struct EventFilterDescriptor;
-#endif // FEATURE_PERFTRACING_C_LIB
+#include "../vm/eventpipeadaptertypes.h"
 #endif // FEATURE_PERFTRACING
 
 VOID EventPipeEtwCallbackDotNETRuntimeStress(
