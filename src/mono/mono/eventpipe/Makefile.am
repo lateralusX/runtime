@@ -17,6 +17,8 @@ shared_eventpipe_sources = \
 	$(shared_eventpipe_path)/ds-getter-setter.h	\
 	$(shared_eventpipe_path)/ds-ipc.c	\
 	$(shared_eventpipe_path)/ds-ipc.h	\
+	$(shared_eventpipe_path)/ds-ipc-pal.h	\
+	$(shared_eventpipe_path)/ds-ipc-pal-types.h	\
 	$(shared_eventpipe_path)/ds-process-protocol.c	\
 	$(shared_eventpipe_path)/ds-process-protocol.h	\
 	$(shared_eventpipe_path)/ds-profiler-protocol.c	\
@@ -51,6 +53,7 @@ shared_eventpipe_sources = \
 	$(shared_eventpipe_path)/ep-file.c	\
 	$(shared_eventpipe_path)/ep-file.h	\
 	$(shared_eventpipe_path)/ep-getter-setter.h	\
+	$(shared_eventpipe_path)/ep-ipc-stream.h	\
 	$(shared_eventpipe_path)/ep-json-file.c	\
 	$(shared_eventpipe_path)/ep-json-file.h	\
 	$(shared_eventpipe_path)/ep-metadata-generator.c	\

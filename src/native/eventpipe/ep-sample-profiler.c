@@ -1,7 +1,6 @@
-#include <config.h>
+#include "ep-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
 #if !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES)
 
 #define EP_IMPL_SAMPLE_PROFILER_GETTER_SETTER
@@ -211,7 +210,7 @@ sample_profiler_enable (void)
 			EP_UNREACHABLE ("Unable to create sample profiler event.");
 
 		ep_rt_thread_id_t thread_id = 0;
-		if (!ep_rt_thread_create (sampling_thread, NULL, EP_THREAD_TYPE_SAMPLING, &thread_id))
+		if (!ep_rt_thread_create ((void *)sampling_thread, NULL, EP_THREAD_TYPE_SAMPLING, &thread_id))
 			EP_UNREACHABLE ("Unable to create sample profiler thread.");
 
 		sample_profiler_set_time_granularity ();

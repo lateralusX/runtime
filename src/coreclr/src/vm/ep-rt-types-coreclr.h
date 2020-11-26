@@ -2,8 +2,9 @@
 #ifndef __EVENTPIPE_RT_TYPES_CORECLR_H__
 #define __EVENTPIPE_RT_TYPES_CORECLR_H__
 
-#ifdef ENABLE_PERFTRACING
 #include "ep-rt-config.h"
+
+#ifdef ENABLE_PERFTRACING
 #include "slist.h"
 
 #ifdef DEBUG
@@ -28,22 +29,22 @@
 
 template<typename T>
 struct _rt_coreclr_list_internal_t {
-	typedef typename SListElem<T> element_type_t;
-	typedef typename SList<element_type_t> list_type_t;
+	typedef struct SListElem<T> element_type_t;
+	typedef class SList<element_type_t> list_type_t;
 	list_type_t *list;
 };
 
 template<typename T>
 struct _rt_coreclr_queue_internal_t {
-	typedef typename SListElem<T> element_type_t;
-	typedef typename SList<element_type_t> queue_type_t;
+	typedef struct SListElem<T> element_type_t;
+	typedef class SList<element_type_t> queue_type_t;
 	queue_type_t *queue;
 };
 
 template<typename T>
 struct _rt_coreclr_array_internal_t {
-	typedef typename T element_type_t;
-	typedef typename CQuickArrayList<T> array_type_t;
+	typedef T element_type_t;
+	typedef class CQuickArrayList<T> array_type_t;
 	array_type_t *array;
 };
 
@@ -61,14 +62,14 @@ typedef struct _rt_coreclr_table_callbacks_t {
 
 template<typename T1, typename T2>
 struct _rt_coreclr_table_default_internal_t {
-	typedef typename SHash<NoRemoveSHashTraits< MapSHashTraits <T1, T2> > > table_type_t;
+	typedef class SHash<NoRemoveSHashTraits< MapSHashTraits <T1, T2> > > table_type_t;
 	rt_coreclr_table_callbacks_t callbacks;
 	table_type_t *table;
 };
 
 template<typename T1, typename T2>
 struct _rt_coreclr_table_remove_internal_t {
-	typedef typename SHash< MapSHashTraits <T1, T2> > table_type_t;
+	typedef class SHash< MapSHashTraits <T1, T2> > table_type_t;
 	rt_coreclr_table_callbacks_t callbacks;
 	table_type_t *table;
 };
@@ -112,7 +113,7 @@ public:
 
 template<typename T1>
 struct _rt_coreclr_table_custom_internal_t {
-	typedef typename SHash<T1> table_type_t;
+	typedef class SHash<T1> table_type_t;
 	rt_coreclr_table_callbacks_t callbacks;
 	table_type_t *table;
 };

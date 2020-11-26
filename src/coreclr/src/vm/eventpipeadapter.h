@@ -6,8 +6,6 @@
 
 #if defined(FEATURE_PERFTRACING) && !(CROSSGEN_COMPILE)
 
-#include <config.h>
-
 #ifdef FEATURE_PERFTRACING_C_LIB
 #include "ep.h"
 #include "ep-provider.h"
@@ -388,8 +386,8 @@ public:
 
 		_ASSERTE(session != NULL);
 		largeValue.QuadPart = ep_session_get_session_start_time(session);
-		fileTime.dwLowDateTime = largeValue.LowPart;
-		fileTime.dwHighDateTime = largeValue.HighPart;
+		fileTime.dwLowDateTime = largeValue.u.LowPart;
+		fileTime.dwHighDateTime = largeValue.u.HighPart;
 		return fileTime;
 #else
 		_ASSERTE(session != NULL);

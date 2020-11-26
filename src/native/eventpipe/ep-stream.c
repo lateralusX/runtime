@@ -1,11 +1,12 @@
-#include <config.h>
+#include "ep-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
 #if !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES)
 
 #define EP_IMPL_STREAM_GETTER_SETTER
+#define EP_IMPL_IPC_STREAM_GETTER_SETTER
 #include "ep-stream.h"
+#include "ep-ipc-stream.h"
 #include "ep-rt.h"
 
 /*

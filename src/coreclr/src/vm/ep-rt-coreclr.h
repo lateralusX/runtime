@@ -2,10 +2,9 @@
 #ifndef __EVENTPIPE_RT_CORECLR_H__
 #define __EVENTPIPE_RT_CORECLR_H__
 
-#include <config.h>
+#include "ep-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
 #include "ep-thread.h"
 #include "ep-types.h"
 #include "ep-provider.h"
@@ -47,7 +46,7 @@ _rt_coreclr_list_alloc (LIST_TYPE *list) {
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL);
 
-	list->list = new (nothrow) LIST_TYPE::list_type_t ();
+	list->list = new (nothrow) typename LIST_TYPE::list_type_t ();
 }
 
 template<typename LIST_TYPE>
@@ -63,7 +62,7 @@ _rt_coreclr_list_free (
 
 	if (list->list) {
 		while (!list->list->IsEmpty ()) {
-				LIST_TYPE::element_type_t *current = list->list->RemoveHead ();
+				typename LIST_TYPE::element_type_t *current = list->list->RemoveHead ();
 				if (callback)
 					callback (reinterpret_cast<void *>(current->GetValue ()));
 				delete current;
@@ -85,7 +84,7 @@ _rt_coreclr_list_clear (
 	EP_ASSERT (list != NULL && list->list != NULL);
 
 	while (!list->list->IsEmpty ()) {
-		LIST_TYPE::element_type_t *current = list->list->RemoveHead ();
+		typename LIST_TYPE::element_type_t *current = list->list->RemoveHead ();
 		if (callback)
 				callback (reinterpret_cast<void *>(current->GetValue ()));
 		delete current;
@@ -103,7 +102,7 @@ _rt_coreclr_list_append (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL);
 
-	LIST_TYPE::element_type_t *node = new (nothrow) LIST_TYPE::element_type_t (item);
+	typename LIST_TYPE::element_type_t *node = new (nothrow) typename LIST_TYPE::element_type_t (item);
 	if (node)
 		list->list->InsertTail (node);
 	return (node != NULL);
@@ -120,7 +119,7 @@ _rt_coreclr_list_remove (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (list != NULL && list->list != NULL);
 
-	LIST_TYPE::element_type_t *current = list->list->GetHead ();
+	typename LIST_TYPE::element_type_t *current = list->list->GetHead ();
 	while (current) {
 		if (current->GetValue () == item) {
 			if (list->list->FindAndRemove (current))
@@ -145,7 +144,7 @@ _rt_coreclr_list_find (
 	EP_ASSERT (found_item != NULL);
 
 	bool found = false;
-	LIST_TYPE::element_type_t *current = list->list->GetHead ();
+	typename LIST_TYPE::element_type_t *current = list->list->GetHead ();
 	while (current) {
 		if (current->GetValue () == item_to_find) {
 			*found_item = current->GetValue ();
@@ -238,7 +237,7 @@ _rt_coreclr_queue_alloc (QUEUE_TYPE *queue)
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL);
 
-	queue->queue = new (nothrow) QUEUE_TYPE::queue_type_t ();
+	queue->queue = new (nothrow) typename QUEUE_TYPE::queue_type_t ();
 }
 
 template<typename QUEUE_TYPE>
@@ -267,7 +266,7 @@ _rt_coreclr_queue_pop_head (
 	EP_ASSERT (queue != NULL && queue->queue != NULL && item != NULL);
 
 	bool found = true;
-	QUEUE_TYPE::element_type_t *node = queue->queue->RemoveHead ();
+	typename QUEUE_TYPE::element_type_t *node = queue->queue->RemoveHead ();
 	if (node) {
 		*item = node->m_Value;
 		delete node;
@@ -289,7 +288,7 @@ _rt_coreclr_queue_push_head (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL && queue->queue != NULL);
 
-	QUEUE_TYPE::element_type_t *node = new (nothrow) QUEUE_TYPE::element_type_t (item);
+	typename QUEUE_TYPE::element_type_t *node = new (nothrow) typename QUEUE_TYPE::element_type_t (item);
 	if (node)
 		queue->queue->InsertHead (node);
 	return (node != NULL);
@@ -306,7 +305,7 @@ _rt_coreclr_queue_push_tail (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (queue != NULL && queue->queue != NULL);
 
-	QUEUE_TYPE::element_type_t *node = new (nothrow) QUEUE_TYPE::element_type_t (item);
+	typename QUEUE_TYPE::element_type_t *node = new (nothrow) typename QUEUE_TYPE::element_type_t (item);
 	if (node)
 		queue->queue->InsertTail (node);
 	return (node != NULL);
@@ -343,7 +342,7 @@ _rt_coreclr_array_alloc (ARRAY_TYPE *ep_array)
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL);
 
-	ep_array->array = new (nothrow) ARRAY_TYPE::array_type_t ();
+	ep_array->array = new (nothrow) typename ARRAY_TYPE::array_type_t ();
 }
 
 template<typename ARRAY_TYPE>
@@ -357,7 +356,7 @@ _rt_coreclr_array_alloc_capacity (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL);
 
-	ep_array->array = new (nothrow) ARRAY_TYPE::array_type_t ();
+	ep_array->array = new (nothrow) typename ARRAY_TYPE::array_type_t ();
 	if (ep_array->array)
 		ep_array->array->AllocNoThrow (capacity);
 }
@@ -388,9 +387,7 @@ _rt_coreclr_array_append (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && ep_array->array != NULL);
 
-	ep_array->array->Push (item);
-	return true;
-	//return ep_array->array->PushNoThrow (item);
+	return ep_array->array->PushNoThrow (item);
 }
 
 template<typename ARRAY_TYPE, typename ITEM_TYPE>
@@ -564,7 +561,7 @@ _rt_coreclr_hash_map_alloc (
 	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && key_free_callback == NULL);
 
-	hash_map->table = new (nothrow) HASH_MAP_TYPE::table_type_t ();
+	hash_map->table = new (nothrow) typename HASH_MAP_TYPE::table_type_t ();
 	hash_map->callbacks.key_free_func = key_free_callback;
 	hash_map->callbacks.value_free_func = value_free_callback;
 }
@@ -581,7 +578,7 @@ _rt_coreclr_hash_map_free (HASH_MAP_TYPE *hash_map)
 
 	if (hash_map->table) {
 		if (hash_map->callbacks.value_free_func) {
-			for (HASH_MAP_TYPE::table_type_t::Iterator iterator = hash_map->table->Begin (); iterator != hash_map->table->End (); ++iterator)
+			for (typename HASH_MAP_TYPE::table_type_t::Iterator iterator = hash_map->table->Begin (); iterator != hash_map->table->End (); ++iterator)
 					hash_map->callbacks.value_free_func (reinterpret_cast<void *>((ptrdiff_t)(iterator->Value ())));
 		}
 		delete hash_map->table;
@@ -601,7 +598,7 @@ _rt_coreclr_hash_map_add (
 	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
 
-	return hash_map->table->AddNoThrow (HASH_MAP_TYPE::table_type_t::element_t (key, value));
+	return hash_map->table->AddNoThrow (typename HASH_MAP_TYPE::table_type_t::element_t (key, value));
 }
 
 template<typename HASH_MAP_TYPE>
@@ -615,7 +612,7 @@ _rt_coreclr_hash_map_remove_all (HASH_MAP_TYPE *hash_map)
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
 
 	if (hash_map->callbacks.value_free_func) {
-		for (HASH_MAP_TYPE::table_type_t::Iterator iterator = hash_map->table->Begin (); iterator != hash_map->table->End (); ++iterator)
+		for (typename HASH_MAP_TYPE::table_type_t::Iterator iterator = hash_map->table->Begin (); iterator != hash_map->table->End (); ++iterator)
 			hash_map->callbacks.value_free_func (reinterpret_cast<void *>((ptrdiff_t)(iterator->Value ())));
 	}
 	hash_map->table->RemoveAll ();
@@ -634,7 +631,7 @@ _rt_coreclr_hash_map_lookup (
 	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
 
-	const HASH_MAP_TYPE::table_type_t::element_t *ret = hash_map->table->LookupPtr ((KEY_TYPE)key);
+	const typename HASH_MAP_TYPE::table_type_t::element_t *ret = hash_map->table->LookupPtr ((KEY_TYPE)key);
 	if (ret == NULL)
 		return false;
 	*value = ret->Value ();
@@ -678,7 +675,7 @@ _rt_coreclr_hash_map_remove (
 	EP_ASSERT (HASH_MAP_TYPE::table_type_t::s_NoThrow);
 	EP_ASSERT (hash_map != NULL && hash_map->table != NULL);
 
-	const HASH_MAP_TYPE::table_type_t::element_t *ret = NULL;
+	const typename HASH_MAP_TYPE::table_type_t::element_t *ret = NULL;
 	if (hash_map->callbacks.value_free_func)
 		ret = hash_map->table->LookupPtr ((KEY_TYPE)key);
 	hash_map->table->Remove ((KEY_TYPE)key);
@@ -1346,13 +1343,18 @@ ep_rt_provider_config_init (EventPipeProviderConfiguration *provider_config)
 	}
 }
 
+// This function is auto-generated from /src/scripts/genEventPipe.py
+#ifdef TARGET_UNIX
+extern "C" void InitProvidersAndEvents ();
+#else
+extern void InitProvidersAndEvents ();
+#endif
+
 static
 void
 ep_rt_init_providers_and_events (void)
 {
 	STATIC_CONTRACT_NOTHROW;
-
-	extern void InitProvidersAndEvents ();
 
 	EX_TRY
 	{
@@ -2465,7 +2467,7 @@ ep_rt_utf16_string_len (const ep_char16_t *str)
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (str != NULL);
 
-	return wcslen (reinterpret_cast<const wchar_t *>(str));
+	return wcslen (reinterpret_cast<LPCWSTR>(str));
 }
 
 static

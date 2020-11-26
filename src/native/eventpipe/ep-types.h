@@ -1,11 +1,12 @@
 #ifndef __EVENTPIPE_TYPES_H__
 #define __EVENTPIPE_TYPES_H__
 
-#include <config.h>
-
 #ifdef ENABLE_PERFTRACING
+#include <stdlib.h>
 #include <stdint.h>
+#ifndef __cplusplus
 #include <stdbool.h>
+#endif  // __cplusplus
 
 #undef EP_IMPL_GETTER_SETTER
 #ifdef EP_IMPL_EP_GETTER_SETTER

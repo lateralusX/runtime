@@ -29,6 +29,12 @@
     <ClInclude Include="$(SharedEventPipeSourceLocation)ds-ipc.h">
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
+    <ClInclude Include="$(SharedEventPipeSourceLocation)ds-ipc-pal.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
+    <ClInclude Include="$(SharedEventPipeSourceLocation)ds-ipc-pal-types.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
     <ClCompile Include="$(SharedEventPipeSourceLocation)ds-ipc-posix.c">
       <Filter>Source Files$(MonoRuntimeFilterSubFolder)\eventpipe\pal</Filter>
     </ClCompile>
@@ -141,6 +147,9 @@
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
     <ClInclude Include="$(SharedEventPipeSourceLocation)ep-getter-setter.h">
+      <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
+    </ClInclude>
+    <ClInclude Include="$(SharedEventPipeSourceLocation)ep-ipc-stream.h">
       <Filter>Header Files$(MonoRuntimeFilterSubFolder)\eventpipe</Filter>
     </ClInclude>
     <ClCompile Include="$(SharedEventPipeSourceLocation)ep-json-file.c">

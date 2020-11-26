@@ -2,7 +2,7 @@
 #ifndef __DIAGNOSTICS_RT_MONO_H__
 #define __DIAGNOSTICS_RT_MONO_H__
 
-#include <config.h>
+#include "ds-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
 #include "ep-rt-coreclr.h"
@@ -187,7 +187,7 @@ ds_rt_generate_core_dump (DiagnosticsGenerateCoreDumpCommandPayload *payload)
 			(ds_generate_core_dump_command_payload_get_diagnostics (payload) != 0) ? true : false))
 			result = DS_IPC_S_OK;
 #else
-		MAKE_UTF8PTR_FROMWIDE_NOTHROW (dump_name, payload->dumpName);
+		MAKE_UTF8PTR_FROMWIDE_NOTHROW (dump_name, reinterpret_cast<LPCWSTR>(ds_generate_core_dump_command_payload_get_dump_name (payload)));
 		if (dump_name != nullptr) {
 			if (PAL_GenerateCoreDump (dump_name,
 				static_cast<int32_t>(ds_generate_core_dump_command_payload_get_dump_type (payload)),

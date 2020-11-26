@@ -1,7 +1,6 @@
-#include <config.h>
+#include "ep-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
-#include "ep-rt-config.h"
 #include "ep-types.h"
 #include "ep.h"
 #include "ep-stack-contents.h"

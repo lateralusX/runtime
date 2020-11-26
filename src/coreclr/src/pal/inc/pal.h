@@ -3773,6 +3773,7 @@ PAL_GetCurrentThreadAffinitySet(SIZE_T size, UINT_PTR* data);
 #define fopen         PAL_fopen
 #define strtok        PAL_strtok
 #define strtoul       PAL_strtoul
+#define strtoull      PAL_strtoull
 #define fprintf       PAL_fprintf
 #define fwprintf      PAL_fwprintf
 #define vfprintf      PAL_vfprintf

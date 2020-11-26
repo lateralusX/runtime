@@ -23,6 +23,8 @@
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>
     <ClInclude Include="$(SharedEventPipeSourceLocation)ds-ipc.h"/>
+    <ClInclude Include="$(SharedEventPipeSourceLocation)ds-ipc-pal.h"/>
+    <ClInclude Include="$(SharedEventPipeSourceLocation)ds-ipc-pal-types.h"/>
     <ClCompile Include="$(SharedEventPipeSourceLocation)ds-ipc-posix.c">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -93,6 +95,7 @@
     </ClCompile>
     <ClInclude Include="$(SharedEventPipeSourceLocation)ep-file.h"/>
     <ClInclude Include="$(SharedEventPipeSourceLocation)ep-getter-setter.h"/>
+    <ClInclude Include="$(SharedEventPipeSourceLocation)ep-ipc-stream.h"/>
     <ClCompile Include="$(SharedEventPipeSourceLocation)ep-json-file.c">
       <ExcludedFromBuild>$(ExcludeEventPipeFromBuild)</ExcludedFromBuild>
     </ClCompile>

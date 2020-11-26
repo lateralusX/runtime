@@ -2,8 +2,9 @@
 #ifndef __DIAGNOSTICS_RT_TYPES_CORECLR_H__
 #define __DIAGNOSTICS_RT_TYPES_CORECLR_H__
 
-#ifdef ENABLE_PERFTRACING
 #include "ds-rt-config.h"
+
+#ifdef ENABLE_PERFTRACING
 #include "ep-rt-types-coreclr.h"
 
 typedef struct _rt_coreclr_array_internal_t<DiagnosticsPort *> ds_rt_port_array_t;

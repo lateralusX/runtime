@@ -63,12 +63,15 @@ if(FEATURE_PERFTRACING_C_LIB)
 
   set_source_files_properties(${EVENTPIPE_SOURCES} PROPERTIES LANGUAGE CXX)
 
+  if(CLR_CMAKE_HOST_UNIX)
+    set_source_files_properties(${EVENTPIPE_SOURCES} PROPERTIES COMPILE_OPTIONS -xc++)
+  endif(CLR_CMAKE_HOST_UNIX)
+
   list(APPEND CORECLR_EVENTPIPE_SHIM_SOURCES
     ep-rt-coreclr.cpp
   )
 
   list(APPEND CORECLR_EVENTPIPE_SHIM_HEADERS
-    config.h
     ds-rt-coreclr.h
     ds-rt-types-coreclr.h
     ep-rt-coreclr.h

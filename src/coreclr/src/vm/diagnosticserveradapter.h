@@ -6,8 +6,6 @@
 
 #if defined(FEATURE_PERFTRACING) && !(CROSSGEN_COMPILE)
 
-#include <config.h>
-
 #ifdef FEATURE_PERFTRACING_C_LIB
 #include "ds-server.h"
 #else
