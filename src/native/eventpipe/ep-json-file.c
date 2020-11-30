@@ -8,7 +8,14 @@
 #include "ep.h"
 #include "ep-event-instance.h"
 #include "ep-rt.h"
+
+#ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
+#else
+#ifndef PRIu64
+#define PRIu64 "llu"
+#endif
+#endif
 
 #ifdef EP_CHECKED_BUILD
 
