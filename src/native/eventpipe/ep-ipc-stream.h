@@ -4,19 +4,13 @@
 #include "ep-rt-config.h"
 
 #ifdef ENABLE_PERFTRACING
+#include "ep-ipc-pal-types.h"
 
 #undef EP_IMPL_GETTER_SETTER
 #ifdef EP_IMPL_IPC_STREAM_GETTER_SETTER
 #define EP_IMPL_GETTER_SETTER
 #endif
 #include "ep-getter-setter.h"
-
-/*
- * IPC Stream Structs.
- */
-
-typedef struct _IpcStream IpcStream;
-typedef struct _IpcStreamVtable IpcStreamVtable;
 
 /*
  * IpcStream.

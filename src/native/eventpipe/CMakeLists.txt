@@ -39,6 +39,7 @@ if(ENABLE_PERFTRACING OR FEATURE_PERFTRACING)
         ep-event-source.h
         ep-file.h
         ep-getter-setter.h
+        ep-ipc-pal-types.h
         ep-ipc-stream.h
         ep-json-file.h
         ep-metadata-generator.h

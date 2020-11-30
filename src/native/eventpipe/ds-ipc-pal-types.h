@@ -1,23 +1,14 @@
 #ifndef __DIAGNOSTICS_IPC_PAL_TYPES_H__
 #define __DIAGNOSTICS_IPC_PAL_TYPES_H__
 
-#include "ds-rt-config.h"
-
 #ifdef ENABLE_PERFTRACING
+#include "ep-ipc-pal-types.h"
 
 #undef DS_IMPL_GETTER_SETTER
 #ifdef DS_IMPL_IPC_PAL_GETTER_SETTER
 #define DS_IMPL_GETTER_SETTER
 #endif
 #include "ds-getter-setter.h"
-
-#include <stdlib.h>
-#include <stdint.h>
-#ifndef __cplusplus
-#include <stdbool.h>
-#endif  // __cplusplus
-
-typedef char ep_char8_t;
 
 /*
  * Diagnostics IPC PAL Structs.
