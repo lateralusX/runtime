@@ -1039,7 +1039,6 @@ _rt_coreclr_hash_map_iterator_value (CONST_ITERATOR_TYPE *iterator)
 //TODO: Move types into type API.
 typedef DWORD (WINAPI *ep_rt_thread_start_func)(LPVOID lpThreadParameter);
 typedef DWORD ep_rt_thread_start_func_return_t;
-typedef DWORD ep_rt_thread_id_t;
 
 //TODO: Should be a redefinable define.
 #define EP_RT_DEFINE_THREAD_FUNC(name) static ep_rt_thread_start_func_return_t WINAPI name (LPVOID data)
@@ -1963,15 +1962,15 @@ ep_rt_processors_get_count (void)
 
 static
 inline
-size_t
+ep_rt_thread_id_t
 ep_rt_current_thread_get_id (void)
 {
 	STATIC_CONTRACT_NOTHROW;
 
 #ifdef TARGET_UNIX
-	return static_cast<size_t>(::PAL_GetCurrentOSThreadId ());
+	return static_cast<ep_rt_thread_id_t>(::PAL_GetCurrentOSThreadId ());
 #else
-	return static_cast<size_t>(::GetCurrentThreadId ());
+	return static_cast<ep_rt_thread_id_t>(::GetCurrentThreadId ());
 #endif
 }
 
@@ -2626,13 +2625,29 @@ ep_rt_thread_get_handle (void)
 
 static
 inline
-size_t
+ep_rt_thread_id_t
 ep_rt_thread_get_id (ep_rt_thread_handle_t thread_handle)
 {
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (thread_handle != NULL);
 
-	return thread_handle->GetOSThreadId64 ();
+	return ep_rt_uint64_t_to_thread_id_t (thread_handle->GetOSThreadId64 ());
+}
+
+static
+inline
+uint64_t
+ep_rt_thread_id_t_to_uint64_t (ep_rt_thread_id_t thread_id)
+{
+	return static_cast<uint64_t>(thread_id);
+}
+
+static
+inline
+ep_rt_thread_id_t
+ep_rt_uint64_t_to_thread_id_t (uint64_t thread_id)
+{
+	return static_cast<ep_rt_thread_id_t>(thread_id);
 }
 
 static

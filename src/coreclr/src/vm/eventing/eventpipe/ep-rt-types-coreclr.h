@@ -197,5 +197,11 @@ typedef struct _rt_coreclr_lock_internal_t ep_rt_lock_handle_t;
 
 typedef _rt_coreclr_spin_lock_internal_t ep_rt_spin_lock_handle_t;
 
+#ifndef TARGET_UNIX
+typedef DWORD ep_rt_thread_id_t;
+#else
+typedef size_t ep_rt_thread_id_t;
+#endif
+
 #endif /* ENABLE_PERFTRACING */
 #endif /* __EVENTPIPE_RT_TYPES_CORECLR_H__ */
