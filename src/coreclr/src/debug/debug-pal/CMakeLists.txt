@@ -5,7 +5,7 @@ include_directories(../../pal/inc)
 add_definitions(-DPAL_STDCPP_COMPAT)
 
 if(FEATURE_PERFTRACING_C_LIB)
-    set(SHARED_EVENTPIPE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../native/eventpipe)
+    set(SHARED_EVENTPIPE_DIR ${CLR_SRC_NATIVE_DIR}/eventpipe)
     include_directories(${SHARED_EVENTPIPE_DIR})
     add_definitions(-DFEATURE_CORECLR)
     add_definitions(-DFEATURE_PERFTRACING)
