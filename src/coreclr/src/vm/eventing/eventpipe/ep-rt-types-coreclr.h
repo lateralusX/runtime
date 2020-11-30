@@ -52,7 +52,7 @@ template<typename T>
 struct _rt_coreclr_array_iterator_internal_t {
 	typedef typename _rt_coreclr_array_internal_t<T>::array_type_t array_iterator_type;
 	array_iterator_type *array;
-	int32_t index;
+	size_t index;
 };
 
 typedef struct _rt_coreclr_table_callbacks_t {

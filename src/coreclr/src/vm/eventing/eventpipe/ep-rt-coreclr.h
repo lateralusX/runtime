@@ -464,7 +464,7 @@ _rt_coreclr_array_iterator_end (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && iterator != NULL && iterator->array != NULL);
 
-	return (iterator->index >= iterator->array->Size ());
+	return (iterator->index >= static_cast<size_t>(iterator->array->Size ()));
 }
 
 template<typename ITERATOR_TYPE>
@@ -487,7 +487,7 @@ _rt_coreclr_array_iterator_value (const CONST_ITERATOR_TYPE *iterator)
 {
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL && iterator->array != NULL);
-	EP_ASSERT (iterator->index < iterator->array->Size ());
+	EP_ASSERT (iterator->index < static_cast<size_t>(iterator->array->Size ()));
 
 	return iterator->array->operator[] (iterator->index);
 }
@@ -503,7 +503,7 @@ _rt_coreclr_array_reverse_iterator_begin (CONST_ARRAY_TYPE *ep_array)
 
 	ITERATOR_TYPE temp;
 	temp.array = ep_array->array;
-	temp.index = static_cast<int32_t>(ep_array->array->Size () - 1);
+	temp.index = static_cast<size_t>(ep_array->array->Size ());
 	return temp;
 }
 
@@ -518,7 +518,7 @@ _rt_coreclr_array_reverse_iterator_end (
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (ep_array != NULL && iterator != NULL && iterator->array != NULL);
 
-	return (iterator->index < 0);
+	return (iterator->index == 0);
 }
 
 template<typename ITERATOR_TYPE>
@@ -541,9 +541,9 @@ _rt_coreclr_array_reverse_iterator_value (CONST_ITERATOR_TYPE *iterator)
 {
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (iterator != NULL && iterator->array != NULL);
-	EP_ASSERT (iterator->index >= 0);
+	EP_ASSERT (iterator->index > 0);
 
-	return iterator->array->operator[] (iterator->index);
+	return iterator->array->operator[] (iterator->index - 1);
 }
 
 template<typename HASH_MAP_TYPE>
