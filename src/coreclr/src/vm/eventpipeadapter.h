@@ -436,8 +436,10 @@ public:
 		}
 		CONTRACTL_END;
 
-		StackScratchBuffer conversion;
-		return ep_create_provider (reinterpret_cast<const ep_char8_t *>(providerName.GetUTF8(conversion)), callback, NULL, NULL);
+		ep_char8_t *providerNameUTF8 = ep_rt_utf16_to_utf8_string(reinterpret_cast<const ep_char16_t *>(providerName.GetUnicode ()), -1);
+		EventPipeProvider * provider = ep_create_provider (providerNameUTF8, callback, NULL, NULL);
+		ep_rt_utf8_string_free (providerNameUTF8);
+		return provider;
 #else
 		return EventPipe::CreateProvider(providerName, callback, NULL);
 #endif

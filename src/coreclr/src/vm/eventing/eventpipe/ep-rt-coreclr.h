@@ -2376,7 +2376,9 @@ ep_rt_utf8_to_utf16_string (
 	size_t len)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (str != NULL);
+
+	if (!str)
+		return NULL;
 
 	COUNT_T len_utf16 = WszMultiByteToWideChar (CP_UTF8, 0, str, static_cast<int>(len), 0, 0);
 	if (len_utf16 == 0)
@@ -2405,7 +2407,9 @@ ep_char8_t *
 ep_rt_utf8_string_dup (const ep_char8_t *str)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (str != NULL);
+
+	if (!str)
+		return NULL;
 
 	return _strdup (str);
 }
@@ -2419,8 +2423,6 @@ ep_rt_utf8_string_strtok (
 	ep_char8_t **context)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (str != NULL && delimiter != NULL && context != NULL);
-
 	return strtok_s (str, delimiter, context);
 }
 
@@ -2438,7 +2440,9 @@ ep_char16_t *
 ep_rt_utf16_string_dup (const ep_char16_t *str)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (str != NULL);
+
+	if (!str)
+		return NULL;
 
 	size_t str_size = (ep_rt_utf16_string_len (str) + 1) * sizeof (ep_char16_t);
 	ep_char16_t *str_dup = reinterpret_cast<ep_char16_t *>(malloc (str_size));
@@ -2476,7 +2480,9 @@ ep_rt_utf16_to_utf8_string (
 	size_t len)
 {
 	STATIC_CONTRACT_NOTHROW;
-	EP_ASSERT (str != NULL);
+
+	if (!str)
+		return NULL;
 
 	COUNT_T size_utf8 = WszWideCharToMultiByte (CP_UTF8, 0, reinterpret_cast<LPCWSTR>(str), static_cast<int>(len), NULL, 0, NULL, NULL);
 	if (size_utf8 == 0)

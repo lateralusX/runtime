@@ -19,7 +19,7 @@
 #endif
 
 #undef EP_UNREACHABLE
-#define EP_UNREACHABLE(msg) UNREACHABLE_MSG(msg)
+#define EP_UNREACHABLE(msg) do { UNREACHABLE_MSG(msg); } while (0)
 
 #undef EP_LIKELY
 #define EP_LIKELY(expr) expr
