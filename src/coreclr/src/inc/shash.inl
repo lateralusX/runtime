@@ -117,10 +117,11 @@ BOOL SHash<TRAITS>::AddNoThrow(const element_t & element)
         NOTHROW;
         GC_NOTRIGGER;
         INSTANCE_CHECK;
-        PRECONDITION(TRAITS::s_NoThrow);
         POSTCONDITION(TRAITS::Equals(TRAITS::GetKey(element), TRAITS::GetKey(*LookupPtr(TRAITS::GetKey(element)))));
     }
     CONTRACT_END;
+
+    static_assert(TRAITS::s_NoThrow, "This SHash does not support NOTHROW.");
 
     BOOL haveSpace = CheckGrowthNoThrow();
     if (haveSpace)
@@ -337,9 +338,10 @@ BOOL SHash<TRAITS>::CheckGrowthNoThrow()
         NOTHROW;
         GC_NOTRIGGER;
         INSTANCE_CHECK;
-        PRECONDITION(TRAITS::s_NoThrow);
     }
     CONTRACT_END;
+
+    static_assert(TRAITS::s_NoThrow, "This SHash does not support NOTHROW.");
 
     if (m_tableOccupied == m_tableMax)
     {
