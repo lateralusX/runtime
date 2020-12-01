@@ -32,7 +32,7 @@ ds_ipc_free (DiagnosticsIpc *ipc);
 // Poll
 // Parameters:
 // - IpcPollHandle * poll_handles_data: Array of IpcPollHandles to poll
-// - uint32_t timeout_ms: The timeout in milliseconds for the poll (-1 == infinite)
+// - uint32_t timeout_ms: The timeout in milliseconds for the poll ((uint32_t)-1 == infinite)
 // Returns:
 // int32_t: -1 on error, 0 on timeout, >0 on successful poll
 // Remarks:

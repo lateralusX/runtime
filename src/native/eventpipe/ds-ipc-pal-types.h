@@ -36,20 +36,11 @@ typedef enum {
 } DiagnosticsIpcConnectionMode;
 
 #define DS_IPC_MAX_TO_STRING_LEN 128
+#define DS_IPC_TIMEOUT_INFINITE (uint32_t)-1
 
-// Polling timeout semantics
-// If client connection is opted in
-//   and connection succeeds => set timeout to infinite
-//   and connection fails => set timeout to minimum and scale by falloff factor
-// else => set timeout to -1 (infinite)
-//
-// If an agent closes its socket while we're still connected,
-// Poll will return and let us know which connection hung up
 #define DS_IPC_POLL_TIMEOUT_FALLOFF_FACTOR (float)1.25
-#define DS_IPC_STREAM_TIMEOUT_INFINITE (int32_t)-1
-#define DS_IPC_POLL_TIMEOUT_INFINITE (int32_t)-1
-#define DS_IPC_POLL_TIMEOUT_MIN_MS (int32_t)10
-#define DS_IPC_POLL_TIMEOUT_MAX_MS (int32_t)500
+#define DS_IPC_POLL_TIMEOUT_MIN_MS (uint32_t)10
+#define DS_IPC_POLL_TIMEOUT_MAX_MS (uint32_t)500
 
 /*
  * DiagnosticsIpcPollHandle.

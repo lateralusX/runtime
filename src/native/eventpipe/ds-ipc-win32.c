@@ -225,7 +225,7 @@ ds_ipc_poll (
 		(DWORD)poll_handles_data_len,      // count
 		handles,                           // handles
 		false,                             // don't wait all
-		timeout_ms);
+		(DWORD)timeout_ms);
 	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	if (wait == WAIT_TIMEOUT) {
@@ -601,7 +601,7 @@ ipc_stream_read_func (
 		DWORD error = GetLastError ();
 		if (error == ERROR_IO_PENDING) {
 			// if we're waiting infinitely, only make one syscall
-			if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
+			if (timeout_ms == DS_IPC_TIMEOUT_INFINITE) {
 				DS_ENTER_BLOCKING_PAL_SECTION;
 				success = GetOverlappedResult (
 					ipc_stream->pipe,   // pipe
@@ -671,7 +671,7 @@ ipc_stream_write_func (
 		DWORD error = GetLastError ();
 		if (error == ERROR_IO_PENDING) {
 			// if we're waiting infinitely, only make one syscall
-			if (timeout_ms == DS_IPC_WIN32_INFINITE_TIMEOUT) {
+			if (timeout_ms == DS_IPC_TIMEOUT_INFINITE) {
 				DS_ENTER_BLOCKING_PAL_SECTION;
 				success = GetOverlappedResult (
 					ipc_stream->pipe,   // pipe

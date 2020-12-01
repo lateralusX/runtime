@@ -41,7 +41,7 @@ store_shutting_down_state (bool state)
  */
 
 static
-int32_t
+uint32_t
 ipc_stream_factory_get_next_timeout (uint32_t current_timout_ms);
 
 static
@@ -113,15 +113,15 @@ listen_port_reset (
 
 static
 inline
-int32_t
+uint32_t
 ipc_stream_factory_get_next_timeout (uint32_t current_timeout_ms)
 {
-	if (current_timeout_ms == DS_IPC_POLL_TIMEOUT_INFINITE)
+	if (current_timeout_ms == DS_IPC_TIMEOUT_INFINITE)
 		return DS_IPC_POLL_TIMEOUT_MIN_MS;
 	else
 		return (current_timeout_ms >= DS_IPC_POLL_TIMEOUT_MAX_MS) ?
 			DS_IPC_POLL_TIMEOUT_MAX_MS :
-			(int32_t)((float)current_timeout_ms * DS_IPC_POLL_TIMEOUT_FALLOFF_FACTOR);
+			(uint32_t)((float)current_timeout_ms * DS_IPC_POLL_TIMEOUT_FALLOFF_FACTOR);
 }
 
 static
@@ -314,6 +314,15 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 	return result;
 }
 
+// Polling timeout semantics
+// If client connection is opted in
+//   and connection succeeds => set timeout to infinite
+//   and connection fails => set timeout to minimum and scale by falloff factor
+// else => set timeout to (uint32_t)-1 (infinite)
+//
+// If an agent closes its socket while we're still connected,
+// Poll will return and let us know which connection hung up
+
 DiagnosticsIpcStream *
 ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func callback)
 {
@@ -325,7 +334,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 	ds_rt_port_array_t *ports = &_ds_port_array;
 	DiagnosticsPort *port = NULL;
 
-	int32_t poll_timeout_ms = DS_IPC_POLL_TIMEOUT_INFINITE;
+	uint32_t poll_timeout_ms = DS_IPC_TIMEOUT_INFINITE;
 	bool connect_success = true;
 	uint32_t poll_attempts = 0;
 
@@ -347,7 +356,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 		}
 
 		poll_timeout_ms = connect_success ?
-			DS_IPC_POLL_TIMEOUT_INFINITE :
+			DS_IPC_TIMEOUT_INFINITE :
 			ipc_stream_factory_get_next_timeout (poll_timeout_ms);
 
 		poll_attempts++;

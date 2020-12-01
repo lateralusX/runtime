@@ -419,7 +419,7 @@ ds_ipc_poll (
 
 	int result_poll;
 	DS_ENTER_BLOCKING_PAL_SECTION;
-	result_poll = poll (poll_fds, poll_handles_data_len, timeout_ms);
+	result_poll = poll (poll_fds, poll_handles_data_len, (int)timeout_ms);
 	DS_EXIT_BLOCKING_PAL_SECTION;
 
 	// Check results
@@ -726,14 +726,14 @@ ipc_stream_read_func (
 	ssize_t total_bytes_read = 0;
 	bool continue_recv = true;
 
-	if (timeout_ms != DS_IPC_STREAM_TIMEOUT_INFINITE) {
+	if (timeout_ms != DS_IPC_TIMEOUT_INFINITE) {
 		struct pollfd pfd;
 		pfd.fd = ipc_stream->client_socket;
 		pfd.events = POLLIN;
 
 		int result_poll;
 		DS_ENTER_BLOCKING_PAL_SECTION;
-		result_poll = poll (&pfd, 1, timeout_ms);
+		result_poll = poll (&pfd, 1, (int)timeout_ms);
 		DS_EXIT_BLOCKING_PAL_SECTION;
 
 		if (result_poll <= 0 || !(pfd.revents & POLLIN)) {
@@ -791,14 +791,14 @@ ipc_stream_write_func (
 	ssize_t total_bytes_written = 0;
 	bool continue_send = true;
 
-	if (timeout_ms != DS_IPC_STREAM_TIMEOUT_INFINITE) {
+	if (timeout_ms != DS_IPC_TIMEOUT_INFINITE) {
 		struct pollfd pfd;
 		pfd.fd = ipc_stream->client_socket;
 		pfd.events = POLLOUT;
 
 		int result_poll;
 		DS_ENTER_BLOCKING_PAL_SECTION;
-		result_poll = poll (&pfd, 1, timeout_ms);
+		result_poll = poll (&pfd, 1, (int)timeout_ms);
 		DS_EXIT_BLOCKING_PAL_SECTION;
 
 		if (result_poll <= 0 || !(pfd.revents & POLLOUT)) {
