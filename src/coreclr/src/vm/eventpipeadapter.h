@@ -51,11 +51,7 @@ class EventPipeProviderConfigurationAdapter final
 public:
 	EventPipeProviderConfigurationAdapter(const COR_PRF_EVENTPIPE_PROVIDER_CONFIG *providerConfigs, uint32_t providerConfigsLen)
 	{
-		CONTRACTL
-		{
-			NOTHROW;
-		}
-		CONTRACTL_END;
+		STATIC_CONTRACT_NOTHROW;
 
 #ifdef FEATURE_PERFTRACING_C_LIB
 		m_providerConfigs = new (nothrow) EventPipeProviderConfiguration[providerConfigsLen];
@@ -84,11 +80,7 @@ public:
 
 	~EventPipeProviderConfigurationAdapter()
 	{
-		CONTRACTL
-		{
-			NOTHROW;
-		}
-		CONTRACTL_END;
+		STATIC_CONTRACT_NOTHROW;
 
 #ifdef FEATURE_PERFTRACING_C_LIB
 		if (m_providerConfigs) {
@@ -127,11 +119,7 @@ class EventPipeParameterDescAdapter final
 public:
 	EventPipeParameterDescAdapter(COR_PRF_EVENTPIPE_PARAM_DESC *params, uint32_t paramsLen)
 	{
-		CONTRACTL
-		{
-			NOTHROW;
-		}
-		CONTRACTL_END;
+		STATIC_CONTRACT_NOTHROW;
 
 #ifdef FEATURE_PERFTRACING_C_LIB
 #ifdef EP_INLINE_GETTER_SETTER
@@ -174,11 +162,7 @@ class EventDataAdapter final
 public:
 	EventDataAdapter(COR_PRF_EVENT_DATA *data, uint32_t dataLen)
 	{
-		CONTRACTL
-		{
-			NOTHROW;
-		}
-		CONTRACTL_END;
+		STATIC_CONTRACT_NOTHROW;
 
 #ifdef FEATURE_PERFTRACING_C_LIB
 #ifdef EP_INLINE_GETTER_SETTER
@@ -519,13 +503,15 @@ public:
 
 	static HRESULT GetProviderName(const EventPipeProvider *provider, ULONG numNameChars, ULONG *numNameCharsOut, LPWSTR name)
 	{
-#ifdef FEATURE_PERFTRACING_C_LIB
 		CONTRACTL
 		{
 			NOTHROW;
+			GC_NOTRIGGER;
+			MODE_ANY;
 		}
 		CONTRACTL_END;
 
+#ifdef FEATURE_PERFTRACING_C_LIB
 		_ASSERTE(provider != NULL);
 
 		HRESULT hr = S_OK;
@@ -610,6 +596,14 @@ public:
 		}
 		return realEvent;
 #else
+		CONTRACTL
+		{
+			THROWS;
+			GC_TRIGGERS;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		_ASSERTE(provider != NULL);
 
 		size_t metadataLen = 0;
