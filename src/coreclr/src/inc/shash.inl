@@ -343,12 +343,13 @@ BOOL SHash<TRAITS>::CheckGrowthNoThrow()
 
     static_assert(TRAITS::s_NoThrow, "This SHash does not support NOTHROW.");
 
+    BOOL result = TRUE;
     if (m_tableOccupied == m_tableMax)
     {
-        return GrowNoThrow();
+        result = GrowNoThrow();
     }
 
-    RETURN TRUE;
+    RETURN result;
 }
 
 template <typename TRAITS>
