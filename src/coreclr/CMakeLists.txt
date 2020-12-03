@@ -55,11 +55,6 @@ if(NOT CLR_CROSS_COMPONENTS_BUILD AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
   add_subdirectory(src/libraries-native)
 endif(NOT CLR_CROSS_COMPONENTS_BUILD AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
 
-#-------------------------------
-# Use EventPipe C library
-#-------------------------------
-#set(FEATURE_PERFTRACING_C_LIB 1)
-
 #-----------------------------------------
 # Add Projects
 #     - project which require platform header not clr's
