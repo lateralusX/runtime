@@ -58,7 +58,7 @@ endif(NOT CLR_CROSS_COMPONENTS_BUILD AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
 #-------------------------------
 # Use EventPipe C library
 #-------------------------------
-set(FEATURE_PERFTRACING_C_LIB 1)
+#set(FEATURE_PERFTRACING_C_LIB 1)
 
 #-----------------------------------------
 # Add Projects
