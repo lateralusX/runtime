@@ -503,6 +503,7 @@ public:
 
 	static HRESULT GetProviderName(const EventPipeProvider *provider, ULONG numNameChars, ULONG *numNameCharsOut, LPWSTR name)
 	{
+#ifdef FEATURE_PERFTRACING_C_LIB
 		CONTRACTL
 		{
 			NOTHROW;
@@ -511,7 +512,6 @@ public:
 		}
 		CONTRACTL_END;
 
-#ifdef FEATURE_PERFTRACING_C_LIB
 		_ASSERTE(provider != NULL);
 
 		HRESULT hr = S_OK;
@@ -526,6 +526,14 @@ public:
 				memcpy (name, providerName, numProviderNameChars * sizeof (ep_char16_t));
 		}
 #else
+		CONTRACTL
+		{
+			THROWS;
+			GC_NOTRIGGER;
+			MODE_ANY;
+		}
+		CONTRACTL_END;
+
 		_ASSERTE(provider != NULL);
 
 		HRESULT hr = S_OK;
