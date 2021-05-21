@@ -684,6 +684,10 @@ endif()
 ######################################
 # COMPONENT BUILD CHECKS
 ######################################
+if(WEAK_COMPONENT_INIT_SYMBOL AND STATIC_COMPONENTS)
+  message(FATAL_ERROR "WEAK_COMPONENT_INIT_SYMBOL not supported when building STATIC_COMPONENTS.")
+endif()
+
 if(DISABLE_COMPONENTS AND NOT STATIC_COMPONENTS)
   set(STATIC_COMPONENTS 1)
 endif()

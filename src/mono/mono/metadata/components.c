@@ -21,14 +21,22 @@ typedef struct _MonoComponentEntry {
 	const char *lib_name;
 	const char *name;
 	MonoComponentInitFn init;
+	MonoComponentInitFn init_stub;
 	MonoComponent **component;
 	MonoDl *lib;
 } MonoComponentEntry;
 
 #ifdef STATIC_COMPONENTS
 #define COMPONENT_INIT_FUNC(name) (MonoComponentInitFn) mono_component_ ## name ## _init
+#define COMPONENT_INIT_STUB_FUNC(name) (MonoComponentInitFn) NULL
 #else
-#define COMPONENT_INIT_FUNC(name) (MonoComponentInitFn) mono_component_ ## name ## _stub_init
+#if defined(WEAK_COMPONENT_INIT_SYMBOL) && defined(HOST_ANDROID)
+#define WEAK_COMPONENT_INIT_SYMBOL_FUNC(name) extern MonoComponent * mono_component_ ## name ## _init() __attribute__((weak));
+#define COMPONENT_INIT_FUNC(name) (MonoComponentInitFn) mono_component_ ## name ## _init
+#else
+#define COMPONENT_INIT_FUNC(name) (MonoComponentInitFn) NULL
+#endif
+#define COMPONENT_INIT_STUB_FUNC(name) (MonoComponentInitFn) mono_component_ ## name ## _stub_init
 #endif
 
 #define HOT_RELOAD_LIBRARY_NAME "hot_reload"
@@ -43,11 +51,17 @@ MonoComponentDiagnosticsServer *diagnostics_server = NULL;
 #define EVENT_PIPE_COMPONENT_NAME "event_pipe"
 #define DIAGNOSTICS_SERVER_COMPONENT_NAME "diagnostics_server"
 
+#ifdef WEAK_COMPONENT_INIT_SYMBOL_FUNC
+WEAK_COMPONENT_INIT_SYMBOL_FUNC(hot_reload)
+WEAK_COMPONENT_INIT_SYMBOL_FUNC(event_pipe)
+WEAK_COMPONENT_INIT_SYMBOL_FUNC(diagnostics_server)
+#endif
+
 /* One per component */
 MonoComponentEntry components[] = {
-	{ HOT_RELOAD_LIBRARY_NAME, HOT_RELOAD_COMPONENT_NAME, COMPONENT_INIT_FUNC (hot_reload), (MonoComponent**)&hot_reload, NULL },
-	{ DIAGNOSTICS_TRACING_LIBRARY_NAME, EVENT_PIPE_COMPONENT_NAME, COMPONENT_INIT_FUNC (event_pipe), (MonoComponent**)&event_pipe, NULL },
-	{ DIAGNOSTICS_TRACING_LIBRARY_NAME, DIAGNOSTICS_SERVER_COMPONENT_NAME, COMPONENT_INIT_FUNC (diagnostics_server), (MonoComponent**)&diagnostics_server, NULL },
+	{ HOT_RELOAD_LIBRARY_NAME, HOT_RELOAD_COMPONENT_NAME, COMPONENT_INIT_FUNC (hot_reload), COMPONENT_INIT_STUB_FUNC (hot_reload), (MonoComponent**)&hot_reload, NULL },
+	{ DIAGNOSTICS_TRACING_LIBRARY_NAME, EVENT_PIPE_COMPONENT_NAME, COMPONENT_INIT_FUNC (event_pipe), COMPONENT_INIT_STUB_FUNC (event_pipe), (MonoComponent**)&event_pipe, NULL },
+	{ DIAGNOSTICS_TRACING_LIBRARY_NAME, DIAGNOSTICS_SERVER_COMPONENT_NAME, COMPONENT_INIT_FUNC (diagnostics_server), COMPONENT_INIT_STUB_FUNC (diagnostics_server), (MonoComponent**)&diagnostics_server, NULL },
 };
 
 #ifndef STATIC_COMPONENTS
@@ -82,7 +96,7 @@ mono_components_init (void)
 		*components [i].component = get_component (&components [i], &lib);
 		components [i].lib = lib;
 		if (!*components [i].component)
-			*components [i].component = components [i].init ();
+			*components [i].component = components [i].init_stub ();
 	}
 #endif
 	/* validate components interface version */
@@ -160,6 +174,14 @@ try_load (const char* dir, const MonoComponentEntry *component, const char* comp
 static MonoComponentInitFn
 load_component (const MonoComponentEntry *component, MonoDl **lib_out)
 {
+#ifdef WEAK_COMPONENT_INIT_SYMBOL
+	// If init method linked using a weak symbol, use that instead of loading dynamic component.
+	if (component->init) {
+		*lib_out = NULL;
+		return component->init;
+	}
+#endif
+
 	char *component_base_lib = component_library_base_name (component);
 	MonoComponentInitFn result = NULL;
 
