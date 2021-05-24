@@ -1076,9 +1076,6 @@
 /* Enable static linking of mono runtime components */
 #cmakedefine STATIC_COMPONENTS
 
-/* Enable weak component init symbol */
-#cmakedefine WEAK_COMPONENT_INIT_SYMBOL
-
 #if defined(ENABLE_LLVM) && defined(HOST_WIN32) && defined(TARGET_WIN32) && (!defined(TARGET_AMD64) || !defined(_MSC_VER))
 #error LLVM for host=Windows and target=Windows is only supported on x64 MSVC build.
 #endif
