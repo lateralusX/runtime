@@ -338,6 +338,9 @@ public class ApkBuilder
         // add all *.so files to lib/%abi%/
 
         string[] dynamicLinkedComponents = Array.Empty<string>();
+        bool dynamicLinkAllComponents = false;
+        if (!StaticLinkedRuntime && !string.IsNullOrEmpty(RuntimeComponents) && RuntimeComponents.Equals("*", StringComparison.OrdinalIgnoreCase))
+                dynamicLinkAllComponents = true;
         if (!string.IsNullOrEmpty(RuntimeComponents) && !StaticLinkedRuntime)
             dynamicLinkedComponents = RuntimeComponents.Split(";");
 
@@ -358,8 +361,8 @@ public class ApkBuilder
 
             if (dynamicLibName.Contains("libmono-component-", StringComparison.OrdinalIgnoreCase))
             {
-                bool includeComponent = false;
-                if (!StaticLinkedRuntime)
+                bool includeComponent = dynamicLinkAllComponents;
+                if (!StaticLinkedRuntime && !includeComponent)
                 {
                     foreach (string dynamicLinkedComponent in dynamicLinkedComponents)
                     {

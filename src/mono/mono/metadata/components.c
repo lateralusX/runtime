@@ -136,7 +136,6 @@ static MonoDl*
 try_load (const char* dir, const MonoComponentEntry *component, const char* component_base_lib)
 {
 	MonoDl *lib = NULL;
-	void *iter = NULL;
 	char *path = NULL;
 	path = g_module_build_path (dir, component_base_lib);
 	if (path) {
