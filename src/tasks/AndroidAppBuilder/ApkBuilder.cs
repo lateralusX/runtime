@@ -27,8 +27,7 @@ public class ApkBuilder
     public bool InvariantGlobalization { get; set; }
     public bool EnableRuntimeLogging { get; set; }
     public bool StaticLinkedRuntime { get; set; }
-    public string? StaticLinkedComponentNames { get; set; }
-    public string? DynamicLinkedComponentNames { get; set; }
+    public string? RuntimeComponents { get; set; }
     public ITaskItem[] Assemblies { get; set; } = Array.Empty<ITaskItem>();
 
     public (string apk, string packageId) BuildApk(
@@ -78,21 +77,6 @@ public class ApkBuilder
         if (ForceInterpreter && ForceAOT)
         {
             throw new InvalidOperationException("Interpreter and AOT cannot be enabled at the same time");
-        }
-
-        if (!StaticLinkedRuntime && !string.IsNullOrEmpty(StaticLinkedComponentNames))
-        {
-            throw new ArgumentException("StaticLinkedComponentNames property used without specifying StaticLinkedRuntime");
-        }
-
-        if (!string.IsNullOrEmpty(DynamicLinkedComponentNames) && !string.IsNullOrEmpty(StaticLinkedComponentNames))
-        {
-            throw new ArgumentException("DynamicLinkedComponentNames and StaticLinkedComponentNames defined");
-        }
-
-         if (StaticLinkedRuntime && !string.IsNullOrEmpty(DynamicLinkedComponentNames))
-        {
-            throw new ArgumentException("DynamicLinkedComponentNames property can't be used with StaticLinkedRuntime");
         }
 
         // Try to get the latest build-tools version if not specified
@@ -215,12 +199,12 @@ public class ApkBuilder
         {
             string[] staticComponentStubLibs = Directory.GetFiles(AppDir, "libmono-component-*-stub-static.a");
             bool staticLinkAllComponents = false;
-            string[] componentNames = Array.Empty<string>();
+            string[] staticLinkedComponents = Array.Empty<string>();
 
-            if (!string.IsNullOrEmpty(StaticLinkedComponentNames) && StaticLinkedComponentNames.Equals("*", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(RuntimeComponents) && RuntimeComponents.Equals("*", StringComparison.OrdinalIgnoreCase))
                 staticLinkAllComponents = true;
-            else if (!string.IsNullOrEmpty(StaticLinkedComponentNames))
-                componentNames = StaticLinkedComponentNames.Split(";");
+            else if (!string.IsNullOrEmpty(RuntimeComponents))
+                staticLinkedComponents = RuntimeComponents.Split(";");
 
             // by default, component stubs will be linked and depending on how mono runtime has been build,
             // stubs can disable or dynamic load components.
@@ -234,9 +218,9 @@ public class ApkBuilder
                 }
                 else
                 {
-                    foreach (string componentName in componentNames)
+                    foreach (string staticLinkedComponent in staticLinkedComponents)
                     {
-                        if (componentLibToLink.Contains(componentName, StringComparison.OrdinalIgnoreCase))
+                        if (componentLibToLink.Contains(staticLinkedComponent, StringComparison.OrdinalIgnoreCase))
                         {
                             // static link component.
                             componentLibToLink = componentLibToLink.Replace("-stub-static.a", "-static.a", StringComparison.OrdinalIgnoreCase);
@@ -352,18 +336,23 @@ public class ApkBuilder
         dynamicLibs.AddRange(Directory.GetFiles(AppDir, "*.so").Where(file => Path.GetFileName(file) != "libmonodroid.so"));
 
         // add all *.so files to lib/%abi%/
-        string[] dynamicComponentNames = Array.Empty<string>();
-        if (!string.IsNullOrEmpty(DynamicLinkedComponentNames))
-            dynamicComponentNames = DynamicLinkedComponentNames.Split(";");
+
+        string[] dynamicLinkedComponents = Array.Empty<string>();
+        if (!string.IsNullOrEmpty(RuntimeComponents) && !StaticLinkedRuntime)
+            dynamicLinkedComponents = RuntimeComponents.Split(";");
 
         Directory.CreateDirectory(Path.Combine(OutputDir, "lib", abi));
         foreach (var dynamicLib in dynamicLibs)
         {
-            //Fix delete of dylibs in case we have static or change in components.
             string dynamicLibName = Path.GetFileName(dynamicLib);
+            string destRelative = Path.Combine("lib", abi, dynamicLibName);
+
             if (dynamicLibName == "libmonosgen-2.0.so" && StaticLinkedRuntime)
             {
                 // we link mono runtime statically into libmonodroid.so
+                // make sure dynamic runtime is not included in package.
+                if (File.Exists(destRelative))
+                    File.Delete(destRelative);
                 continue;
             }
 
@@ -372,9 +361,9 @@ public class ApkBuilder
                 bool includeComponent = false;
                 if (!StaticLinkedRuntime)
                 {
-                    foreach (string dynamicComponentName in dynamicComponentNames)
+                    foreach (string dynamicLinkedComponent in dynamicLinkedComponents)
                     {
-                        if (dynamicLibName.Contains(dynamicComponentName, StringComparison.OrdinalIgnoreCase))
+                        if (dynamicLibName.Contains(dynamicLinkedComponent, StringComparison.OrdinalIgnoreCase))
                         {
                             includeComponent = true;
                             break;
@@ -383,14 +372,15 @@ public class ApkBuilder
                 }
                 if (!includeComponent)
                 {
-                    Utils.LogInfo($"\nSkipping {dynamicLibName}");
+                    // make sure dynamic component is not included in package.
+                    if (File.Exists(destRelative))
+                        File.Delete(destRelative);
                     continue;
                 }
             }
 
             // NOTE: we can run android-strip tool from NDK to shrink native binaries here even more.
 
-            string destRelative = Path.Combine("lib", abi, dynamicLibName);
             File.Copy(dynamicLib, Path.Combine(OutputDir, destRelative), true);
             Utils.RunProcess(aapt, $"add {apkFile} {destRelative}", workingDir: OutputDir);
         }
