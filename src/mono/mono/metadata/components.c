@@ -138,13 +138,15 @@ try_load (const char* dir, const MonoComponentEntry *component, const char* comp
 	MonoDl *lib = NULL;
 	void *iter = NULL;
 	char *path = NULL;
-	while ((path = mono_dl_build_path (dir, component_base_lib, &iter)) && !lib) {
+	path = g_module_build_path (dir, component_base_lib);
+	if (path) {
+	//while ((path = mono_dl_build_path (dir, component_base_lib, &iter)) && !lib) {
 		char *error_msg = NULL;
 		lib = mono_dl_open (path, MONO_DL_EAGER, &error_msg);
 		if (!lib) {
 			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_DLLIMPORT, "Component %s not found: %s", component->name, error_msg);
 			g_free (error_msg);
-			continue;
+			//continue;
 		}
 	}
 	if (lib)

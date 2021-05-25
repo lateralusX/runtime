@@ -101,13 +101,14 @@ if(NOT DISABLE_COMPONENTS AND NOT STATIC_COMPONENTS)
   foreach(component IN LISTS components)
     if(HOST_WIN32)
       add_library("mono-component-${component}" SHARED "${${component}-sources}")
+      target_compile_definitions("mono-component-${component}" PRIVATE -DCOMPILING_COMPONENT_DYNAMIC;-DMONO_DLL_IMPORT)
     else()
       add_library("mono-component-${component}" SHARED $<TARGET_OBJECTS:${component}-objects>)
+      target_compile_definitions("${component}-objects" PRIVATE -DCOMPILING_COMPONENT_DYNAMIC;-DMONO_DLL_IMPORT)
     endif()
     foreach(dependency IN LISTS "${component}-dependencies")
       add_dependencies("mono-component-${component}" "${dependency}")
     endforeach()
-    target_compile_definitions("mono-component-${component}" PRIVATE -DCOMPILING_COMPONENT_DYNAMIC;-DMONO_DLL_IMPORT)
     # each shared library component gets its own copy for eglib
     #
     # FIXME: this is bad for things like the g_log_set_default_handler/g_logv
