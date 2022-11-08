@@ -1,0 +1,70 @@
+#ifndef __DN_UTILS_H__
+#define __DN_UTILS_H__
+
+#ifdef __cplusplus
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#endif
+#else
+#include <stdbool.h>
+#endif
+
+#include <stddef.h>
+#include <stdint.h>
+
+#ifndef UINT32_MAX
+#define UINT32_MAX 0xffffffffui32
+#endif
+
+#if defined(_WIN32)
+#define DN_CALLBACK_CALLTYPE __cdecl
+#else
+#define DN_CALLBACK_CALLTYPE
+#endif
+
+typedef void (DN_CALLBACK_CALLTYPE *dn_func_t) (void *data, void *user_data);
+typedef int32_t (DN_CALLBACK_CALLTYPE *dn_compare_func_t) (const void *a, const void *b);
+typedef void (DN_CALLBACK_CALLTYPE *dn_compare_data_func_t) (const void *a, const void *b, void *user_data);
+typedef void (DN_CALLBACK_CALLTYPE *dn_h_func_t) (void *key, void *value, void *user_data);
+typedef bool (DN_CALLBACK_CALLTYPE *dn_hr_func_t) (void *key, void *value, void *user_data);
+typedef void (DN_CALLBACK_CALLTYPE *dn_destory_notify_func_t) (void *data);
+typedef uint32_t (DN_CALLBACK_CALLTYPE *dn_hash_func_t) (const void *key);
+typedef bool (DN_CALLBACK_CALLTYPE *dn_equal_func_t) (const void *a, const void *b);
+typedef void (DN_CALLBACK_CALLTYPE *dn_free_func_t) (void *data);
+
+#if defined(__GNUC__) && (__GNUC__ > 2)
+#define DN_LIKELY(expr) (__builtin_expect ((expr) != 0, 1))
+#define DN_UNLIKELY(expr) (__builtin_expect ((expr) != 0, 0))
+#else
+#define DN_LIKELY(x) (x)
+#define DN_UNLIKELY(x) (x)
+#endif
+
+#define DN_UNREFERENCED_PARAMETER(expr) (void)(expr)
+
+static inline bool
+dn_safe_size_t_multiply (size_t lhs, size_t rhs, size_t *result)
+{
+	if (lhs == 0 || rhs == 0) {
+		*result = 0;
+		return true;
+	}
+	
+	if (((size_t)(~(size_t)0) / lhs) < rhs)
+		return false;
+
+	*result = lhs * rhs;
+	return true;
+}
+
+static inline bool
+dn_safe_uint32_t_add (uint32_t lhs, uint32_t rhs, uint32_t *result)
+{
+	if((UINT32_MAX - lhs) < rhs)
+		return false;
+
+	*result = lhs + rhs;
+	return true;
+}
+
+#endif /* __DN_UTILS_H__ */

@@ -29,25 +29,8 @@
 #undef EP_UNLIKELY
 #define EP_UNLIKELY(expr) G_UNLIKELY(expr)
 
-struct _rt_mono_list_internal_t {
-	GSList *list;
-};
-
-struct _rt_mono_list_iterator_internal_t {
-	GSList *iterator;
-};
-
 struct _rt_mono_queue_internal_t {
 	GQueue *queue;
-};
-
-struct _rt_mono_array_internal_t {
-	GArray *array;
-};
-
-struct _rt_mono_array_iterator_internal_t {
-	GArray *array;
-	int32_t index;
 };
 
 #ifdef EP_RT_USE_CUSTOM_HASH_MAP_CALLBACKS
@@ -78,36 +61,6 @@ struct _rt_mono_lock_internal_t {
 };
 
 /*
- * EventPipeBuffer.
- */
-
-#undef ep_rt_buffer_array_t
-typedef struct _rt_mono_array_internal_t ep_rt_buffer_array_t;
-
-#undef ep_rt_buffer_array_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_buffer_array_iterator_t;
-
-/*
- * EventPipeBufferList.
- */
-
-#undef ep_rt_buffer_list_array_t
-typedef struct _rt_mono_array_internal_t ep_rt_buffer_list_array_t;
-
-#undef ep_rt_buffer_list_array_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_buffer_list_array_iterator_t;
-
-/*
- * EventPipeEvent.
- */
-
-#undef ep_rt_event_list_t
-typedef struct _rt_mono_list_internal_t ep_rt_event_list_t;
-
-#undef ep_rt_event_list_iterator_t
-typedef struct _rt_mono_list_iterator_internal_t ep_rt_event_list_iterator_t;
-
-/*
  * EventPipeFile.
  */
 
@@ -127,105 +80,19 @@ typedef struct _rt_mono_table_iterator_internal_t ep_rt_stack_hash_map_iterator_
  * EventPipeProvider.
  */
 
-#undef ep_rt_provider_list_t
-typedef struct _rt_mono_list_internal_t ep_rt_provider_list_t;
-
-#undef ep_rt_provider_list_iterator_t
-typedef struct _rt_mono_list_iterator_internal_t ep_rt_provider_list_iterator_t;
-
 #undef ep_rt_provider_callback_data_queue_t
 typedef struct _rt_mono_queue_internal_t ep_rt_provider_callback_data_queue_t;
-
-/*
- * EventPipeProviderConfiguration.
- */
-
-#undef ep_rt_provider_config_array_t
-typedef struct _rt_mono_array_internal_t ep_rt_provider_config_array_t;
-
-#undef ep_rt_provider_config_array_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_provider_config_array_iterator_t;
-
-/*
- * EventPipeSessionProvider.
- */
-
-#undef ep_rt_session_provider_list_t
-typedef struct _rt_mono_list_internal_t ep_rt_session_provider_list_t;
-
-#undef ep_rt_session_provider_list_iterator_t
-typedef struct _rt_mono_list_iterator_internal_t ep_rt_session_provider_list_iterator_t;
-
-/*
- * EventPipeSequencePoint.
- */
-
-#undef ep_rt_sequence_point_list_t
-typedef struct _rt_mono_list_internal_t ep_rt_sequence_point_list_t;
-
-#undef ep_rt_sequence_point_list_iterator_t
-typedef struct _rt_mono_list_iterator_internal_t ep_rt_sequence_point_list_iterator_t;
-
-/*
- * EventPipeThread.
- */
-
-#undef ep_rt_thread_list_t
-typedef struct _rt_mono_list_internal_t ep_rt_thread_list_t;
-
-#undef ep_rt_thread_list_iterator_t
-typedef struct _rt_mono_list_iterator_internal_t ep_rt_thread_list_iterator_t;
-
-#undef ep_rt_thread_array_t
-typedef struct _rt_mono_array_internal_t ep_rt_thread_array_t;
-
-#undef ep_rt_thread_array_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_thread_array_iterator_t;
-
-/*
- * EventPipeThreadSessionState.
- */
-
-#undef ep_rt_thread_session_state_list_t
-typedef struct _rt_mono_list_internal_t ep_rt_thread_session_state_list_t;
-
-#undef ep_rt_thread_session_state_list_iterator_t
-typedef struct _rt_mono_list_iterator_internal_t ep_rt_thread_session_state_list_iterator_t;
-
-#undef ep_rt_thread_session_state_array_t
-typedef struct _rt_mono_array_internal_t ep_rt_thread_session_state_array_t;
-
-#undef ep_rt_thread_session_state_array_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_thread_session_state_array_iterator_t;
 
 /*
  * EventPipe.
  */
 
-#undef ep_rt_session_id_array_t
-typedef struct _rt_mono_array_internal_t ep_rt_session_id_array_t;
-
-#undef ep_rt_session_id_array_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_session_id_array_iterator_t;
-
 #undef ep_rt_method_desc_t
 typedef MonoMethod ep_rt_method_desc_t;
-
-#undef ep_rt_execution_checkpoint_array_t
-typedef struct _rt_mono_array_internal_t ep_rt_execution_checkpoint_array_t;
-
-#undef ep_rt_execution_checkpoint_array_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_execution_checkpoint_array_iterator_t;
 
 /*
  * PAL.
  */
-
-#undef ep_rt_env_array_utf16_t
-typedef struct _rt_mono_array_internal_t ep_rt_env_array_utf16_t;
-
-#undef ep_rt_env_array_utf16_iterator_t
-typedef struct _rt_mono_array_iterator_internal_t ep_rt_env_array_utf16_iterator_t;
 
 #undef ep_rt_file_handle_t
 typedef gpointer ep_rt_file_handle_t;

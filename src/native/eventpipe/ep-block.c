@@ -4,6 +4,7 @@
 #if !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES)
 
 #define EP_IMPL_BLOCK_GETTER_SETTER
+#include "ep.h"
 #include "ep-block.h"
 #include "ep-event-instance.h"
 #include "ep-file.h"

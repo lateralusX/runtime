@@ -250,7 +250,7 @@ ep_session_get_session_provider (
 	if (catch_all)
 		return catch_all;
 
-	EventPipeSessionProvider *session_provider = ep_rt_session_provider_list_find_by_name (ep_session_provider_list_get_providers_ref (providers), ep_provider_get_provider_name (provider));
+	EventPipeSessionProvider *session_provider = ep_session_provider_list_find_by_name (ep_session_provider_list_get_providers (providers), ep_provider_get_provider_name (provider));
 
 	ep_requires_lock_held ();
 	return session_provider;
@@ -311,7 +311,7 @@ ep_on_error:
 void
 ep_session_execute_rundown (
 	EventPipeSession *session,
-	ep_rt_execution_checkpoint_array_t *execution_checkpoints)
+	dn_ptr_array_t *execution_checkpoints)
 {
 	EP_ASSERT (session != NULL);
 
@@ -331,26 +331,25 @@ ep_session_suspend_write_event (EventPipeSession *session)
 	// Need to disable the session before calling this method.
 	EP_ASSERT (!ep_is_session_enabled ((EventPipeSessionID)session));
 
-	EP_RT_DECLARE_LOCAL_THREAD_ARRAY (threads);
-	ep_rt_thread_array_init (&threads);
+	DN_PTR_ARRAY_EX_LOCAL_ALLOCATOR (allocator, DN_PTR_ARRAY_EX_DEFAULT_LOCAL_ARRAY_BUFFER_SIZE);
 
-	ep_thread_get_threads (&threads);
+	dn_ptr_array_t *threads = dn_ptr_array_ex_alloc_capacity_custom ((dn_allocator_t *)&allocator, DN_PTR_ARRAY_EX_DEFAULT_LOCAL_ARRAY_CAPACITY);
 
-	ep_rt_thread_array_iterator_t threads_iterator = ep_rt_thread_array_iterator_begin (&threads);
-	while (!ep_rt_thread_array_iterator_end (&threads, &threads_iterator)) {
-		EventPipeThread *thread = ep_rt_thread_array_iterator_value (&threads_iterator);
-		if (thread) {
-			// Wait for the thread to finish any writes to this session
-			EP_YIELD_WHILE (ep_thread_get_session_write_in_progress (thread) == session->index);
+	if (threads) {
+		ep_thread_get_threads (threads);
+		DN_PTR_ARRAY_EX_FOREACH_BEGIN (threads, EventPipeThread *, thread) {
+			if (thread) {
+				// Wait for the thread to finish any writes to this session
+				EP_YIELD_WHILE (ep_thread_get_session_write_in_progress (thread) == session->index);
 
-			// Since we've already disabled the session, the thread won't call back in to this
-			// session once its done with the current write
-			ep_thread_release (thread);
-		}
-		ep_rt_thread_array_iterator_next (&threads_iterator);
+				// Since we've already disabled the session, the thread won't call back in to this
+				// session once its done with the current write
+				ep_thread_release (thread);
+			}
+		} DN_PTR_ARRAY_EX_FOREACH_END;
+
+		dn_ptr_array_ex_free (&threads);
 	}
-
-	ep_rt_thread_array_fini (&threads);
 
 	if (session->buffer_manager)
 		// Convert all buffers to read only to ensure they get flushed

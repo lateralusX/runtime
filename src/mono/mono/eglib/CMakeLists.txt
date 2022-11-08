@@ -1,3 +1,4 @@
+set(SHARED_CONTAINERS_SOURCE_PATH "${CLR_SRC_NATIVE_DIR}/containers/")
 
 set(eglib_win32_sources
     gdate-win32.c gdir-win32.c gfile-win32.c gmisc-win32.c
@@ -40,6 +41,10 @@ set(eglib_common_sources
 if(HAVE_CLOCK_NANOSLEEP)
 list(APPEND eglib_common_sources gclock-nanosleep.c)
 endif()
+
+include_directories(
+  ${SHARED_CONTAINERS_SOURCE_PATH}
+)
 
 addprefix(eglib_sources ../eglib/ "${eglib_platform_sources};${eglib_common_sources}")
 

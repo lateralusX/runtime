@@ -5,7 +5,6 @@
 #include <eventpipe/ep-rt-config.h>
 
 #ifdef ENABLE_PERFTRACING
-#include "slist.h"
 
 #ifdef DEBUG
 #define EP_CHECKED_BUILD
@@ -28,31 +27,10 @@
 #define EP_UNLIKELY(expr) expr
 
 template<typename T>
-struct _rt_coreclr_list_internal_t {
-	typedef struct SListElem<T> element_type_t;
-	typedef class SList<element_type_t> list_type_t;
-	list_type_t *list;
-};
-
-template<typename T>
 struct _rt_coreclr_queue_internal_t {
 	typedef struct SListElem<T> element_type_t;
 	typedef class SList<element_type_t> queue_type_t;
 	queue_type_t *queue;
-};
-
-template<typename T>
-struct _rt_coreclr_array_internal_t {
-	typedef T element_type_t;
-	typedef class CQuickArrayList<T> array_type_t;
-	array_type_t *array;
-};
-
-template<typename T>
-struct _rt_coreclr_array_iterator_internal_t {
-	typedef typename _rt_coreclr_array_internal_t<T>::array_type_t array_iterator_type;
-	array_iterator_type *array;
-	size_t index;
 };
 
 typedef struct _rt_coreclr_table_callbacks_t {
@@ -134,36 +112,6 @@ struct _rt_coreclr_spin_lock_internal_t {
 };
 
 /*
- * EventPipeBuffer.
- */
-
-#undef ep_rt_buffer_array_t
-typedef struct _rt_coreclr_array_internal_t<EventPipeBuffer *> ep_rt_buffer_array_t;
-
-#undef ep_rt_buffer_array_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<EventPipeBuffer *> ep_rt_buffer_array_iterator_t;
-
-/*
- * EventPipeBufferList.
- */
-
-#undef ep_rt_buffer_list_array_t
-typedef struct _rt_coreclr_array_internal_t<EventPipeBufferList *> ep_rt_buffer_list_array_t;
-
-#undef ep_rt_buffer_list_array_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<EventPipeBufferList *> ep_rt_buffer_list_array_iterator_t;
-
-/*
- * EventPipeEvent.
- */
-
-#undef ep_rt_event_list_t
-typedef struct _rt_coreclr_list_internal_t<EventPipeEvent *> ep_rt_event_list_t;
-
-#undef ep_rt_event_list_iterator_t
-typedef class _rt_coreclr_list_internal_t<EventPipeEvent *>::list_type_t::Iterator ep_rt_event_list_iterator_t;
-
-/*
  * EventPipeFile.
  */
 
@@ -183,105 +131,19 @@ typedef class _rt_coreclr_table_custom_internal_t<EventPipeCoreCLRStackHashTrait
  * EventPipeProvider.
  */
 
-#undef ep_rt_provider_list_t
-typedef struct _rt_coreclr_list_internal_t<EventPipeProvider *> ep_rt_provider_list_t;
-
-#undef ep_rt_provider_list_iterator_t
-typedef class _rt_coreclr_list_internal_t<EventPipeProvider *>::list_type_t::Iterator ep_rt_provider_list_iterator_t;
-
 #undef ep_rt_provider_callback_data_queue_t
 typedef struct _rt_coreclr_queue_internal_t<EventPipeProviderCallbackData *> ep_rt_provider_callback_data_queue_t;
-
-/*
- * EventPipeProviderConfiguration.
- */
-
-#undef ep_rt_provider_config_array_t
-typedef struct _rt_coreclr_array_internal_t<EventPipeProviderConfiguration> ep_rt_provider_config_array_t;
-
-#undef ep_rt_provider_config_array_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<EventPipeProviderConfiguration> ep_rt_provider_config_array_iterator_t;
-
-/*
- * EventPipeSessionProvider.
- */
-
-#undef ep_rt_session_provider_list_t
-typedef struct _rt_coreclr_list_internal_t<EventPipeSessionProvider *> ep_rt_session_provider_list_t;
-
-#undef ep_rt_session_provider_list_iterator_t
-typedef class _rt_coreclr_list_internal_t<EventPipeSessionProvider *>::list_type_t::Iterator ep_rt_session_provider_list_iterator_t;
-
-/*
- * EventPipeSequencePoint.
- */
-
-#undef ep_rt_sequence_point_list_t
-typedef struct _rt_coreclr_list_internal_t<EventPipeSequencePoint *> ep_rt_sequence_point_list_t;
-
-#undef ep_rt_sequence_point_list_iterator_t
-typedef class _rt_coreclr_list_internal_t<EventPipeSequencePoint *>::list_type_t::Iterator ep_rt_sequence_point_list_iterator_t;
-
-/*
- * EventPipeThread.
- */
-
-#undef ep_rt_thread_list_t
-typedef struct _rt_coreclr_list_internal_t<EventPipeThread *> ep_rt_thread_list_t;
-
-#undef ep_rt_thread_list_iterator_t
-typedef class _rt_coreclr_list_internal_t<EventPipeThread *>::list_type_t::Iterator ep_rt_thread_list_iterator_t;
-
-#undef ep_rt_thread_array_t
-typedef struct _rt_coreclr_array_internal_t<EventPipeThread *> ep_rt_thread_array_t;
-
-#undef ep_rt_thread_array_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<EventPipeThread *> ep_rt_thread_array_iterator_t;
-
-/*
- * EventPipeThreadSessionState.
- */
-
-#undef ep_rt_thread_session_state_list_t
-typedef struct _rt_coreclr_list_internal_t<EventPipeThreadSessionState *> ep_rt_thread_session_state_list_t;
-
-#undef ep_rt_thread_session_state_list_iterator_t
-typedef class _rt_coreclr_list_internal_t<EventPipeThreadSessionState *>::list_type_t::Iterator ep_rt_thread_session_state_list_iterator_t;
-
-#undef ep_rt_thread_session_state_array_t
-typedef struct _rt_coreclr_array_internal_t<EventPipeThreadSessionState *> ep_rt_thread_session_state_array_t;
-
-#undef ep_rt_thread_session_state_array_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<EventPipeThreadSessionState *> ep_rt_thread_session_state_array_iterator_t;
 
 /*
  * EventPipe.
  */
 
-#undef ep_rt_session_id_array_t
-typedef struct _rt_coreclr_array_internal_t<EventPipeSessionID> ep_rt_session_id_array_t;
-
-#undef ep_rt_session_id_array_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<EventPipeSessionID> ep_rt_session_id_array_iterator_t;
-
 #undef ep_rt_method_desc_t
 typedef class MethodDesc ep_rt_method_desc_t;
-
-#undef ep_rt_execution_checkpoint_array_t
-typedef struct _rt_coreclr_array_internal_t<EventPipeExecutionCheckpoint *> ep_rt_execution_checkpoint_array_t;
-
-#undef ep_rt_execution_checkpoint_array_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<EventPipeExecutionCheckpoint *> ep_rt_execution_checkpoint_array_iterator_t;
 
 /*
  * PAL.
  */
-
-#undef ep_rt_env_array_utf16_t
-typedef struct _rt_coreclr_array_internal_t<ep_char16_t *> ep_rt_env_array_utf16_t;
-
-#undef ep_rt_env_array_utf16_iterator_t
-typedef struct _rt_coreclr_array_iterator_internal_t<ep_char16_t *> ep_rt_env_array_utf16_iterator_t;
 
 #undef ep_rt_file_handle_t
 typedef class CFileStream * ep_rt_file_handle_t;

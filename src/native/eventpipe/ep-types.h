@@ -14,6 +14,10 @@
 
 #include "ep-rt-types.h"
 
+#include <containers/dn-array-ex.h>
+#include <containers/dn-ptr-array-ex.h>
+#include <containers/dn-list-ex.h>
+
 /*
  * EventFilterDescriptor.
  */
