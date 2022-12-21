@@ -77,13 +77,6 @@ typedef struct _rt_mono_table_internal_t ep_rt_stack_hash_map_t;
 typedef struct _rt_mono_table_iterator_internal_t ep_rt_stack_hash_map_iterator_t;
 
 /*
- * EventPipeProvider.
- */
-
-#undef ep_rt_provider_callback_data_queue_t
-typedef struct _rt_mono_queue_internal_t ep_rt_provider_callback_data_queue_t;
-
-/*
  * EventPipe.
  */
 

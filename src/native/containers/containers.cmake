@@ -8,6 +8,7 @@ list(APPEND SHARED_CONTAINER_SOURCES
     dn-ptr-array.c
     dn-slist.c
     dn-list.c
+    dn-queue.c
 )
 
 list(APPEND SHARED_CONTAINER_HEADERS
@@ -23,6 +24,8 @@ list(APPEND SHARED_CONTAINER_HEADERS
     dn-slist-ex.h
     dn-list.h
     dn-list-ex.h
+    dn-queue.h
+    dn-queue-ex.h
     dn-sort-frag.h
     dn-utils.h
 )

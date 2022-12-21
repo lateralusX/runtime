@@ -17,6 +17,7 @@
 #include <containers/dn-array-ex.h>
 #include <containers/dn-ptr-array-ex.h>
 #include <containers/dn-list-ex.h>
+#include <containers/dn-queue-ex.h>
 
 /*
  * EventFilterDescriptor.
@@ -138,7 +139,7 @@ struct _EventPipeProviderCallbackDataQueue {
 #else
 struct _EventPipeProviderCallbackDataQueue_Internal {
 #endif
-	ep_rt_provider_callback_data_queue_t queue;
+	dn_queue_t *queue;
 };
 
 #if !defined(EP_INLINE_GETTER_SETTER) && !defined(EP_IMPL_EP_GETTER_SETTER)
@@ -147,7 +148,7 @@ struct _EventPipeProviderCallbackDataQueue {
 };
 #endif
 
-EP_DEFINE_GETTER_REF(EventPipeProviderCallbackDataQueue *, provider_callback_data_queue, ep_rt_provider_callback_data_queue_t *, queue)
+EP_DEFINE_GETTER(EventPipeProviderCallbackDataQueue *, provider_callback_data_queue, dn_queue_t *, queue)
 
 EventPipeProviderCallbackDataQueue *
 ep_provider_callback_data_queue_init (EventPipeProviderCallbackDataQueue *provider_callback_data_queue);

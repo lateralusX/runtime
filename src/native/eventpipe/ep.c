@@ -195,15 +195,15 @@ EventPipeProviderCallbackDataQueue *
 ep_provider_callback_data_queue_init (EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
 {
 	EP_ASSERT (provider_callback_data_queue != NULL);
-	ep_rt_provider_callback_data_queue_alloc (&provider_callback_data_queue->queue);
-	return ep_rt_provider_callback_data_queue_is_valid (&provider_callback_data_queue->queue) ? provider_callback_data_queue : NULL;
+	provider_callback_data_queue->queue = dn_queue_ex_alloc ();
+	return provider_callback_data_queue->queue ? provider_callback_data_queue : NULL;
 }
 
 void
 ep_provider_callback_data_queue_fini (EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
 {
 	ep_return_void_if_nok (provider_callback_data_queue != NULL);
-	ep_rt_provider_callback_data_queue_free (&provider_callback_data_queue->queue);
+	dn_queue_ex_free (&provider_callback_data_queue->queue);
 }
 
 /*
@@ -1596,7 +1596,7 @@ ep_provider_callback_data_queue_enqueue (
 	EP_ASSERT (provider_callback_data_queue != NULL);
 	EventPipeProviderCallbackData *provider_callback_data_move = ep_provider_callback_data_alloc_move (provider_callback_data);
 	ep_raise_error_if_nok (provider_callback_data_move != NULL);
-	ep_raise_error_if_nok (ep_rt_provider_callback_data_queue_push_tail (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue), provider_callback_data_move));
+	ep_raise_error_if_nok (dn_queue_ex_push_back (ep_provider_callback_data_queue_get_queue (provider_callback_data_queue), provider_callback_data_move));
 
 	return true;
 
@@ -1612,10 +1612,13 @@ ep_provider_callback_data_queue_try_dequeue (
 {
 	EP_ASSERT (provider_callback_data_queue != NULL);
 
-	ep_return_false_if_nok (!ep_rt_provider_callback_data_queue_is_empty (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue)));
+	dn_queue_t *queue = ep_provider_callback_data_queue_get_queue (provider_callback_data_queue);
+	ep_return_false_if_nok (!dn_queue_ex_empty (queue));
 
-	EventPipeProviderCallbackData *value = NULL;
-	ep_raise_error_if_nok (ep_rt_provider_callback_data_queue_pop_head (ep_provider_callback_data_queue_get_queue_ref (provider_callback_data_queue), &value));
+	EventPipeProviderCallbackData *value = dn_queue_ex_front (queue);
+	dn_queue_ex_pop_front (queue);
+
+	ep_raise_error_if_nok (value != NULL);
 	ep_provider_callback_data_init_move (provider_callback_data, value);
 	ep_provider_callback_data_free (value);
 

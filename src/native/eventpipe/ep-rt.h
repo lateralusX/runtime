@@ -24,20 +24,6 @@
 prefix_name ## _rt_ ## type_name ## _ ## func_name
 #endif
 
-#define EP_RT_DECLARE_QUEUE_PREFIX(prefix_name, queue_name, queue_type, item_type) \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, alloc) (queue_type *queue); \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, free) (queue_type *queue); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, pop_head) (queue_type *queue, item_type *item); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_head) (queue_type *queue, item_type item); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_tail) (queue_type *queue, item_type item); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_empty) (const queue_type *queue); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_valid) (const queue_type *queue);
-
-#define EP_RT_DECLARE_QUEUE(queue_name, queue_type, item_type) \
-	EP_RT_DECLARE_QUEUE_PREFIX(ep, queue_name, queue_type, item_type)
-
-#define EP_RT_DEFINE_QUEUE ep_rt_redefine
-
 #ifndef EP_RT_USE_CUSTOM_HASH_MAP_CALLBACKS
 typedef uint32_t (*ep_rt_hash_map_hash_callback_t)(const void *);
 typedef bool (*ep_rt_hash_map_equal_callback_t)(const void *, const void *);
@@ -241,12 +227,6 @@ EP_RT_DECLARE_HASH_MAP_ITERATOR(stack_hash, ep_rt_stack_hash_map_t, ep_rt_stack_
 #define ep_rt_stack_hash_key_hash ep_stack_hash_key_hash
 #define ep_rt_stack_hash_key_equal ep_stack_hash_key_equal
 #endif
-
-/*
- * EventPipeProvider.
- */
-
-EP_RT_DECLARE_QUEUE (provider_callback_data_queue, ep_rt_provider_callback_data_queue_t, EventPipeProviderCallbackData *)
 
 /*
  * EventPipeProviderConfiguration.

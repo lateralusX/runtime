@@ -5,7 +5,6 @@
 #include "dn-utils.h"
 #include "dn-list.h"
 
-
 #define DN_LIST_EX_FOREACH_BEGIN(list,var_type,var_name) do { \
 	var_type var_name; \
 	for (dn_list_t *__it##var_name = dn_list_first (list); __it##var_name; __it##var_name = dn_list_next (__it##var_name)) { \

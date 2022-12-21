@@ -50,38 +50,6 @@
 prefix_name ## _rt_ ## type_name ## _ ## func_name
 #endif
 
-#define EP_RT_DEFINE_QUEUE_PREFIX(prefix_name, queue_name, queue_type, item_type) \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, alloc) (queue_type *queue) { queue->queue = g_queue_new (); } \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, free) (queue_type *queue) { \
-		EP_ASSERT (queue != NULL); \
-		g_queue_free (queue->queue); \
-		queue->queue = NULL; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, pop_head) (queue_type *queue, item_type *item) { \
-		EP_ASSERT (queue != NULL && item != NULL); \
-		*item = ((item_type)(gsize)g_queue_pop_head (queue->queue)); \
-		return true; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_head) (queue_type *queue, item_type item) { \
-		EP_ASSERT (queue != NULL); \
-		g_queue_push_head (queue->queue, ((gpointer)(gsize)item)); \
-		return true; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, push_tail) (queue_type *queue, item_type item) { \
-		EP_ASSERT (queue != NULL); \
-		g_queue_push_tail (queue->queue, ((gpointer)(gsize)item)); \
-		return true; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_empty) (const queue_type *queue) { \
-		EP_ASSERT (queue != NULL); \
-		return (g_queue_is_empty (queue->queue) == TRUE) ? true : false; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, queue_name, is_valid) (const queue_type *queue) { return (queue != NULL && queue->queue != NULL); }
-
-#undef EP_RT_DEFINE_QUEUE
-#define EP_RT_DEFINE_QUEUE(queue_name, queue_type, item_type) \
-	EP_RT_DEFINE_QUEUE_PREFIX(ep, queue_name, queue_type, item_type)
-
 #define EP_RT_DEFINE_HASH_MAP_BASE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
 	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, alloc) (hash_map_type *hash_map, ep_rt_hash_map_hash_callback_t hash_callback, ep_rt_hash_map_equal_callback_t eq_callback, void (*key_free_callback)(void *), void (*value_free_callback)(void *)) { \
 		EP_ASSERT (hash_map != NULL); \
@@ -685,8 +653,6 @@ ep_rt_stack_hash_key_equal (gconstpointer key1, gconstpointer key2)
 	return !!ep_stack_hash_key_equal (key1, key2);
 }
 #endif
-
-EP_RT_DEFINE_QUEUE (provider_callback_data_queue, ep_rt_provider_callback_data_queue_t, EventPipeProviderCallbackData *)
 
 /*
  * EventPipeProviderConfiguration.

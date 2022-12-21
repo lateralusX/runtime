@@ -19,12 +19,6 @@
 #define ep_rt_stack_hash_map_iterator_t ep_rt_redefine
 
 /*
- * EventPipeProvider.
- */
-
-#define ep_rt_provider_callback_data_queue_t ep_rt_redefine
-
-/*
  * EventPipe.
  */
 
