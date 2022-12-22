@@ -45,103 +45,6 @@
 #undef EP_ALIGN_UP
 #define EP_ALIGN_UP(val,align) ALIGN_TO(val,align)
 
-#ifndef EP_RT_BUILD_TYPE_FUNC_NAME
-#define EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, type_name, func_name) \
-prefix_name ## _rt_ ## type_name ## _ ## func_name
-#endif
-
-#define EP_RT_DEFINE_HASH_MAP_BASE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, alloc) (hash_map_type *hash_map, ep_rt_hash_map_hash_callback_t hash_callback, ep_rt_hash_map_equal_callback_t eq_callback, void (*key_free_callback)(void *), void (*value_free_callback)(void *)) { \
-		EP_ASSERT (hash_map != NULL); \
-		EP_ASSERT (key_free_callback == NULL); \
-		hash_map->table = g_hash_table_new_full ((GHashFunc)hash_callback, (GEqualFunc)eq_callback, (GDestroyNotify)key_free_callback, (GDestroyNotify)value_free_callback); \
-	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, free) (hash_map_type *hash_map) { \
-		EP_ASSERT (hash_map != NULL); \
-		g_hash_table_destroy (hash_map->table); \
-		hash_map->table = NULL; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add) (hash_map_type *hash_map, key_type key, value_type value) { \
-		EP_ASSERT (hash_map != NULL); \
-		EP_ASSERT (!g_hash_table_lookup_extended (hash_map->table, (gconstpointer)key, NULL, NULL)); \
-		g_hash_table_insert (hash_map->table, (gpointer)key, ((gpointer)(gsize)value)); \
-		return true; \
-	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove_all) (hash_map_type *hash_map) { \
-		EP_ASSERT (hash_map != NULL); \
-		g_hash_table_remove_all (hash_map->table); \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, lookup) (const hash_map_type *hash_map, const key_type key, value_type *value) { \
-		EP_ASSERT (hash_map != NULL && value != NULL); \
-		gpointer _value = NULL; \
-		bool result = (g_hash_table_lookup_extended (hash_map->table, (gconstpointer)key, NULL, &_value) == TRUE) ? true : false; \
-		*value = ((value_type)(gsize)_value); \
-		return result; \
-	} \
-	static inline uint32_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, count) (const hash_map_type *hash_map) { \
-		EP_ASSERT (hash_map != NULL); \
-		return (hash_map->table != NULL) ? g_hash_table_size (hash_map->table) : 0; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, is_valid) (const hash_map_type *hash_map) { \
-		EP_ASSERT (hash_map != NULL); \
-		return (hash_map != NULL && hash_map->table != NULL); \
-	}
-
-#define EP_RT_DEFINE_HASH_MAP_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DEFINE_HASH_MAP_BASE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add_or_replace) (hash_map_type *hash_map, key_type key, value_type value) { \
-		EP_ASSERT (hash_map != NULL); \
-		g_hash_table_replace (hash_map->table, (gpointer)key, ((gpointer)(gsize)value)); \
-		return true; \
-	}
-
-#define EP_RT_DEFINE_HASH_MAP_REMOVE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DEFINE_HASH_MAP_BASE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove) (hash_map_type *hash_map, const key_type key) { \
-		EP_ASSERT (hash_map != NULL); \
-		g_hash_table_remove (hash_map->table, (gconstpointer)key); \
-	}
-
-#undef EP_RT_DEFINE_HASH_MAP
-#define EP_RT_DEFINE_HASH_MAP(hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DEFINE_HASH_MAP_PREFIX(ep, hash_map_name, hash_map_type, key_type, value_type)
-
-#undef EP_RT_DEFINE_HASH_MAP_REMOVE
-#define EP_RT_DEFINE_HASH_MAP_REMOVE(hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DEFINE_HASH_MAP_REMOVE_PREFIX(ep, hash_map_name, hash_map_type, key_type, value_type)
-
-#define EP_RT_DEFINE_HASH_MAP_ITERATOR_PREFIX(prefix_name, hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
-	static inline iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_begin) (const hash_map_type *hash_map) { \
-		EP_ASSERT (hash_map != NULL); \
-		iterator_type temp; \
-		g_hash_table_iter_init (&temp.iterator, hash_map->table); \
-		if (hash_map->table && g_hash_table_size (hash_map->table) > 0) \
-			temp.end = !g_hash_table_iter_next (&temp.iterator, &temp.key, &temp.value); \
-		else \
-			temp.end = true; \
-		return temp; \
-	} \
-	static inline bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_end) (const hash_map_type *hash_map, const iterator_type *iterator) { \
-		EP_ASSERT (hash_map != NULL && iterator != NULL); \
-		return iterator->end; \
-	} \
-	static inline void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_next) (iterator_type *iterator) { \
-		EP_ASSERT (iterator != NULL); \
-		iterator->end = !g_hash_table_iter_next (&iterator->iterator, &iterator->key, &iterator->value); \
-	} \
-	static inline key_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_key) (const iterator_type *iterator) { \
-		EP_ASSERT (iterator != NULL); \
-		return ((key_type)(gsize)iterator->key); \
-	} \
-	static inline value_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_value) (const iterator_type *iterator) { \
-		EP_ASSERT (iterator != NULL); \
-		return ((value_type)(gsize)iterator->value); \
-	}
-
-#undef EP_RT_DEFINE_HASH_MAP_ITERATOR
-#define EP_RT_DEFINE_HASH_MAP_ITERATOR(hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
-	EP_RT_DEFINE_HASH_MAP_ITERATOR_PREFIX(ep, hash_map_name, hash_map_type, iterator_type, key_type, value_type)
-
 extern char *_ep_rt_mono_os_cmd_line;
 extern mono_lazy_init_t _ep_rt_mono_os_cmd_line_init;
 extern char *_ep_rt_mono_managed_cmd_line;
@@ -174,8 +77,6 @@ extern int64_t ep_rt_mono_system_timestamp_get (void);
 extern void ep_rt_mono_os_environment_get_utf16 (dn_ptr_array_t *env_array);
 extern MonoNativeTlsKey _ep_rt_mono_thread_holder_tls_id;
 extern EventPipeThread * ep_rt_mono_thread_get_or_create (void);
-extern uint32_t ep_stack_hash_key_hash (const void *key);
-extern bool ep_stack_hash_key_equal (const void *key1, const void *key2);
 
 static
 inline
@@ -627,32 +528,6 @@ ep_rt_provider_invoke_callback (
 		filter_data,
 		callback_data);
 }
-
-/*
- * EventPipeFile.
- */
-
-EP_RT_DEFINE_HASH_MAP_REMOVE(metadata_labels_hash, ep_rt_metadata_labels_hash_map_t, EventPipeEvent *, uint32_t)
-EP_RT_DEFINE_HASH_MAP(stack_hash, ep_rt_stack_hash_map_t, StackHashKey *, StackHashEntry *)
-EP_RT_DEFINE_HASH_MAP_ITERATOR(stack_hash, ep_rt_stack_hash_map_t, ep_rt_stack_hash_map_iterator_t, StackHashKey *, StackHashEntry *)
-
-#ifdef EP_RT_USE_CUSTOM_HASH_MAP_CALLBACKS
-static
-inline
-guint
-ep_rt_stack_hash_key_hash (gconstpointer key)
-{
-	return (guint)ep_stack_hash_key_hash (key);
-}
-
-static
-inline
-gboolean
-ep_rt_stack_hash_key_equal (gconstpointer key1, gconstpointer key2)
-{
-	return !!ep_stack_hash_key_equal (key1, key2);
-}
-#endif
 
 /*
  * EventPipeProviderConfiguration.
@@ -1770,13 +1645,6 @@ ep_rt_mono_thread_yield (void)
 		ep_rt_mono_thread_yield (); \
 	} \
 }
-
-/*
- * ThreadSequenceNumberMap.
- */
-
-EP_RT_DEFINE_HASH_MAP_REMOVE(thread_sequence_number_map, ep_rt_thread_sequence_number_hash_map_t, EventPipeThreadSessionState *, uint32_t)
-EP_RT_DEFINE_HASH_MAP_ITERATOR(thread_sequence_number_map, ep_rt_thread_sequence_number_hash_map_t, ep_rt_thread_sequence_number_hash_map_iterator_t, EventPipeThreadSessionState *, uint32_t)
 
 /*
  * Volatile.

@@ -9,6 +9,7 @@ list(APPEND SHARED_CONTAINER_SOURCES
     dn-slist.c
     dn-list.c
     dn-queue.c
+    dn-unordered-map.c
 )
 
 list(APPEND SHARED_CONTAINER_HEADERS
@@ -26,6 +27,8 @@ list(APPEND SHARED_CONTAINER_HEADERS
     dn-list-ex.h
     dn-queue.h
     dn-queue-ex.h
+    dn-unordered-map.h
+    dn-unordered-map-ex.h
     dn-sort-frag.h
     dn-utils.h
 )

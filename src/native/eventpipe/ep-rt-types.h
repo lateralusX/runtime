@@ -9,16 +9,6 @@
 #define EP_UNLIKELY(expr) ep_rt_redefine
 
 /*
- * EventPipeFile.
- */
-
-#define ep_rt_metadata_labels_hash_map_t ep_rt_redefine
-#define ep_rt_metadata_labels_hash_map_iterator_t ep_rt_redefine
-
-#define ep_rt_stack_hash_map_t ep_rt_redefine
-#define ep_rt_stack_hash_map_iterator_t ep_rt_redefine
-
-/*
  * EventPipe.
  */
 
@@ -51,13 +41,6 @@
 #define ep_rt_thread_start_func_return_t ep_rt_redefine
 
 #define ep_rt_thread_params_t ep_rt_redefine
-
-/*
- * ThreadSequenceNumberMap.
- */
-
-#define ep_rt_thread_sequence_number_hash_map_t ep_rt_redefine
-#define ep_rt_thread_sequence_number_hash_map_iterator_t ep_rt_redefine
 
 /*
  * ErrorHandling.

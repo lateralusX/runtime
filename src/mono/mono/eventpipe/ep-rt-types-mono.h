@@ -29,26 +29,6 @@
 #undef EP_UNLIKELY
 #define EP_UNLIKELY(expr) G_UNLIKELY(expr)
 
-struct _rt_mono_queue_internal_t {
-	GQueue *queue;
-};
-
-#ifdef EP_RT_USE_CUSTOM_HASH_MAP_CALLBACKS
-typedef GHashFunc ep_rt_hash_map_hash_callback_t;
-typedef GEqualFunc ep_rt_hash_map_equal_callback_t;
-#endif
-
-struct _rt_mono_table_internal_t {
-	GHashTable *table;
-};
-
-struct _rt_mono_table_iterator_internal_t {
-	GHashTableIter iterator;
-	gpointer key;
-	gpointer value;
-	bool end;
-};
-
 struct _rt_mono_event_internal_t {
 	gpointer event;
 };
@@ -59,22 +39,6 @@ struct _rt_mono_lock_internal_t {
 	volatile MonoNativeThreadId owning_thread_id;
 #endif
 };
-
-/*
- * EventPipeFile.
- */
-
-#undef ep_rt_metadata_labels_hash_map_t
-typedef struct _rt_mono_table_internal_t ep_rt_metadata_labels_hash_map_t;
-
-#undef ep_rt_metadata_labels_hash_map_iterator_t
-typedef struct _rt_mono_iterator_table_internal_t ep_rt_metadata_labels_hash_map_iterator_t;
-
-#undef ep_rt_stack_hash_map_t
-typedef struct _rt_mono_table_internal_t ep_rt_stack_hash_map_t;
-
-#undef ep_rt_stack_hash_map_iterator_t
-typedef struct _rt_mono_table_iterator_internal_t ep_rt_stack_hash_map_iterator_t;
 
 /*
  * EventPipe.
@@ -125,16 +89,6 @@ typedef struct _rt_mono_thread_params_t {
 	ep_rt_thread_start_func thread_func;
 	void *thread_params;
 } ep_rt_thread_params_t;
-
-/*
- * ThreadSequenceNumberMap.
- */
-
-#undef ep_rt_thread_sequence_number_hash_map_t
-typedef struct _rt_mono_table_internal_t ep_rt_thread_sequence_number_hash_map_t;
-
-#undef ep_rt_thread_sequence_number_hash_map_iterator_t
-typedef struct _rt_mono_table_iterator_internal_t ep_rt_thread_sequence_number_hash_map_iterator_t;
 
 #endif /* ENABLE_PERFTRACING */
 #endif /* __EVENTPIPE_RT_TYPES_MONO_H__ */

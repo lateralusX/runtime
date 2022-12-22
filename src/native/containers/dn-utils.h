@@ -13,7 +13,11 @@
 #include <stdint.h>
 
 #ifndef UINT32_MAX
-#define UINT32_MAX 0xffffffffui32
+#define UINT32_MAX ((uint32_t)0xffffffff)
+#endif
+
+#ifndef INT32_MAX
+#define INT32_MAX ((int32_t)2147483647)
 #endif
 
 #if defined(_WIN32)
@@ -41,6 +45,11 @@ typedef void (DN_CALLBACK_CALLTYPE *dn_free_func_t) (void *data);
 #endif
 
 #define DN_UNREFERENCED_PARAMETER(expr) (void)(expr)
+
+// Until C11 support, use typedef expression for static assertion.
+#define _DN_STATIC_ASSERT_UNQIUE_TYPEDEF0(line) __dn_static_assert_ ## line ## _t
+#define _DN_STATIC_ASSERT_UNQIUE_TYPEDEF(line) _DN_STATIC_ASSERT_UNQIUE_TYPEDEF0(line)
+#define _DN_STATIC_ASSERT(expr) typedef char _DN_STATIC_ASSERT_UNQIUE_TYPEDEF(__LINE__)[(expr) != 0]
 
 static inline bool
 dn_safe_size_t_multiply (size_t lhs, size_t rhs, size_t *result)

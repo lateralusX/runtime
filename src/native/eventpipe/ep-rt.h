@@ -19,55 +19,6 @@
 #define EP_NEVER_INLINE ep_rt_redefine
 #define EP_ALIGN_UP(val,align) ep_rt_redefine
 
-#ifndef EP_RT_BUILD_TYPE_FUNC_NAME
-#define EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, type_name, func_name) \
-prefix_name ## _rt_ ## type_name ## _ ## func_name
-#endif
-
-#ifndef EP_RT_USE_CUSTOM_HASH_MAP_CALLBACKS
-typedef uint32_t (*ep_rt_hash_map_hash_callback_t)(const void *);
-typedef bool (*ep_rt_hash_map_equal_callback_t)(const void *, const void *);
-#endif
-
-#define EP_RT_DECLARE_HASH_MAP_BASE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, alloc) (hash_map_type *hash_map, ep_rt_hash_map_hash_callback_t hash_callback, ep_rt_hash_map_equal_callback_t eq_callback, void (*key_free_callback)(void *), void (*value_free_callback)(void *)); \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, free) (hash_map_type *hash_map); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add) (hash_map_type *hash_map, key_type key, value_type value); \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove_all) (hash_map_type *hash_map); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, lookup) (const hash_map_type *hash_map, const key_type key, value_type *value); \
-	static uint32_t EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, count) (const hash_map_type *hash_map); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, is_valid) (const hash_map_type *hash_map);
-
-#define EP_RT_DECLARE_HASH_MAP_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DECLARE_HASH_MAP_BASE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, add_or_replace) (hash_map_type *hash_map, key_type key, value_type value);
-
-#define EP_RT_DECLARE_HASH_MAP_REMOVE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DECLARE_HASH_MAP_BASE_PREFIX(prefix_name, hash_map_name, hash_map_type, key_type, value_type) \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, remove) (hash_map_type *hash_map, const key_type key);
-
-#define EP_RT_DECLARE_HASH_MAP(hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DECLARE_HASH_MAP_PREFIX(ep, hash_map_name, hash_map_type, key_type, value_type)
-
-#define EP_RT_DEFINE_HASH_MAP ep_rt_redefine
-
-#define EP_RT_DECLARE_HASH_MAP_REMOVE(hash_map_name, hash_map_type, key_type, value_type) \
-	EP_RT_DECLARE_HASH_MAP_REMOVE_PREFIX(ep, hash_map_name, hash_map_type, key_type, value_type)
-
-#define EP_RT_DEFINE_HASH_MAP_REMOVE ep_rt_redefine
-
-#define EP_RT_DECLARE_HASH_MAP_ITERATOR_PREFIX(prefix_name, hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
-	static iterator_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_begin) (const hash_map_type *hash_map); \
-	static bool EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_end) (const hash_map_type *hash_map, const iterator_type *iterator); \
-	static void EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_next) (iterator_type *iterator); \
-	static key_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_key) (const iterator_type *iterator); \
-	static value_type EP_RT_BUILD_TYPE_FUNC_NAME(prefix_name, hash_map_name, iterator_value) (const iterator_type *iterator);
-
-#define EP_RT_DECLARE_HASH_MAP_ITERATOR(hash_map_name, hash_map_type, iterator_type, key_type, value_type) \
-	EP_RT_DECLARE_HASH_MAP_ITERATOR_PREFIX(ep, hash_map_name, hash_map_type, iterator_type, key_type, value_type)
-
-#define EP_RT_DEFINE_HASH_MAP_ITERATOR ep_rt_redefine
-
 /*
  * Little-Endian Conversion.
  */
@@ -214,19 +165,6 @@ ep_rt_provider_invoke_callback (
 	uint64_t match_all_keywords,
 	EventFilterDescriptor *filter_data,
 	void *callback_data);
-
-/*
- * EventPipeFile.
- */
-
-EP_RT_DECLARE_HASH_MAP_REMOVE(metadata_labels_hash, ep_rt_metadata_labels_hash_map_t, EventPipeEvent *, uint32_t)
-EP_RT_DECLARE_HASH_MAP(stack_hash, ep_rt_stack_hash_map_t, StackHashKey *, StackHashEntry *)
-EP_RT_DECLARE_HASH_MAP_ITERATOR(stack_hash, ep_rt_stack_hash_map_t, ep_rt_stack_hash_map_iterator_t, StackHashKey *, StackHashEntry *)
-
-#ifndef EP_RT_USE_CUSTOM_HASH_MAP_CALLBACKS
-#define ep_rt_stack_hash_key_hash ep_stack_hash_key_hash
-#define ep_rt_stack_hash_key_equal ep_stack_hash_key_equal
-#endif
 
 /*
  * EventPipeProviderConfiguration.
@@ -672,14 +610,6 @@ ep_rt_thread_set_activity_id (
 	ep_rt_thread_activity_id_handle_t activity_id_handle,
 	const uint8_t *activity_id,
 	uint32_t activity_id_len);
-
-/*
- * ThreadSequenceNumberMap.
- */
-
-EP_RT_DECLARE_HASH_MAP_REMOVE(thread_sequence_number_map, ep_rt_thread_sequence_number_hash_map_t, EventPipeThreadSessionState *, uint32_t)
-EP_RT_DECLARE_HASH_MAP_ITERATOR(thread_sequence_number_map, ep_rt_thread_sequence_number_hash_map_t, ep_rt_thread_sequence_number_hash_map_iterator_t, EventPipeThreadSessionState *, uint32_t)
-
 
 /*
  * Volatile.

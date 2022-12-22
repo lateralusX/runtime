@@ -399,7 +399,7 @@ buffer_manager_init_sequence_point_thread_list (
 		// underflow.
 		uint32_t sequence_number = ep_thread_session_state_get_volatile_sequence_number (thread_session_state) - 1;
 
-		ep_rt_thread_sequence_number_map_add (ep_sequence_point_get_thread_sequence_numbers_ref (sequence_point), thread_session_state, sequence_number);
+		dn_unordered_map_ex_insert_uint32_t (ep_sequence_point_get_thread_sequence_numbers (sequence_point), thread_session_state, sequence_number);
 		ep_thread_addref (ep_thread_holder_get_thread (ep_thread_session_state_get_thread_holder_ref (thread_session_state)));
 	} DN_LIST_EX_FOREACH_END;
 
@@ -1241,7 +1241,7 @@ ep_buffer_manager_write_all_buffers_to_file_v4 (
 				for (dn_list_t *it = buffer_manager->thread_session_state_list; it; ) {
 					EventPipeThreadSessionState *session_state = dn_list_ex_data (it, EventPipeThreadSessionState *);
 					uint32_t thread_sequence_number = 0;
-					bool exists = ep_rt_thread_sequence_number_map_lookup (ep_sequence_point_get_thread_sequence_numbers_cref (sequence_point), session_state, &thread_sequence_number);
+					bool exists = dn_unordered_map_ex_find_uint32_t (ep_sequence_point_get_thread_sequence_numbers (sequence_point), session_state, &thread_sequence_number);
 					uint32_t last_read_sequence_number = ep_thread_session_state_get_buffer_list (session_state)->last_read_sequence_number;
 					// Sequence numbers can overflow so we can't use a direct last_read > sequence_number comparison
 					// If a thread is able to drop more than 0x80000000 events in between sequence points then we will
@@ -1249,11 +1249,11 @@ ep_buffer_manager_write_all_buffers_to_file_v4 (
 					uint32_t last_read_delta = last_read_sequence_number - thread_sequence_number;
 					if (0 < last_read_delta && last_read_delta < 0x80000000) {
 						if (exists) {
-							ep_rt_thread_sequence_number_map_remove (ep_sequence_point_get_thread_sequence_numbers_ref (sequence_point), session_state);
+							dn_unordered_map_ex_erase (ep_sequence_point_get_thread_sequence_numbers (sequence_point), session_state);
 						} else {
 							ep_thread_addref (ep_thread_holder_get_thread (ep_thread_session_state_get_thread_holder_ref (session_state)));
 						}
-						ep_rt_thread_sequence_number_map_add (ep_sequence_point_get_thread_sequence_numbers_ref (sequence_point), session_state, last_read_sequence_number);
+						dn_unordered_map_ex_insert_uint32_t (ep_sequence_point_get_thread_sequence_numbers (sequence_point), session_state, last_read_sequence_number);
 					}
 
 					it = it->next;
@@ -1295,9 +1295,9 @@ ep_buffer_manager_write_all_buffers_to_file_v4 (
 					// foreach (session_state in session_states_to_delete)
 					DN_PTR_ARRAY_EX_FOREACH_BEGIN (session_states_to_delete, EventPipeThreadSessionState *, thread_session_state) {
 						uint32_t unused_thread_sequence_number = 0;
-						bool exists = ep_rt_thread_sequence_number_map_lookup (ep_sequence_point_get_thread_sequence_numbers_cref (current_sequence_point), thread_session_state, &unused_thread_sequence_number);
+						bool exists = dn_unordered_map_ex_find_uint32_t (ep_sequence_point_get_thread_sequence_numbers (current_sequence_point), thread_session_state, &unused_thread_sequence_number);
 						if (exists) {
-							ep_rt_thread_sequence_number_map_remove (ep_sequence_point_get_thread_sequence_numbers_ref (current_sequence_point), thread_session_state);
+							dn_unordered_map_ex_erase (ep_sequence_point_get_thread_sequence_numbers (current_sequence_point), thread_session_state);
 							// every entry of this map was holding an extra ref to the thread (see: ep-event-instance.{h|c})
 							ep_thread_release (ep_thread_session_state_get_thread (thread_session_state));
 						}

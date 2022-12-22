@@ -37,11 +37,6 @@ typedef struct _dn_ptr_array_priv_t {
 	dn_allocator_t *allocator;
 } dn_ptr_array_priv_t;
 
-// Until C11 support, use typedef expression for static assertion.
-#define _DN_STATIC_ASSERT_UNQIUE_TYPEDEF0(line) __dn_static_assert_ ## line ## _t
-#define _DN_STATIC_ASSERT_UNQIUE_TYPEDEF(line) _DN_STATIC_ASSERT_UNQIUE_TYPEDEF0(line)
-#define _DN_STATIC_ASSERT(expr) typedef char _DN_STATIC_ASSERT_UNQIUE_TYPEDEF(__LINE__)[(expr) != 0]
-
 // Verify that headers defined max size of dn_ptr_array_priv_t is inline with actual type size.
 _DN_STATIC_ASSERT (DN_PTR_ARRAY_EX_MAX_TYPE_ALLOC_SIZE >= DN_ALLOCATOR_ALIGN_SIZE (sizeof (dn_ptr_array_priv_t), DN_ALLOCATOR_MEM_ALIGN8));
 
