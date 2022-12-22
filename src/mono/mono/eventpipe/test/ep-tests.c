@@ -85,7 +85,7 @@ test_stress_create_delete_provider (void)
 
 	for (uint32_t i = 0; i < 1000; ++i) {
 		char *provider_name = g_strdup_printf (TEST_PROVIDER_NAME "_%i", i);
-		test_providers [i] = ep_create_provider (provider_name, NULL, NULL, NULL);
+		test_providers [i] = ep_create_provider (provider_name, NULL, NULL);
 		g_free (provider_name);
 
 		if (!test_providers [i]) {

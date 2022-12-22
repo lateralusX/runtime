@@ -19,7 +19,7 @@ session_provider_free_func (void *session_provider);
 static
 int32_t
 DN_CALLBACK_CALLTYPE
-session_provider_compare_name (
+session_provider_compare_name_func (
 	const void *a,
 	const void *b);
 
@@ -38,7 +38,7 @@ session_provider_free_func (void *session_provider)
 static
 int32_t
 DN_CALLBACK_CALLTYPE
-session_provider_compare_name (
+session_provider_compare_name_func (
 	const void *a,
 	const void *b)
 {
@@ -173,7 +173,7 @@ ep_session_provider_list_find_by_name (
 	dn_list_t *list,
 	const ep_char8_t *name)
 {
-	dn_list_t *item = dn_list_find_custom (list, name, session_provider_compare_name);
+	dn_list_t *item = dn_list_find_custom (list, name, session_provider_compare_name_func);
 	return (item != NULL) ? dn_list_ex_data(item, EventPipeSessionProvider *) : NULL;
 }
 

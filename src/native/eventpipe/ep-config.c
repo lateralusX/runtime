@@ -46,7 +46,7 @@ config_unregister_provider (
 static
 int32_t
 DN_CALLBACK_CALLTYPE
-config_compare_provider_name (
+config_compare_provider_name_func (
 	const void *a,
 	const void *b);
 
@@ -173,7 +173,7 @@ config_unregister_provider (
 static
 int32_t
 DN_CALLBACK_CALLTYPE
-config_compare_provider_name (
+config_compare_provider_name_func (
 	const void *a,
 	const void *b)
 {
@@ -185,7 +185,7 @@ EventPipeProvider *
 config_find_provider_by_name (dn_list_t *list,
 	const ep_char8_t *name)
 {
-	dn_list_t *item = dn_list_find_custom (list, name, config_compare_provider_name);
+	dn_list_t *item = dn_list_find_custom (list, name, config_compare_provider_name_func);
 	return (item != NULL) ? dn_list_ex_data (item, EventPipeProvider *) : NULL;
 }
 

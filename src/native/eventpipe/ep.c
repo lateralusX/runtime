@@ -1615,7 +1615,7 @@ ep_provider_callback_data_queue_try_dequeue (
 	dn_queue_t *queue = ep_provider_callback_data_queue_get_queue (provider_callback_data_queue);
 	ep_return_false_if_nok (!dn_queue_ex_empty (queue));
 
-	EventPipeProviderCallbackData *value = dn_queue_ex_front (queue);
+	EventPipeProviderCallbackData *value = (EventPipeProviderCallbackData *)dn_queue_ex_front (queue);
 	dn_queue_ex_pop_front (queue);
 
 	ep_raise_error_if_nok (value != NULL);

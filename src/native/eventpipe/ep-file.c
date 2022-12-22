@@ -30,6 +30,7 @@ file_free_func (void *object);
 
 static
 void
+DN_CALLBACK_CALLTYPE
 stack_hash_value_free_func (void *entry);
 
 static
@@ -73,6 +74,16 @@ file_get_file_version (EventPipeSerializationFormat format);
 static
 uint32_t
 file_get_file_minimum_version (EventPipeSerializationFormat format);
+
+static
+uint32_t
+DN_CALLBACK_CALLTYPE
+stack_hash_key_hash_func (const void *key);
+
+static
+bool
+DN_CALLBACK_CALLTYPE
+stack_hash_key_equal_func (const void *key1, const void *key2);
 
 /*
  * EventPipeFile.
@@ -121,6 +132,7 @@ file_vtable = {
 
 static
 void
+DN_CALLBACK_CALLTYPE
 stack_hash_value_free_func (void *entry)
 {
 	ep_stack_hash_entry_free ((StackHashEntry *)entry);
@@ -158,7 +170,7 @@ file_get_stack_id (
 	StackHashEntry *entry = NULL;
 	StackHashKey key;
 	ep_stack_hash_key_init (&key, stack_contents);
-	if (!dn_unordered_map_ex_find (stack_hash, &key, &entry)) {
+	if (!dn_unordered_map_ex_find (stack_hash, &key, (void **)&entry)) {
 		stack_id = file->stack_id_counter + 1;
 		file->stack_id_counter = stack_id;
 		entry = ep_stack_hash_entry_alloc (stack_contents, stack_id, ep_stack_hash_key_get_hash (&key));
@@ -340,7 +352,7 @@ ep_file_alloc (
 	instance->metadata_ids = dn_unordered_map_ex_alloc (NULL, NULL, NULL, NULL);
 	ep_raise_error_if_nok (instance->metadata_ids != NULL);
 
-	instance->stack_hash = dn_unordered_map_ex_alloc (ep_stack_hash_key_hash, ep_stack_hash_key_equal, NULL, stack_hash_value_free_func);
+	instance->stack_hash = dn_unordered_map_ex_alloc (stack_hash_key_hash_func, stack_hash_key_equal_func, NULL, stack_hash_value_free_func);
 	ep_raise_error_if_nok (instance->stack_hash != NULL);
 
 	// Start at 0 - The value is always incremented prior to use, so the first ID will be 1.
@@ -590,6 +602,30 @@ hash_bytes (const uint8_t *data, size_t data_len)
 	return hash;
 }
 
+static
+uint32_t
+DN_CALLBACK_CALLTYPE
+stack_hash_key_hash_func (const void *key)
+{
+	EP_ASSERT (key != NULL);
+	return ((const StackHashKey *)key)->hash;
+}
+
+static
+bool
+DN_CALLBACK_CALLTYPE
+stack_hash_key_equal_func (const void *key1, const void *key2)
+{
+	EP_ASSERT (key1 != NULL);
+	EP_ASSERT (key2 != NULL);
+
+	const StackHashKey * stack_hash_key1 = (const StackHashKey *)key1;
+	const StackHashKey * stack_hash_key2 = (const StackHashKey *)key2;
+
+	return stack_hash_key1->stack_size_in_bytes == stack_hash_key2->stack_size_in_bytes &&
+		!memcmp (stack_hash_key1->stack_bytes, stack_hash_key2->stack_bytes, stack_hash_key1->stack_size_in_bytes);
+}
+
 StackHashKey *
 ep_stack_hash_key_init (
 	StackHashKey *key,
@@ -609,26 +645,6 @@ void
 ep_stack_hash_key_fini (StackHashKey *key)
 {
 	;
-}
-
-uint32_t
-ep_stack_hash_key_hash (const void *key)
-{
-	EP_ASSERT (key != NULL);
-	return ((const StackHashKey *)key)->hash;
-}
-
-bool
-ep_stack_hash_key_equal (const void *key1, const void *key2)
-{
-	EP_ASSERT (key1 != NULL);
-	EP_ASSERT (key2 != NULL);
-
-	const StackHashKey * stack_hash_key1 = (const StackHashKey *)key1;
-	const StackHashKey * stack_hash_key2 = (const StackHashKey *)key2;
-
-	return stack_hash_key1->stack_size_in_bytes == stack_hash_key2->stack_size_in_bytes &&
-		!memcmp (stack_hash_key1->stack_bytes, stack_hash_key2->stack_bytes, stack_hash_key1->stack_size_in_bytes);
 }
 
 #endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */

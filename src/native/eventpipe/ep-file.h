@@ -128,12 +128,6 @@ ep_stack_hash_key_init (
 void
 ep_stack_hash_key_fini (StackHashKey *key);
 
-uint32_t
-ep_stack_hash_key_hash (const void *key);
-
-bool
-ep_stack_hash_key_equal (const void *key1, const void *key2);
-
 /*
  * StackHashEntry.
  */

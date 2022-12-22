@@ -71,9 +71,7 @@ calc_prime (int32_t x)
 static uint32_t
 spaced_primes_closest (uint32_t x)
 {
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE (prime_tbl); i++) {
+	for (size_t i = 0; i < ARRAY_SIZE (prime_tbl); i++) {
 		if (x <= prime_tbl [i])
 			return prime_tbl [i];
 	}
