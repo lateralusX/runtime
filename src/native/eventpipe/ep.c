@@ -17,8 +17,8 @@
 
 static bool _ep_can_start_threads = false;
 
-static dn_array_t *_ep_deferred_enable_session_ids = NULL;
-static dn_array_t *_ep_deferred_disable_session_ids = NULL;
+static dn_vector_t *_ep_deferred_enable_session_ids = NULL;
+static dn_vector_t *_ep_deferred_disable_session_ids = NULL;
 
 static EventPipeIpcStreamFactorySuspendedPortsCallback _ep_ipc_stream_factory_suspended_ports_callback = NULL;
 
@@ -1126,7 +1126,7 @@ ep_disable (EventPipeSessionID id)
 	EP_LOCK_ENTER (section1)
 		if (!_ep_can_start_threads && !ipc_stream_factory_any_suspended_ports ())
 		{
-			dn_array_ex_push_back (_ep_deferred_disable_session_ids, id);
+			dn_vector_push_back (_ep_deferred_disable_session_ids, id);
 			ep_raise_error_holding_lock (section1);
 		}
 	EP_LOCK_EXIT (section1)
@@ -1183,7 +1183,7 @@ ep_start_streaming (EventPipeSessionID session_id)
 		if (_ep_can_start_threads)
 			ep_session_start_streaming ((EventPipeSession *)(uintptr_t)session_id);
 		else
-			dn_array_ex_push_back (_ep_deferred_enable_session_ids, session_id);
+			dn_vector_push_back (_ep_deferred_enable_session_ids, session_id);
 	EP_LOCK_EXIT (section1)
 
 ep_on_exit:
@@ -1346,8 +1346,8 @@ ep_init (void)
 	const uint32_t default_profiler_sample_rate_in_nanoseconds = 1000000; // 1 msec.
 	ep_sample_profiler_set_sampling_rate (default_profiler_sample_rate_in_nanoseconds);
 
-	_ep_deferred_enable_session_ids = dn_array_ex_alloc (EventPipeSessionID);
-	_ep_deferred_disable_session_ids = dn_array_ex_alloc (EventPipeSessionID);
+	_ep_deferred_enable_session_ids = dn_vector_alloc_t (EventPipeSessionID);
+	_ep_deferred_disable_session_ids = dn_vector_alloc_t (EventPipeSessionID);
 
 	ep_raise_error_if_nok (_ep_deferred_enable_session_ids && _ep_deferred_disable_session_ids);
 
@@ -1380,11 +1380,11 @@ ep_finish_init (void)
 		_ep_can_start_threads = true;
 		if (ep_volatile_load_eventpipe_state () == EP_STATE_INITIALIZED) {
 			if (_ep_deferred_enable_session_ids) {
-				DN_ARRAY_EX_FOREACH_BEGIN (_ep_deferred_enable_session_ids, EventPipeSessionID, session_id) {
+				DN_VECTOR_FOREACH_BEGIN (_ep_deferred_enable_session_ids, EventPipeSessionID, session_id) {
 					if (is_session_id_in_collection (session_id))
 						ep_session_start_streaming ((EventPipeSession *)(uintptr_t)session_id);
-				} DN_ARRAY_EX_FOREACH_END;
-				dn_array_ex_clear (_ep_deferred_enable_session_ids);
+				} DN_VECTOR_FOREACH_END;
+				dn_vector_clear (_ep_deferred_enable_session_ids);
 			}
 		}
 
@@ -1397,10 +1397,10 @@ ep_finish_init (void)
 	// who was waiting on that lock will see that state and not mutate the defer list
 	if (ep_volatile_load_eventpipe_state () == EP_STATE_INITIALIZED) {
 		if (_ep_deferred_disable_session_ids) {
-			DN_ARRAY_EX_FOREACH_BEGIN (_ep_deferred_disable_session_ids, EventPipeSessionID, session_id) {
+			DN_VECTOR_FOREACH_BEGIN (_ep_deferred_disable_session_ids, EventPipeSessionID, session_id) {
 				disable_helper (session_id);
-			} DN_ARRAY_EX_FOREACH_END;
-			dn_array_ex_clear (_ep_deferred_disable_session_ids);
+			} DN_VECTOR_FOREACH_END;
+			dn_vector_clear (_ep_deferred_disable_session_ids);
 		}
 	}
 
@@ -1439,8 +1439,11 @@ ep_shutdown (void)
 		dn_ptr_array_ex_free (&_ep_rundown_execution_checkpoints);
 	}
 
-	dn_array_ex_free (&_ep_deferred_enable_session_ids);
-	dn_array_ex_free (&_ep_deferred_disable_session_ids);
+	dn_vector_free (_ep_deferred_enable_session_ids);
+	_ep_deferred_enable_session_ids = NULL;
+
+	dn_vector_free (_ep_deferred_disable_session_ids);
+	_ep_deferred_disable_session_ids = NULL;
 
 	ep_thread_fini ();
 

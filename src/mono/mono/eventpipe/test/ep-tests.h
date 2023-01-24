@@ -4,8 +4,7 @@
 #include <eglib/test/test.h>
 
 // Container type tests.
-DEFINE_TEST_GROUP_INIT_H(dn_array_tests_init);
-DEFINE_TEST_GROUP_INIT_H(dn_byte_array_tests_init);
+DEFINE_TEST_GROUP_INIT_H(dn_vector_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_ptr_array_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_slist_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_list_tests_init);
@@ -26,8 +25,7 @@ DEFINE_TEST_GROUP_INIT_H(ep_teardown_tests_init);
 
 const
 static Group test_groups [] = {
-	{"array", dn_array_tests_init},
-	{"byte-array", dn_byte_array_tests_init},
+	{"vector", dn_vector_tests_init},
 	{"ptr-array", dn_ptr_array_tests_init},
 	{"slist", dn_slist_tests_init},
 	{"list", dn_list_tests_init},

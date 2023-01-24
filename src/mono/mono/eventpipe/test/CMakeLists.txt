@@ -20,8 +20,7 @@ if(ENABLE_PERFTRACING)
             ep-test-runner.c
             ep-test-driver.c
             ep-thread-tests.c
-            dn-array-tests.c
-            dn-byte-array-tests.c
+            dn-vector-tests.c
             dn-ptr-array-tests.c
             dn-slist-tests.c
             dn-list-tests.c

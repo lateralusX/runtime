@@ -65,7 +65,7 @@ ipc_stream_factory_build_and_add_port (
 
 static
 void
-ipc_log_poll_handles (dn_array_t *ipc_poll_handles);
+ipc_log_poll_handles (dn_vector_t *ipc_poll_handles);
 
 static
 void
@@ -207,7 +207,7 @@ ep_on_error:
 
 static
 void
-ipc_log_poll_handles (dn_array_t *ipc_poll_handles)
+ipc_log_poll_handles (dn_vector_t *ipc_poll_handles)
 {
 	// TODO: Should this be debug only?
 	ep_char8_t buffer [DS_IPC_MAX_TO_STRING_LEN];
@@ -215,7 +215,7 @@ ipc_log_poll_handles (dn_array_t *ipc_poll_handles)
 
 	EP_ASSERT (ipc_poll_handles != NULL);
 
-	DN_ARRAY_EX_FOREACH_BEGIN (ipc_poll_handles, DiagnosticsIpcPollHandle, ipc_poll_handle) {
+	DN_VECTOR_FOREACH_BEGIN (ipc_poll_handles, DiagnosticsIpcPollHandle, ipc_poll_handle) {
 		if (ipc_poll_handle.ipc) {
 			if (!(ds_ipc_to_string (ipc_poll_handle.ipc, buffer, (uint32_t)ARRAY_SIZE (buffer)) > 0))
 				buffer [0] = '\0';
@@ -226,7 +226,7 @@ ipc_log_poll_handles (dn_array_t *ipc_poll_handles)
 			DS_LOG_DEBUG_2 ("\tCLIENT IpcPollHandle[%d] = %s", connection_id, buffer);
 		}
 		connection_id++;
-	} DN_ARRAY_EX_FOREACH_END;
+	} DN_VECTOR_FOREACH_END;
 }
 
 bool
@@ -273,7 +273,7 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 					dn_ptr_array_ex_clear (port_config_parts);
 					ipc_stream_factory_split_port_config (port_config, ",", port_config_parts);
 
-					uint32_t port_config_parts_index = dn_array_ex_size (port_config_parts);
+					uint32_t port_config_parts_index = dn_ptr_array_ex_size (port_config_parts);
 					if (port_config_parts_index != 0) {
 						DiagnosticsPortBuilder port_builder;
 						if (ds_port_builder_init (&port_builder)) {
@@ -352,7 +352,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 	bool connect_success = true;
 	uint32_t poll_attempts = 0;
 
-	dn_array_t *ipc_poll_handles = dn_array_ex_alloc_capacity (DiagnosticsIpcPollHandle, _ds_default_poll_handle_array_size);
+	dn_vector_t *ipc_poll_handles = dn_vector_alloc_capacity_t (DiagnosticsIpcPollHandle, _ds_default_poll_handle_array_size);
 	ep_raise_error_if_nok (ipc_poll_handles);
 
 	while (!stream) {
@@ -360,7 +360,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 		DN_PTR_ARRAY_EX_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
 			DiagnosticsIpcPollHandle ipc_poll_handle;
 			if (ds_port_get_ipc_poll_handle_vcall (port, &ipc_poll_handle, callback))
-				ep_raise_error_if_nok (dn_array_ex_push_back (ipc_poll_handles, ipc_poll_handle));
+				ep_raise_error_if_nok (dn_vector_push_back (ipc_poll_handles, ipc_poll_handle));
 			else
 				connect_success = false;
 		} DN_PTR_ARRAY_EX_FOREACH_END;
@@ -370,11 +370,11 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 			ipc_stream_factory_get_next_timeout (poll_timeout_ms);
 
 		int32_t ret_val;
-		if (dn_array_ex_size (ipc_poll_handles) > 0) {
+		if (dn_vector_size (ipc_poll_handles) > 0) {
 			poll_attempts++;
 			DS_LOG_DEBUG_2 ("ds_ipc_stream_factory_get_next_available_stream - Poll attempt: %d, timeout: %dms.", poll_attempts, poll_timeout_ms);
 			ipc_log_poll_handles (ipc_poll_handles);
-			ret_val = ds_ipc_poll (dn_array_ex_data (ipc_poll_handles, DiagnosticsIpcPollHandle *), dn_array_ex_size (ipc_poll_handles), poll_timeout_ms, callback);
+			ret_val = ds_ipc_poll (dn_vector_data_t (ipc_poll_handles, DiagnosticsIpcPollHandle), dn_vector_size (ipc_poll_handles), poll_timeout_ms, callback);
 		} else {
 			if (poll_timeout_ms == DS_IPC_TIMEOUT_INFINITE)
 				poll_timeout_ms = DS_IPC_POLL_TIMEOUT_MAX_MS;
@@ -387,7 +387,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 
 		if (ret_val != 0) {
 			uint32_t connection_id = 0;
-			DN_ARRAY_EX_FOREACH_BEGIN (ipc_poll_handles, DiagnosticsIpcPollHandle, ipc_poll_handle) {
+			DN_VECTOR_FOREACH_BEGIN (ipc_poll_handles, DiagnosticsIpcPollHandle, ipc_poll_handle) {
 				DiagnosticsPort *port = (DiagnosticsPort *)ipc_poll_handle.user_data;
 				switch (ipc_poll_handle.events) {
 				case DS_IPC_POLL_EVENTS_HANGUP:
@@ -421,7 +421,7 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 				}
 
 				connection_id++;
-			} DN_ARRAY_EX_FOREACH_END;
+			} DN_VECTOR_FOREACH_END;
 		}
 
 		if (!stream && saw_error) {
@@ -430,12 +430,12 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 		}
 
 		// clear the view.
-		dn_array_ex_clear (ipc_poll_handles);
+		dn_vector_clear (ipc_poll_handles);
 	}
 
 ep_on_exit:
 	DS_LOG_DEBUG_2 ("ds_ipc_stream_factory_get_next_available_stream - EXIT :: Poll attempt: %d, stream using handle %d.", poll_attempts, stream ? ds_ipc_stream_get_handle_int32_t (stream) : -1);
-	dn_array_ex_free (&ipc_poll_handles);
+	dn_vector_free (ipc_poll_handles);
 	return stream;
 
 ep_on_error:
