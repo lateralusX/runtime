@@ -3,6 +3,7 @@
 #define __DN_ALLOCATOR_H__
 
 #include "dn-utils.h"
+#include "dn-malloc.h"
 
 #define DN_ALLOCATOR_MEM_ALIGN8 8
 #define DN_ALLOCATOR_MEM_ALIGN16 16
@@ -21,6 +22,7 @@ struct _dn_allocator_vtable_t {
 	void *(*_alloc)(dn_allocator_t *, size_t);
 	void *(*_realloc)(dn_allocator_t *, void *, size_t);
 	void (*_free)(dn_allocator_t *, void *);
+	bool (*_init)(dn_allocator_t *);
 };
 
 struct _dn_allocator_t {
@@ -48,7 +50,9 @@ dn_allocator_alloc (
 	dn_allocator_t *allocator,
 	size_t size)
 {
-	return allocator->_vtable->_alloc (allocator, size);
+	return allocator ?
+		allocator->_vtable->_alloc (allocator, size) :
+		dn_malloc (size);
 }
 
 static inline void *
@@ -57,7 +61,9 @@ dn_allocator_realloc (
 	void *block,
 	size_t size)
 {
-	return allocator->_vtable->_realloc (allocator, block, size);
+	return allocator ?
+		allocator->_vtable->_realloc (allocator, block, size) :
+		dn_realloc (block, size);
 }
 
 static inline void
@@ -65,7 +71,17 @@ dn_allocator_free (
 	dn_allocator_t *allocator,
 	void *block)
 {
-	allocator->_vtable->_free (allocator, block);
+	allocator ?
+		allocator->_vtable->_free (allocator, block) :
+		dn_free (block);
+}
+
+static inline bool
+dn_allocator_init (dn_allocator_t *allocator)
+{
+	return allocator ?
+		allocator->_vtable->_init (allocator) :
+		true;
 }
 
 dn_allocator_static_t *
@@ -90,5 +106,8 @@ dn_allocator_static_dynamic_reset (dn_allocator_static_dynamic_t *allocator);
 	uint8_t __buffer_##var_name [buffer_size]; \
 	dn_allocator_static_dynamic_t var_name; \
 	dn_allocator_static_dynamic_init (&var_name, __buffer_##var_name, buffer_size);
+
+#define DN_DEFAULT_ALLOCATOR NULL
+#define DN_LOCAL_ALLOCATOR(var_name, buffer_size) DN_ALLOCATOR_STATIC_DYNAMIC (var_name, buffer_size)
 
 #endif /* __DN_ALLOCATOR_H__ */

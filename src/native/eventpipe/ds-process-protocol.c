@@ -361,11 +361,11 @@ env_info_env_block_get_size (DiagnosticsEnvironmentInfoPayload *payload)
 	size_t size = 0;
 
 	size += sizeof (uint32_t);
-	size += (sizeof (uint32_t) * dn_ptr_array_ex_size (payload->env_array));
+	size += (sizeof (uint32_t) * dn_ptr_vector_size (payload->env_array));
 
-	DN_PTR_ARRAY_EX_FOREACH_BEGIN (payload->env_array, ep_char16_t *, env_value) {
+	DN_PTR_VECTOR_FOREACH_BEGIN (payload->env_array, ep_char16_t *, env_value) {
 		size += ((ep_rt_utf16_string_len (env_value) + 1) * sizeof (ep_char16_t));
-	} DN_PTR_ARRAY_EX_FOREACH_END;
+	} DN_PTR_VECTOR_FOREACH_END;
 
 	EP_ASSERT (size <= UINT32_MAX);
 	return (uint32_t)size;
@@ -425,13 +425,13 @@ env_info_stream_env_block (
 	uint32_t bytes_written = 0;
 
 	// Array<Array<WCHAR>>
-	uint32_t env_len = dn_ptr_array_ex_size (env_info->env_array);
+	uint32_t env_len = dn_ptr_vector_size (env_info->env_array);
 	env_len = ep_rt_val_uint32_t (env_len);
 	success &= ds_ipc_stream_write (stream, (const uint8_t *)&env_len, sizeof (env_len), &bytes_written, EP_INFINITE_WAIT);
 
-	DN_PTR_ARRAY_EX_FOREACH_BEGIN (env_info->env_array, ep_char16_t *, env_value) {
+	DN_PTR_VECTOR_FOREACH_BEGIN (env_info->env_array, ep_char16_t *, env_value) {
 		success &= ds_ipc_message_try_write_string_utf16_t_to_stream (stream, env_value);
-	} DN_PTR_ARRAY_EX_FOREACH_END;
+	} DN_PTR_VECTOR_FOREACH_END;
 
 	return success;
 }
@@ -441,7 +441,7 @@ ds_env_info_payload_init (DiagnosticsEnvironmentInfoPayload *payload)
 {
 	ep_return_null_if_nok (payload != NULL);
 
-	payload->env_array = dn_ptr_array_ex_alloc ();
+	payload->env_array = dn_ptr_vector_alloc ();
 	ep_return_null_if_nok (payload->env_array);
 
 	ep_rt_os_environment_get_utf16 (payload->env_array);
@@ -455,11 +455,12 @@ ds_env_info_payload_init (DiagnosticsEnvironmentInfoPayload *payload)
 void
 ds_env_info_payload_fini (DiagnosticsEnvironmentInfoPayload *payload)
 {
-	DN_PTR_ARRAY_EX_FOREACH_BEGIN (payload->env_array, ep_char16_t *, env_value) {
+	DN_PTR_VECTOR_FOREACH_BEGIN (payload->env_array, ep_char16_t *, env_value) {
 		ep_rt_utf16_string_free (env_value);
-	} DN_PTR_ARRAY_EX_FOREACH_END;
+	} DN_PTR_VECTOR_FOREACH_END;
 
-	dn_ptr_array_ex_free (&payload->env_array);
+	dn_ptr_vector_free (payload->env_array);
+	payload->env_array = NULL;
 }
 
 /*

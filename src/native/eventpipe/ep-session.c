@@ -311,7 +311,7 @@ ep_on_error:
 void
 ep_session_execute_rundown (
 	EventPipeSession *session,
-	dn_ptr_array_t *execution_checkpoints)
+	dn_ptr_vector_t *execution_checkpoints)
 {
 	EP_ASSERT (session != NULL);
 
@@ -331,13 +331,13 @@ ep_session_suspend_write_event (EventPipeSession *session)
 	// Need to disable the session before calling this method.
 	EP_ASSERT (!ep_is_session_enabled ((EventPipeSessionID)session));
 
-	DN_PTR_ARRAY_EX_LOCAL_ALLOCATOR (allocator, DN_PTR_ARRAY_EX_DEFAULT_LOCAL_ARRAY_BUFFER_SIZE);
+	DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size);
 
-	dn_ptr_array_t *threads = dn_ptr_array_ex_alloc_capacity_custom ((dn_allocator_t *)&allocator, DN_PTR_ARRAY_EX_DEFAULT_LOCAL_ARRAY_CAPACITY);
+	dn_ptr_vector_t *threads = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
 
 	if (threads) {
 		ep_thread_get_threads (threads);
-		DN_PTR_ARRAY_EX_FOREACH_BEGIN (threads, EventPipeThread *, thread) {
+		DN_PTR_VECTOR_FOREACH_BEGIN (threads, EventPipeThread *, thread) {
 			if (thread) {
 				// Wait for the thread to finish any writes to this session
 				EP_YIELD_WHILE (ep_thread_get_session_write_in_progress (thread) == session->index);
@@ -346,9 +346,9 @@ ep_session_suspend_write_event (EventPipeSession *session)
 				// session once its done with the current write
 				ep_thread_release (thread);
 			}
-		} DN_PTR_ARRAY_EX_FOREACH_END;
+		} DN_PTR_VECTOR_FOREACH_END;
 
-		dn_ptr_array_ex_free (&threads);
+		dn_ptr_vector_free (threads);
 	}
 
 	if (session->buffer_manager)

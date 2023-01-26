@@ -277,7 +277,7 @@ ep_rt_is_running (void);
 
 static
 void
-ep_rt_execute_rundown (dn_ptr_array_t *execution_checkpoints);
+ep_rt_execute_rundown (dn_ptr_vector_t *execution_checkpoints);
 
 /*
  * Objects.
@@ -391,7 +391,7 @@ ep_rt_temp_path_get (
 
 static
 void
-ep_rt_os_environment_get_utf16 (dn_ptr_array_t *env_array);
+ep_rt_os_environment_get_utf16 (dn_ptr_vector_t *os_env);
 
 static
 const ep_char8_t *

@@ -5,7 +5,7 @@
 
 // Container type tests.
 DEFINE_TEST_GROUP_INIT_H(dn_vector_tests_init);
-DEFINE_TEST_GROUP_INIT_H(dn_ptr_array_tests_init);
+DEFINE_TEST_GROUP_INIT_H(dn_ptr_vector_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_slist_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_list_tests_init);
 
@@ -26,7 +26,7 @@ DEFINE_TEST_GROUP_INIT_H(ep_teardown_tests_init);
 const
 static Group test_groups [] = {
 	{"vector", dn_vector_tests_init},
-	{"ptr-array", dn_ptr_array_tests_init},
+	{"ptr-vector", dn_ptr_vector_tests_init},
 	{"slist", dn_slist_tests_init},
 	{"list", dn_list_tests_init},
 	{"setup", ep_setup_tests_init},

@@ -168,18 +168,18 @@ ep_thread_get_or_create (void)
 }
 
 void
-ep_thread_get_threads (dn_ptr_array_t *threads)
+ep_thread_get_threads (dn_ptr_vector_t *threads)
 {
 	EP_ASSERT (threads != NULL);
 
 	EP_SPIN_LOCK_ENTER (&_ep_threads_lock, section1)
-		DN_PTR_ARRAY_EX_FOREACH_BEGIN (threads, EventPipeThread *, thread) {
+		DN_PTR_VECTOR_FOREACH_BEGIN (threads, EventPipeThread *, thread) {
 			if (thread) {
 				// Add ref so the thread doesn't disappear when we release the lock
 				ep_thread_addref (thread);
-				dn_ptr_array_ex_push_back (threads, thread);
+				dn_ptr_vector_push_back (threads, thread);
 			}
-		} DN_PTR_ARRAY_EX_FOREACH_END;
+		} DN_PTR_VECTOR_FOREACH_END;
 	EP_SPIN_LOCK_EXIT (&_ep_threads_lock, section1)
 
 ep_on_exit:

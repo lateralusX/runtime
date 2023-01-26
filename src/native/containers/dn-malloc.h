@@ -11,15 +11,14 @@
 static inline void
 dn_free (void *block)
 {
-	if (block != NULL)
-		free (block);
+	free (block);
 }
 
 static inline void *
 dn_malloc (size_t size)
 {
 	if (!size)
-		return NULL;
+		return malloc (1);
 
 	return malloc (size);
 }
@@ -27,10 +26,8 @@ dn_malloc (size_t size)
 static inline void *
 dn_realloc (void *block, size_t size)
 {
-	if (!size) {
-		dn_free (block);
-		return NULL;
-	}
+	if (!size)
+		return realloc (block, 1);
 
 	return realloc (block, size);
 }

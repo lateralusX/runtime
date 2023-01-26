@@ -22,7 +22,7 @@ static dn_vector_t *_ep_deferred_disable_session_ids = NULL;
 
 static EventPipeIpcStreamFactorySuspendedPortsCallback _ep_ipc_stream_factory_suspended_ports_callback = NULL;
 
-static dn_ptr_array_t *_ep_rundown_execution_checkpoints = NULL;
+static dn_ptr_vector_t *_ep_rundown_execution_checkpoints = NULL;
 
 /*
  * Forward declares of all static functions.
@@ -1351,7 +1351,7 @@ ep_init (void)
 
 	ep_raise_error_if_nok (_ep_deferred_enable_session_ids && _ep_deferred_disable_session_ids);
 
-	_ep_rundown_execution_checkpoints = dn_ptr_array_ex_alloc ();
+	_ep_rundown_execution_checkpoints = dn_ptr_vector_alloc ();
 	ep_raise_error_if_nok (_ep_rundown_execution_checkpoints);
 
 	EP_LOCK_ENTER (section1)
@@ -1432,11 +1432,12 @@ ep_shutdown (void)
 	}
 
 	if (_ep_rundown_execution_checkpoints) {
-		DN_PTR_ARRAY_EX_FOREACH_BEGIN (_ep_rundown_execution_checkpoints, EventPipeExecutionCheckpoint *, checkpoint) {
+		DN_PTR_VECTOR_FOREACH_BEGIN (_ep_rundown_execution_checkpoints, EventPipeExecutionCheckpoint *, checkpoint) {
 			if (checkpoint)
 				ep_rt_utf8_string_free (checkpoint->name);
-		} DN_PTR_ARRAY_EX_FOREACH_END;
-		dn_ptr_array_ex_free (&_ep_rundown_execution_checkpoints);
+		} DN_PTR_VECTOR_FOREACH_END;
+		dn_ptr_vector_free (_ep_rundown_execution_checkpoints);
+		_ep_rundown_execution_checkpoints = NULL;
 	}
 
 	dn_vector_free (_ep_deferred_enable_session_ids);
@@ -1571,7 +1572,7 @@ ep_add_rundown_execution_checkpoint (
 	ep_raise_error_if_nok (exec_checkpoint != NULL);
 
 	EP_LOCK_ENTER (section1)
-		ep_raise_error_if_nok_holding_lock (dn_ptr_array_ex_push_back (_ep_rundown_execution_checkpoints, exec_checkpoint), section1);
+		ep_raise_error_if_nok_holding_lock (dn_ptr_vector_push_back (_ep_rundown_execution_checkpoints, exec_checkpoint), section1);
 		exec_checkpoint = NULL;
 	EP_LOCK_EXIT (section1)
 

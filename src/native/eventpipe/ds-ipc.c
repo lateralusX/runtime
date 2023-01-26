@@ -15,7 +15,7 @@
  */
 
 static volatile uint32_t _ds_shutting_down_state = 0;
-static dn_ptr_array_t *_ds_port_array = NULL;
+static dn_ptr_vector_t *_ds_port_array = NULL;
 
 // set this in get_next_available_stream, and then expose a callback that
 // allows us to track which connections have sent their ResumeRuntime commands
@@ -54,7 +54,7 @@ void
 ipc_stream_factory_split_port_config (
 	ep_char8_t *config,
 	const ep_char8_t *delimiters,
-	dn_ptr_array_t *config_array);
+	dn_ptr_vector_t *config_array);
 
 static
 bool
@@ -135,7 +135,7 @@ void
 ipc_stream_factory_split_port_config (
 	ep_char8_t *config,
 	const ep_char8_t *delimiters,
-	dn_ptr_array_t *config_array)
+	dn_ptr_vector_t *config_array)
 {
 	ep_char8_t *part = NULL;
 	ep_char8_t *context = NULL;
@@ -147,7 +147,7 @@ ipc_stream_factory_split_port_config (
 
 	part = ep_rt_utf8_string_strtok (cursor, delimiters, &context);
 	while (part) {
-		dn_ptr_array_ex_push_back (config_array, part);
+		dn_ptr_vector_push_back (config_array, part);
 		part = ep_rt_utf8_string_strtok (NULL, delimiters, &context);
 	}
 }
@@ -178,7 +178,7 @@ ipc_stream_factory_build_and_add_port (
 		ipc = ds_ipc_alloc (builder->path, DS_IPC_CONNECTION_MODE_LISTEN, callback);
 		ep_raise_error_if_nok (ipc != NULL);
 		ep_raise_error_if_nok (ds_ipc_listen (ipc, callback));
-		ep_raise_error_if_nok (dn_ptr_array_ex_push_back (_ds_port_array, (DiagnosticsPort *)ds_listen_port_alloc (ipc, builder)));
+		ep_raise_error_if_nok (dn_ptr_vector_push_back (_ds_port_array, (DiagnosticsPort *)ds_listen_port_alloc (ipc, builder)));
 #else
 		DS_LOG_INFO_0 ("ipc_stream_factory_build_and_add_port - LISTEN ports disabled");
 		ep_raise_error ();
@@ -187,7 +187,7 @@ ipc_stream_factory_build_and_add_port (
 #ifndef DS_IPC_DISABLE_CONNECT_PORTS
 		ipc = ds_ipc_alloc (builder->path, DS_IPC_CONNECTION_MODE_CONNECT, callback);
 		ep_raise_error_if_nok (ipc != NULL);
-		ep_raise_error_if_nok (dn_ptr_array_ex_push_back (_ds_port_array, (DiagnosticsPort *)ds_connect_port_alloc (ipc, builder)));
+		ep_raise_error_if_nok (dn_ptr_vector_push_back (_ds_port_array, (DiagnosticsPort *)ds_connect_port_alloc (ipc, builder)));
 #else
 		DS_LOG_INFO_0 ("ipc_stream_factory_build_and_add_port - CONNECT ports disabled");
 		ep_raise_error ();
@@ -233,7 +233,7 @@ bool
 ds_ipc_stream_factory_init (void)
 {
 	ep_ipc_stream_factory_callback_set (ds_ipc_stream_factory_any_suspended_ports);
-	_ds_port_array = dn_ptr_array_ex_alloc ();
+	_ds_port_array = dn_ptr_vector_alloc ();
 	return _ds_port_array != NULL;
 }
 
@@ -243,11 +243,12 @@ ds_ipc_stream_factory_fini (void)
 	// TODO: Race between server thread and shutdown, _ds_port_array and ports can not be freed without resolving
 	// that race first. Diagnostic server thread is currently designed to not break waits on
 	// shutdown unless clients activity wakes server thread.
-	/*DN_PTR_ARRAY_EX_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
+	/*DN_VECTOR_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
 		ds_port_free_vcall (port);
 	} DN_PTR_ARRAY_EX_FOREACH_END;
 
-	dn_ptr_array_ex_free (&_ds_port_array);*/
+	dn_ptr_vector_free (_ds_port_array);
+	_ds_port_array = NULL;*/
 
 	ep_ipc_stream_factory_callback_set (NULL);
 }
@@ -260,30 +261,30 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 	ep_char8_t *ports = ds_rt_config_value_get_ports ();
 	if (ports) {
 
-		DN_PTR_ARRAY_EX_LOCAL_ALLOCATOR (allocator, DN_PTR_ARRAY_EX_DEFAULT_LOCAL_ARRAY_BUFFER_SIZE * 2);
+		DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size * 2);
 
-		dn_ptr_array_t *port_configs = dn_ptr_array_ex_alloc_capacity_custom ((dn_allocator_t *)&allocator, DN_PTR_ARRAY_EX_DEFAULT_LOCAL_ARRAY_CAPACITY);
-		dn_ptr_array_t *port_config_parts = dn_ptr_array_ex_alloc_capacity_custom ((dn_allocator_t *)&allocator, DN_PTR_ARRAY_EX_DEFAULT_LOCAL_ARRAY_CAPACITY);
+		dn_ptr_vector_t *port_configs = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
+		dn_ptr_vector_t *port_config_parts = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
 
 		if (port_configs && port_config_parts) {
 			ipc_stream_factory_split_port_config (ports, ";", port_configs);
-			DN_PTR_ARRAY_EX_FOREACH_RBEGIN (port_configs, ep_char8_t *, port_config) {
+			DN_PTR_VECTOR_FOREACH_RBEGIN (port_configs, ep_char8_t *, port_config) {
 				DS_LOG_INFO_1 ("ds_ipc_stream_factory_configure - Attempted to create Diagnostic Port from \"%s\".", port_config ? port_config : "");
 				if (port_config) {
-					dn_ptr_array_ex_clear (port_config_parts);
+					dn_ptr_vector_clear (port_config_parts);
 					ipc_stream_factory_split_port_config (port_config, ",", port_config_parts);
 
-					uint32_t port_config_parts_index = dn_ptr_array_ex_size (port_config_parts);
+					uint32_t port_config_parts_index = dn_ptr_vector_size (port_config_parts);
 					if (port_config_parts_index != 0) {
 						DiagnosticsPortBuilder port_builder;
 						if (ds_port_builder_init (&port_builder)) {
-							DN_PTR_ARRAY_EX_FOREACH_RBEGIN (port_config_parts, ep_char8_t *, port_config_part) {
+							DN_PTR_VECTOR_FOREACH_RBEGIN (port_config_parts, ep_char8_t *, port_config_part) {
 								if (port_config_parts_index == 1)
 									port_builder.path = port_config_part;
 								else
 									ds_port_builder_set_tag (&port_builder, port_config_part);
 								port_config_parts_index--;
-							} DN_PTR_ARRAY_EX_FOREACH_END;
+							} DN_PTR_VECTOR_FOREACH_END;
 							if (!ep_rt_utf8_string_is_null_or_empty (port_builder.path)) {
 									const bool build_success = ipc_stream_factory_build_and_add_port (&port_builder, callback, false);
 									DS_LOG_INFO_1 ("ds_ipc_stream_factory_configure - Diagnostic Port creation %s", build_success ? "succeeded" : "failed");
@@ -299,13 +300,13 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 						result &= false;
 					}
 				}
-			} DN_PTR_ARRAY_EX_FOREACH_END;
+			} DN_PTR_VECTOR_FOREACH_END;
 		} else {
 			result &= false;
 		}
 
-		dn_ptr_array_ex_free (&port_config_parts);
-		dn_ptr_array_ex_free (&port_configs);
+		dn_ptr_vector_free (port_config_parts);
+		dn_ptr_vector_free (port_configs);
 		ep_rt_utf8_string_free (ports);
 	}
 
@@ -357,13 +358,13 @@ ds_ipc_stream_factory_get_next_available_stream (ds_ipc_error_callback_func call
 
 	while (!stream) {
 		connect_success = true;
-		DN_PTR_ARRAY_EX_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
+		DN_PTR_VECTOR_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
 			DiagnosticsIpcPollHandle ipc_poll_handle;
 			if (ds_port_get_ipc_poll_handle_vcall (port, &ipc_poll_handle, callback))
 				ep_raise_error_if_nok (dn_vector_push_back (ipc_poll_handles, ipc_poll_handle));
 			else
 				connect_success = false;
-		} DN_PTR_ARRAY_EX_FOREACH_END;
+		} DN_PTR_VECTOR_FOREACH_END;
 
 		poll_timeout_ms = connect_success ?
 			DS_IPC_TIMEOUT_INFINITE :
@@ -454,9 +455,9 @@ bool
 ds_ipc_stream_factory_any_suspended_ports (void)
 {
 	bool any_suspended_ports = false;
-	DN_PTR_ARRAY_EX_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
+	DN_PTR_VECTOR_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
 		any_suspended_ports |= !(port->suspend_mode == DS_PORT_SUSPEND_MODE_NOSUSPEND || port->has_resumed_runtime);
-	} DN_PTR_ARRAY_EX_FOREACH_END;
+	} DN_PTR_VECTOR_FOREACH_END;
 
 	return any_suspended_ports;
 }
@@ -465,15 +466,15 @@ bool
 ds_ipc_stream_factory_has_active_ports (void)
 {
 	return !load_shutting_down_state () &&
-		dn_ptr_array_ex_size (_ds_port_array) > 0;
+		dn_ptr_vector_size (_ds_port_array) > 0;
 }
 
 void
 ds_ipc_stream_factory_close_ports (ds_ipc_error_callback_func callback)
 {
-	DN_PTR_ARRAY_EX_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
+	DN_PTR_VECTOR_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
 		ds_port_close (port, false, callback);
-	} DN_PTR_ARRAY_EX_FOREACH_END;
+	} DN_PTR_VECTOR_FOREACH_END;
 }
 
 bool
@@ -484,9 +485,9 @@ ds_ipc_stream_factory_shutdown (ds_ipc_error_callback_func callback)
 
 	store_shutting_down_state (true);
 
-	DN_PTR_ARRAY_EX_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
+	DN_PTR_VECTOR_FOREACH_BEGIN (_ds_port_array, DiagnosticsPort *, port) {
 		ds_port_close (port, true, callback);
-	} DN_PTR_ARRAY_EX_FOREACH_END;
+	} DN_PTR_VECTOR_FOREACH_END;
 
 	_ds_current_port = NULL;
 	return true;

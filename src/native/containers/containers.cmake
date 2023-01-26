@@ -4,7 +4,6 @@ set (SHARED_CONTAINER_HEADERS "")
 list(APPEND SHARED_CONTAINER_SOURCES
     dn-allocator.c
     dn-vector.c
-    dn-ptr-array.c
     dn-slist.c
     dn-list.c
     dn-queue.c
@@ -15,8 +14,6 @@ list(APPEND SHARED_CONTAINER_HEADERS
     dn-allocator.h
     dn-vector.h
     dn-malloc.h
-    dn-ptr-array.h
-    dn-ptr-array-ex.h
     dn-slist.h
     dn-slist-ex.h
     dn-list.h

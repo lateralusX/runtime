@@ -108,7 +108,7 @@ EventPipeThread *
 ep_thread_get_or_create (void);
 
 void
-ep_thread_get_threads (dn_ptr_array_t *threads);
+ep_thread_get_threads (dn_ptr_vector_t *threads);
 
 static
 inline

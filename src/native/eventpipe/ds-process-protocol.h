@@ -122,7 +122,7 @@ struct _DiagnosticsEnvironmentInfoPayload_Internal {
 	// the Diagnostics IPC Spec: https://github.com/dotnet/diagnostics/blob/main/documentation/design-docs/ipc-protocol.md
 	uint32_t incoming_bytes;
 	uint16_t future;
-	dn_ptr_array_t *env_array;
+	dn_ptr_vector_t *env_array;
 };
 
 #if !defined(DS_INLINE_GETTER_SETTER) && !defined(DS_IMPL_PROCESS_PROTOCOL_GETTER_SETTER)

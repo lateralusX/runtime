@@ -1179,7 +1179,7 @@ int64_t
 ep_rt_mono_system_timestamp_get (void);
 
 void
-ep_rt_mono_os_environment_get_utf16 (dn_ptr_array_t *env_array);
+ep_rt_mono_os_environment_get_utf16 (dn_ptr_vector_t *os_env);
 
 void
 ep_rt_mono_init_providers_and_events (void);
@@ -1216,7 +1216,7 @@ ep_rt_mono_method_get_full_name (
 	size_t name_len);
 
 void
-ep_rt_mono_execute_rundown (dn_ptr_array_t *execution_checkpoints);
+ep_rt_mono_execute_rundown (dn_ptr_vector_t *execution_checkpoints);
 
 static
 inline
@@ -2620,15 +2620,15 @@ G_END_DECLS
 #endif /* !defined (HOST_WIN32) */
 
 void
-ep_rt_mono_os_environment_get_utf16 (dn_ptr_array_t *env_array)
+ep_rt_mono_os_environment_get_utf16 (dn_ptr_vector_t *os_env)
 {
-	EP_ASSERT (env_array != NULL);
+	EP_ASSERT (os_env != NULL);
 #ifdef HOST_WIN32
 	LPWSTR envs = GetEnvironmentStringsW ();
 	if (envs) {
 		LPWSTR next = envs;
 		while (*next) {
-			dn_ptr_array_ex_push_back (env_array, ep_rt_utf16_string_dup (next));
+			dn_ptr_vector_push_back (os_env, ep_rt_utf16_string_dup (next));
 			next += ep_rt_utf16_string_len (next) + 1;
 		}
 		FreeEnvironmentStringsW (envs);
@@ -2636,7 +2636,7 @@ ep_rt_mono_os_environment_get_utf16 (dn_ptr_array_t *env_array)
 #else
 	gchar **next = NULL;
 	for (next = environ; *next != NULL; ++next)
-		dn_ptr_array_ex_push_back (env_array, ep_rt_utf8_to_utf16le_string (*next, -1));
+		dn_ptr_array_ex_push_back (os_env, ep_rt_utf8_to_utf16le_string (*next, -1));
 #endif
 }
 
@@ -2855,7 +2855,7 @@ ep_rt_mono_sample_profiler_write_sampling_event_for_threads (
 }
 
 void
-ep_rt_mono_execute_rundown (dn_ptr_array_t *execution_checkpoints)
+ep_rt_mono_execute_rundown (dn_ptr_vector_t *execution_checkpoints)
 {
 	ep_char8_t runtime_module_path [256];
 	const uint8_t object_guid [EP_GUID_SIZE] = { 0 };
@@ -2887,14 +2887,14 @@ ep_rt_mono_execute_rundown (dn_ptr_array_t *execution_checkpoints)
 		NULL);
 
 	if (execution_checkpoints) {
-		DN_PTR_ARRAY_EX_FOREACH_BEGIN (execution_checkpoints, EventPipeExecutionCheckpoint *, checkpoint) {
+		DN_PTR_VECTOR_FOREACH_BEGIN (execution_checkpoints, EventPipeExecutionCheckpoint *, checkpoint) {
 			FireEtwExecutionCheckpointDCEnd (
 				clr_instance_get_id (),
 				checkpoint->name,
 				checkpoint->timestamp,
 				NULL,
 				NULL);
-		} DN_PTR_ARRAY_EX_FOREACH_END;
+		} DN_PTR_VECTOR_FOREACH_END;
 	}
 
 	FireEtwDCEndInit_V1 (

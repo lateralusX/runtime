@@ -29,17 +29,17 @@ test_vector_alloc (void)
 {
 	dn_vector_t *vector = NULL;
 
-	vector = dn_vector_alloc (sizeof (int32_t));
+	vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
 	dn_vector_free (vector);
 
-	vector = dn_vector_alloc_t (int32_t);
+	vector = dn_vector_custom_alloc_t (DN_DEFAULT_ALLOCATOR, int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
-	if (0 != dn_vector_index_t (vector, int32_t, 0))
+	if (0 != *dn_vector_index_t (vector, int32_t, 0))
 		return FAILED ("vector was not cleared when allocated");
 
 	dn_vector_free (vector);
@@ -53,7 +53,7 @@ test_vector_init (void)
 {
 	dn_vector_t vector;
 
-	if (!dn_vector_init (&vector, sizeof (dn_vector_t), sizeof (int32_t)))
+	if (!dn_vector_init_t (&vector, int32_t))
 		return FAILED ("init vector");
 	
 	if (vector.size != 0)
@@ -61,13 +61,13 @@ test_vector_init (void)
 
 	dn_vector_fini (&vector);
 
-	if (!dn_vector_init_t (&vector, int32_t))
+	if (!dn_vector_custom_init_t (&vector, DN_DEFAULT_ALLOCATOR, int32_t))
 		return FAILED ("init vector");
 
 	if (vector.size != 0)
 		return FAILED ("vector size didn't match");
 
-	if (0 != dn_vector_index_t (&vector, int32_t, 0))
+	if (0 != *dn_vector_index_t (&vector, int32_t, 0))
 		return FAILED ("vector was not cleared when allocated");
 
 	dn_vector_fini (&vector);
@@ -83,7 +83,7 @@ test_vector_alloc_capacity (void)
 {
 	dn_vector_t *vector = NULL;
 
-	vector = dn_vector_alloc_capacity (sizeof (int32_t), PREALLOC_SIZE);
+	vector = dn_vector_alloc_capacity_t (int32_t, PREALLOC_SIZE);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -96,12 +96,12 @@ test_vector_alloc_capacity (void)
 
 	dn_vector_free (vector);
 
-	vector = dn_vector_alloc_capacity_t (int32_t, PREALLOC_SIZE);
+	vector = dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, int32_t, PREALLOC_SIZE);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
 	for (int32_t i = 0; i < PREALLOC_SIZE; ++i) {
-		if (0 != dn_vector_index_t (vector, int32_t, i))
+		if (0 != *dn_vector_index_t (vector, int32_t, i))
 			return FAILED ("vector was not cleared when allocated");
 	}
 
@@ -116,7 +116,7 @@ test_vector_init_capacity (void)
 {
 	dn_vector_t vector;
 
-	if (!dn_vector_init_capacity (&vector, sizeof (dn_vector_t), sizeof (int32_t), PREALLOC_SIZE))
+	if (!dn_vector_custom_init_capacity_t (&vector, DN_DEFAULT_ALLOCATOR, int32_t, PREALLOC_SIZE))
 		return FAILED ("init vector");
 
 	if (vector.size != 0)
@@ -138,7 +138,7 @@ test_vector_init_capacity (void)
 		return FAILED ("vector size didn't match");
 
 	for (int32_t i = 0; i < PREALLOC_SIZE; ++i) {
-		if (0 != dn_vector_index_t (&vector, int32_t, i))
+		if (0 != *dn_vector_index_t (&vector, int32_t, i))
 			return FAILED ("vector was not cleared when allocated");
 	}
 
@@ -153,7 +153,7 @@ test_vector_free (void)
 {
 	dn_vector_t *vector = NULL;
 
-	vector = dn_vector_alloc (sizeof (int32_t));
+	vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -168,7 +168,7 @@ test_vector_fini (void)
 {
 	dn_vector_t vector;
 
-	if (!dn_vector_init_t (&vector, int32_t))
+	if (!dn_vector_custom_init_t (&vector, DN_DEFAULT_ALLOCATOR, int32_t))
 		return FAILED ("init vector");
 	if (vector.size != 0)
 		return FAILED ("vector size didn't match");
@@ -183,17 +183,14 @@ RESULT
 test_vector_index (void)
 {
 	int32_t v;
-	dn_vector_t *vector = dn_vector_alloc (sizeof (int32_t));
+	dn_vector_t *vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
 	v = 27;
 	dn_vector_push_back (vector, v);
 
-	if (27 != *(int32_t *)(dn_vector_index (vector, 0)))
-		return FAILED ("dn_vector_index failed");
-
-	if (27 != dn_vector_index_t (vector, int32_t, 0))
+	if (27 != *dn_vector_index_t (vector, int32_t, 0))
 		return FAILED ("dn_vector_index failed");
 
 	dn_vector_free (vector);
@@ -212,10 +209,7 @@ test_vector_front (void)
 	for (int32_t i = 0; i < 10; ++i)
 		dn_vector_push_back (vector, i);
 
-	if (0 != *(int32_t *)(dn_vector_front (vector)))
-		return FAILED ("dn_vector_front failed");
-
-	if (0 != dn_vector_front_t (vector, int32_t))
+	if (0 != *dn_vector_front_t (vector, int32_t))
 		return FAILED ("dn_vector_front_t failed");
 
 	dn_vector_free (vector);
@@ -234,10 +228,7 @@ test_vector_back (void)
 	for (int32_t i = 0; i < 10; ++i)
 		dn_vector_push_back (vector, i);
 
-	if (9 != *(int32_t *)(dn_vector_back (vector)))
-		return FAILED ("dn_vector_back failed");
-
-	if (9 != dn_vector_back_t (vector, int32_t))
+	if (9 != *dn_vector_back_t (vector, int32_t))
 		return FAILED ("dn_vector_back_t failed");
 
 	dn_vector_free (vector);
@@ -256,11 +247,11 @@ test_vector_data (void)
 	for (int32_t i = 0; i < 10; ++i)
 		dn_vector_push_back (vector, i);
 
-	int32_t *vector_data = (int32_t *)(dn_vector_data (vector));
+	int32_t *vector_data = dn_vector_data_t (vector, int32_t);
 	vector_data++;
 
 	if (1 != *vector_data)
-		return FAILED ("dn_vector_data failed");
+		return FAILED ("dn_vector_data_t failed");
 
 	vector_data = dn_vector_data_t (vector, int32_t);
 	vector_data += 2;
@@ -434,7 +425,7 @@ test_vector_insert_range (void)
 
 	dn_vector_t *vector = NULL;
 
-	vector = dn_vector_alloc (sizeof (int32_t));
+	vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -444,7 +435,7 @@ test_vector_insert_range (void)
 	dn_vector_insert_range (vector, 3, (const uint8_t *)vs2, ARRAY_SIZE (vs2));
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
-		if (i != dn_vector_index_t (vector, int32_t, i))
+		if (i != *dn_vector_index_t (vector, int32_t, i))
 			return FAILED ("insert failed");
 	}
 
@@ -461,7 +452,7 @@ test_vector_insert_range_end (void)
 	int32_t vs [] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 	dn_vector_t *vector = NULL;
 
-	vector = dn_vector_alloc (sizeof (int32_t));
+	vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -469,7 +460,7 @@ test_vector_insert_range_end (void)
 	dn_vector_insert_range (vector, dn_vector_end (vector), (const uint8_t *)vs, ARRAY_SIZE (vs));
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
-		if (i != dn_vector_index_t (vector, int32_t, i))
+		if (i != *dn_vector_index_t (vector, int32_t, i))
 			return FAILED ("insert_range failed");
 	}
 
@@ -483,26 +474,26 @@ RESULT
 test_vector_insert (void)
 {
 	void *ptr0, *ptr1, *ptr2, *ptr3;
-	dn_vector_t *vector = dn_vector_alloc (sizeof (void *));
+	dn_vector_t *vector = dn_vector_alloc_t (void *);
 	if (vector->size != 0)
 		return FAILED ("1 Vector size didn't match");
 
 	dn_vector_insert (vector, 0, vector);
 
-	if (vector != dn_vector_index_t (vector, void *, 0))
+	if (vector != *dn_vector_index_t (vector, void *, 0))
 		return FAILED ("2 The value in the vector is incorrect");
 
 	dn_vector_insert (vector, 1, vector);
-	if (vector != dn_vector_index_t (vector, void *, 1))
+	if (vector != *dn_vector_index_t (vector, void *, 1))
 		return FAILED ("3 The value in the vector is incorrect");
 
 	dn_vector_insert (vector, 2, vector);
-	if (vector != dn_vector_index_t (vector, void *, 2))
+	if (vector != *dn_vector_index_t (vector, void *, 2))
 		return FAILED ("4 The value in the vector is incorrect");
 
 	dn_vector_free (vector);
 
-	vector = dn_vector_alloc (sizeof (void *));
+	vector = dn_vector_alloc_t (void *);
 	if (vector->size != 0)
 		return FAILED ("5 Vector size didn't match");
 
@@ -515,13 +506,13 @@ test_vector_insert (void)
 	dn_vector_insert (vector, 1, ptr1);
 	dn_vector_insert (vector, 2, ptr2);
 	dn_vector_insert (vector, 1, ptr3);
-	if (ptr0 != dn_vector_index_t (vector, void *, 0))
+	if (ptr0 != *dn_vector_index_t (vector, void *, 0))
 		return FAILED ("6 The value in the vector is incorrect");
-	if (ptr3 != dn_vector_index_t (vector, void *, 1))
+	if (ptr3 != *dn_vector_index_t (vector, void *, 1))
 		return FAILED ("7 The value in the vector is incorrect");
-	if (ptr1 != dn_vector_index_t (vector, void *, 2))
+	if (ptr1 != *dn_vector_index_t (vector, void *, 2))
 		return FAILED ("8 The value in the vector is incorrect");
-	if (ptr2 != dn_vector_index_t (vector, void *, 3))
+	if (ptr2 != *dn_vector_index_t (vector, void *, 3))
 		return FAILED ("9 The value in the vector is incorrect");
 
 	dn_vector_free (vector);
@@ -534,7 +525,7 @@ RESULT
 test_vector_push_back (void)
 {
 	int32_t v;
-	dn_vector_t *vector = dn_vector_alloc (sizeof (int32_t));
+	dn_vector_t *vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -548,7 +539,7 @@ test_vector_push_back (void)
 	if (1 != vector->size)
 		return FAILED ("vector push_back failed");
 
-	if (27 != dn_vector_index_t (vector, int32_t, 0))
+	if (27 != *dn_vector_index_t (vector, int32_t, 0))
 		return FAILED ("dn_vector_index failed");
 
 	dn_vector_free (vector);
@@ -568,7 +559,7 @@ test_vector_push_back_2 (void)
 		dn_vector_push_back (vector, i);
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
-		if (i != dn_vector_index_t (vector, int32_t, i))
+		if (i != *dn_vector_index_t (vector, int32_t, i))
 			return FAILED ("vector push_back failed");
 	}
 
@@ -588,17 +579,17 @@ test_vector_pop_back (void)
 	for (int32_t i = 0; i < 10; ++i)
 		dn_vector_push_back (vector, i);
 
-	if (dn_vector_back_t (vector, int32_t) != 9)
+	if (*dn_vector_back_t (vector, int32_t) != 9)
 		return FAILED ("vector back failed");
 
 	dn_vector_pop_back (vector);
 
-	if (dn_vector_back_t (vector, int32_t) != 8)
+	if (*dn_vector_back_t (vector, int32_t) != 8)
 		return FAILED ("vector pop_back failed");
 
 	dn_vector_pop_back (vector);
 
-	if (dn_vector_back_t (vector, int32_t) != 7)
+	if (*dn_vector_back_t (vector, int32_t) != 7)
 		return FAILED ("vector pop_back failed");
 
 	dn_vector_free (vector);
@@ -611,7 +602,7 @@ RESULT
 test_vector_erase (void)
 {
 	int32_t v [] = { 30, 29, 28, 27, 26, 25 };
-	dn_vector_t *vector = dn_vector_alloc (sizeof (int32_t));
+	dn_vector_t *vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -625,7 +616,7 @@ test_vector_erase (void)
 	if (5 != vector->size)
 		return FAILED ("erase failed to update size");
 
-	if (26 != dn_vector_index_t (vector, int32_t, 3))
+	if (26 != *dn_vector_index_t (vector, int32_t, 3))
 		return FAILED ("erase failed to update the vector");
 
 	dn_vector_free (vector);
@@ -649,7 +640,7 @@ test_vector_erase_2 (void)
 	dn_vector_erase (vector, 7);
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
-		if (vs [i] != dn_vector_index_t (vector, int32_t, i))
+		if (vs [i] != *dn_vector_index_t (vector, int32_t, i))
 			return FAILED ("vector erase failed");
 	}
 
@@ -664,7 +655,7 @@ static
 RESULT
 test_vector_resize (void)
 {
-	dn_vector_t *vector = dn_vector_alloc (sizeof (int32_t));
+	dn_vector_t *vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match #1");
 
@@ -676,7 +667,7 @@ test_vector_resize (void)
 		return FAILED ("vector size didn't match #2");
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
-		if (i != dn_vector_index_t (vector, int32_t, i))
+		if (i != *dn_vector_index_t (vector, int32_t, i))
 			return FAILED ("resize didn't preserve data");
 	}
 
@@ -686,7 +677,7 @@ test_vector_resize (void)
 
 	dn_vector_free (vector);
 
-	vector = dn_vector_alloc (sizeof (int32_t));
+	vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match #4");
 
@@ -694,7 +685,7 @@ test_vector_resize (void)
 
 	const uint8_t *vector_data = vector->data;
 	for (int32_t i = 0; i < PREALLOC_SIZE; ++i) {
-		dn_vector_insert (vector, i, i);
+		*dn_vector_index_t (vector, int32_t, i) = i;
 		if (vector->data != vector_data)
 			return FAILED ("vector resize failed");
 	}
@@ -781,7 +772,7 @@ test_vector_big (void)
 	dn_vector_t *vector;
 	int32_t i;
 
-	vector = dn_vector_alloc (sizeof (int32_t));
+	vector = dn_vector_alloc_t (int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -789,7 +780,7 @@ test_vector_big (void)
 		dn_vector_push_back (vector, i);
 
 	for (i = 0; i < 10000; i++)
-		if (dn_vector_index_t (vector, int32_t, i) != i)
+		if (*dn_vector_index_t (vector, int32_t, i) != i)
 			return FAILED ("vector value didn't match");
 
 	dn_vector_free (vector);

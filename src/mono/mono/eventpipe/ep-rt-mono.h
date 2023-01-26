@@ -69,12 +69,12 @@ extern void ep_rt_mono_init_providers_and_events (void);
 extern bool ep_rt_mono_providers_validate_all_disabled (void);
 extern bool ep_rt_mono_sample_profiler_write_sampling_event_for_threads (ep_rt_thread_handle_t sampling_thread, EventPipeEvent *sampling_event);
 extern bool ep_rt_mono_rand_try_get_bytes (uint8_t *buffer,size_t buffer_size);
-extern void ep_rt_mono_execute_rundown (dn_ptr_array_t *execution_checkpoints);
+extern void ep_rt_mono_execute_rundown (dn_ptr_vector_t *execution_checkpoints);
 extern int64_t ep_rt_mono_perf_counter_query (void);
 extern int64_t ep_rt_mono_perf_frequency_query (void);
 extern void ep_rt_mono_system_time_get (EventPipeSystemTime *system_time);
 extern int64_t ep_rt_mono_system_timestamp_get (void);
-extern void ep_rt_mono_os_environment_get_utf16 (dn_ptr_array_t *env_array);
+extern void ep_rt_mono_os_environment_get_utf16 (dn_ptr_vector_t *os_env);
 extern MonoNativeTlsKey _ep_rt_mono_thread_holder_tls_id;
 extern EventPipeThread * ep_rt_mono_thread_get_or_create (void);
 
@@ -807,7 +807,7 @@ ep_rt_is_running (void)
 static
 inline
 void
-ep_rt_execute_rundown (dn_ptr_array_t *execution_checkpoints)
+ep_rt_execute_rundown (dn_ptr_vector_t *execution_checkpoints)
 {
 	if (ep_rt_config_value_get_rundown () > 0) {
 		// Ask the runtime to emit rundown events.
@@ -1096,9 +1096,9 @@ ep_on_error:
 static
 inline
 void
-ep_rt_os_environment_get_utf16 (dn_ptr_array_t *env_array)
+ep_rt_os_environment_get_utf16 (dn_ptr_vector_t *os_env)
 {
-	ep_rt_mono_os_environment_get_utf16 (env_array);
+	ep_rt_mono_os_environment_get_utf16 (os_env);
 }
 
 /*

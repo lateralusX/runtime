@@ -21,7 +21,7 @@ if(ENABLE_PERFTRACING)
             ep-test-driver.c
             ep-thread-tests.c
             dn-vector-tests.c
-            dn-ptr-array-tests.c
+            dn-ptr-vector-tests.c
             dn-slist-tests.c
             dn-list-tests.c
         )
