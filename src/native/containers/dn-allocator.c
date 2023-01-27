@@ -2,142 +2,142 @@
 #include "dn-malloc.h"
 
 static void *
-static_vtable_alloc (
+fixed_vtable_alloc (
 	dn_allocator_t *allocator,
 	size_t size);
 
 static void *
-static_vtable_realloc (
+fixed_vtable_realloc (
 	dn_allocator_t *allocator,
 	void *block,
 	size_t size);
 
 static void
-static_vtable_free (
+fixed_vtable_free (
 	dn_allocator_t *allocator,
 	void *block);
 
 static bool
-static_vtable_init (dn_allocator_t *allocator);
+fixed_vtable_init (dn_allocator_t *allocator);
 
 static void *
-static_alloc (
-	dn_allocator_static_data_t *data,
+fixed_alloc (
+	dn_allocator_fixed_data_t *data,
 	size_t size);
 
 static void *
-static_realloc (
-	dn_allocator_static_data_t *data,
+fixed_realloc (
+	dn_allocator_fixed_data_t *data,
 	void *block,
 	size_t size);
 
 static void
-static_free (
-	dn_allocator_static_data_t *data,
+fixed_free (
+	dn_allocator_fixed_data_t *data,
 	void *block);
 
 static bool
-static_owns_ptr (
-	dn_allocator_static_data_t *data,
+fixed_owns_ptr (
+	dn_allocator_fixed_data_t *data,
 	void *ptr);
 
 static void *
-static_memcpy (
+fixed_memcpy (
 	void *dst,
 	void *src,
 	size_t size);
 
 static void *
-static_dynamic_vtable_alloc (
+fixed_or_malloc_vtable_alloc (
 	dn_allocator_t *allocator,
 	size_t size);
 
 static void *
-static_dynamic_vtable_realloc (
+fixed_or_malloc_vtable_realloc (
 	dn_allocator_t *allocator,
 	void *block,
 	size_t size);
 
 static void
-static_dynamic_vtable_free (
+fixed_or_malloc_vtable_free (
 	dn_allocator_t *allocator,
 	void *block);
 
 static bool
-static_dynamic_vtable_init (dn_allocator_t *allocator);
+fixed_or_malloc_vtable_init (dn_allocator_t *allocator);
 
 static void *
-static_dynamic_alloc (
-	dn_allocator_static_dynamic_data_t *data,
+fixed_or_malloc_alloc (
+	dn_allocator_fixed_or_malloc_data_t *data,
 	size_t size);
 
 static void *
-static_dynamic_realloc (
-	dn_allocator_static_dynamic_data_t *data,
+fixed_or_malloc_realloc (
+	dn_allocator_fixed_or_malloc_data_t *data,
 	void *block,
 	size_t size);
 
 static void
-static_dynamic_free (
-	dn_allocator_static_dynamic_data_t *data,
+fixed_or_malloc_free (
+	dn_allocator_fixed_or_malloc_data_t *data,
 	void *block);
 
-static dn_allocator_vtable_t static_vtable = {
-	static_vtable_alloc,
-	static_vtable_realloc,
-	static_vtable_free,
-	static_vtable_init
+static dn_allocator_vtable_t fixed_vtable = {
+	fixed_vtable_alloc,
+	fixed_vtable_realloc,
+	fixed_vtable_free,
+	fixed_vtable_init
 };
 
-static dn_allocator_vtable_t static_dynamic_vtable = {
-	static_dynamic_vtable_alloc,
-	static_dynamic_vtable_realloc,
-	static_dynamic_vtable_free,
-	static_dynamic_vtable_init
+static dn_allocator_vtable_t fixed_or_malloc_vtable = {
+	fixed_or_malloc_vtable_alloc,
+	fixed_or_malloc_vtable_realloc,
+	fixed_or_malloc_vtable_free,
+	fixed_or_malloc_vtable_init
 };
 
 static void *
-static_vtable_alloc (
+fixed_vtable_alloc (
 	dn_allocator_t *allocator,
 	size_t size)
 {
-	return static_alloc (&((dn_allocator_static_t *)allocator)->_data, size);
+	return fixed_alloc (&((dn_allocator_fixed_t *)allocator)->_data, size);
 }
 
 static void *
-static_vtable_realloc (
+fixed_vtable_realloc (
 	dn_allocator_t *allocator,
 	void *block,
 	size_t size)
 {
-	return static_realloc (&((dn_allocator_static_t *)allocator)->_data, block, size);
+	return fixed_realloc (&((dn_allocator_fixed_t *)allocator)->_data, block, size);
 }
 
 static void
-static_vtable_free (
+fixed_vtable_free (
 	dn_allocator_t *allocator,
 	void *block)
 {
-	static_free (&((dn_allocator_static_t *)allocator)->_data, block);
+	fixed_free (&((dn_allocator_fixed_t *)allocator)->_data, block);
 }
 
 static bool
-static_vtable_init (dn_allocator_t *allocator)
+fixed_vtable_init (dn_allocator_t *allocator)
 {
 	DN_UNREFERENCED_PARAMETER (allocator);
 	return true;
 }
 
 static void *
-static_alloc (
-	dn_allocator_static_data_t *data,
+fixed_alloc (
+	dn_allocator_fixed_data_t *data,
 	size_t size)
 {
 	void *ptr = data->_ptr;
 	void *new_ptr = (uint8_t *)ptr + DN_ALLOCATOR_ALIGN_SIZE (size + DN_ALLOCATOR_MEM_ALIGN8, DN_ALLOCATOR_MEM_ALIGN8);
 
 	// Check if new memory address triggers OOM.
-	if (!static_owns_ptr (data, new_ptr))
+	if (!fixed_owns_ptr (data, new_ptr))
 		return NULL;
 
 	data->_ptr = new_ptr;
@@ -147,33 +147,33 @@ static_alloc (
 }
 
 static void *
-static_realloc (
-	dn_allocator_static_data_t *data,
+fixed_realloc (
+	dn_allocator_fixed_data_t *data,
 	void *block,
 	size_t size)
 {
-	if (block && !static_owns_ptr (data, block))
+	if (block && !fixed_owns_ptr (data, block))
 		return NULL;
 
 	void *ptr = data->_ptr;
 	void *new_ptr = (uint8_t *)ptr + DN_ALLOCATOR_ALIGN_SIZE (size + DN_ALLOCATOR_MEM_ALIGN8, DN_ALLOCATOR_MEM_ALIGN8);
 
 	// Check if new memory address triggers OOM.
-	if (!static_owns_ptr (data, new_ptr))
+	if (!fixed_owns_ptr (data, new_ptr))
 		return NULL;
 
 	data->_ptr = new_ptr;
 
 	if (block)
-		static_memcpy ((uint8_t *)ptr + DN_ALLOCATOR_MEM_ALIGN8, block, size);
+		fixed_memcpy ((uint8_t *)ptr + DN_ALLOCATOR_MEM_ALIGN8, block, size);
 
 	*((size_t *)ptr) = size;
 	return (uint8_t *)ptr + DN_ALLOCATOR_MEM_ALIGN8;
 }
 
 static inline void
-static_free (
-	dn_allocator_static_data_t *data,
+fixed_free (
+	dn_allocator_fixed_data_t *data,
 	void *block)
 {
 	DN_UNREFERENCED_PARAMETER (data);
@@ -183,15 +183,15 @@ static_free (
 }
 
 static inline bool
-static_owns_ptr (
-	dn_allocator_static_data_t *data,
+fixed_owns_ptr (
+	dn_allocator_fixed_data_t *data,
 	void *ptr)
 {
 	return (ptr >= data->_begin && ptr < data->_end);
 }
 
 static void *
-static_memcpy (
+fixed_memcpy (
 	void *dst,
 	void *src,
 	size_t size)
@@ -207,45 +207,45 @@ static_memcpy (
 }
 
 static void *
-static_dynamic_vtable_alloc (
+fixed_or_malloc_vtable_alloc (
 	dn_allocator_t *allocator,
 	size_t size)
 {
-	return static_dynamic_alloc (&((dn_allocator_static_dynamic_t *)allocator)->_data, size);
+	return fixed_or_malloc_alloc (&((dn_allocator_fixed_or_malloc_t *)allocator)->_data, size);
 }
 
 static void *
-static_dynamic_vtable_realloc (
+fixed_or_malloc_vtable_realloc (
 	dn_allocator_t *allocator,
 	void *block,
 	size_t size)
 {
-	return static_dynamic_realloc (&((dn_allocator_static_dynamic_t *)allocator)->_data, block, size);
+	return fixed_or_malloc_realloc (&((dn_allocator_fixed_or_malloc_t *)allocator)->_data, block, size);
 }
 
 static void
-static_dynamic_vtable_free (
+fixed_or_malloc_vtable_free (
 	dn_allocator_t *allocator,
 	void *block)
 {
-	static_dynamic_free (&((dn_allocator_static_dynamic_t *)allocator)->_data, block);
+	fixed_or_malloc_free (&((dn_allocator_fixed_or_malloc_t *)allocator)->_data, block);
 }
 
 static bool
-static_dynamic_vtable_init (dn_allocator_t *allocator)
+fixed_or_malloc_vtable_init (dn_allocator_t *allocator)
 {
 	DN_UNREFERENCED_PARAMETER (allocator);
 	return true;
 }
 
 static void *
-static_dynamic_alloc (
-	dn_allocator_static_dynamic_data_t *data,
+fixed_or_malloc_alloc (
+	dn_allocator_fixed_or_malloc_data_t *data,
 	size_t size)
 {
 	void *result = NULL;
 
-	result = static_alloc (data, size);
+	result = fixed_alloc (data, size);
 	if (!result)
 		result = dn_malloc (size);
 
@@ -253,43 +253,43 @@ static_dynamic_alloc (
 }
 
 static void *
-static_dynamic_realloc (
-	dn_allocator_static_dynamic_data_t *data,
+fixed_or_malloc_realloc (
+	dn_allocator_fixed_or_malloc_data_t *data,
 	void *block,
 	size_t size)
 {
-	// Check if ptr is owned by static buffer, if not, its own by heap.
-	if (block && !static_owns_ptr (data, block))
+	// Check if ptr is owned by fixed buffer, if not, its own by heap.
+	if (block && !fixed_owns_ptr (data, block))
 		return dn_realloc (block, size);
 
-	// Try realloc using static buffer.
-	void *result = static_realloc (data, block, size);
+	// Try realloc using fixed buffer.
+	void *result = fixed_realloc (data, block, size);
 	if (!result) {
-		// Static buffer OOM, fallback to heap.
+		// Fixed buffer OOM, fallback to heap.
 		result = dn_malloc (size);
 
-		// Copy data from static buffer to allocated heap memory.
+		// Copy data from fixed buffer to allocated heap memory.
 		if (block && result)
-			result = static_memcpy (result, block, size);
+			result = fixed_memcpy (result, block, size);
 	}
 
 	return result;
 }
 
 static void
-static_dynamic_free (
-	dn_allocator_static_dynamic_data_t *data,
+fixed_or_malloc_free (
+	dn_allocator_fixed_or_malloc_data_t *data,
 	void *block)
 {
-	if (static_owns_ptr (data, block))
-		static_free (data, block);
+	if (fixed_owns_ptr (data, block))
+		fixed_free (data, block);
 	else
 		dn_free (block);
 }
 
-dn_allocator_static_t *
-dn_allocator_static_init (
-	dn_allocator_static_t *allocator,
+dn_allocator_fixed_t *
+dn_allocator_fixed_init (
+	dn_allocator_fixed_t *allocator,
 	void *block,
 	size_t size)
 {
@@ -303,28 +303,28 @@ dn_allocator_static_init (
 	allocator->_data._ptr = begin;
 	allocator->_data._end = end;
 
-	allocator->_vtable = &static_vtable;
+	allocator->_vtable = &fixed_vtable;
 
 	return allocator;
 }
 
-dn_allocator_static_t *
-dn_allocator_static_reset(dn_allocator_static_t *allocator)
+dn_allocator_fixed_t *
+dn_allocator_fixed_reset(dn_allocator_fixed_t *allocator)
 {
 	allocator->_data._ptr = allocator->_data._begin;
 	return allocator;
 }
 
-dn_allocator_static_dynamic_t *
-dn_allocator_static_dynamic_reset(dn_allocator_static_dynamic_t *allocator)
+dn_allocator_fixed_or_malloc_t *
+dn_allocator_fixed_or_malloc_reset(dn_allocator_fixed_or_malloc_t *allocator)
 {
 	allocator->_data._ptr = allocator->_data._begin;
 	return allocator;
 }
 
-dn_allocator_static_dynamic_t *
-dn_allocator_static_dynamic_init (
-	dn_allocator_static_dynamic_t *allocator,
+dn_allocator_fixed_or_malloc_t *
+dn_allocator_fixed_or_malloc_init (
+	dn_allocator_fixed_or_malloc_t *allocator,
 	void *block,
 	size_t size)
 {
@@ -338,7 +338,7 @@ dn_allocator_static_dynamic_init (
 	allocator->_data._ptr = begin;
 	allocator->_data._end = end;
 
-	allocator->_vtable = &static_dynamic_vtable;
+	allocator->_vtable = &fixed_or_malloc_vtable;
 
 	return allocator;
 }

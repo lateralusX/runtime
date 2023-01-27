@@ -331,9 +331,9 @@ ep_session_suspend_write_event (EventPipeSession *session)
 	// Need to disable the session before calling this method.
 	EP_ASSERT (!ep_is_session_enabled ((EventPipeSessionID)session));
 
-	DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size);
+	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size);
 
-	dn_ptr_vector_t *threads = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
+	dn_ptr_vector_t *threads = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
 
 	if (threads) {
 		ep_thread_get_threads (threads);

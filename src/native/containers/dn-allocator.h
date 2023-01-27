@@ -13,10 +13,10 @@
 
 typedef struct _dn_allocator_vtable_t dn_allocator_vtable_t;
 typedef struct _dn_allocator_t dn_allocator_t;
-typedef struct _dn_allocator_static_t dn_allocator_static_t;
-typedef struct _dn_allocator_static_data_t dn_allocator_static_data_t;
-typedef struct _dn_allocator_static_dynamic_t dn_allocator_static_dynamic_t;
-typedef struct _dn_allocator_static_data_t dn_allocator_static_dynamic_data_t;
+typedef struct _dn_allocator_fixed_t dn_allocator_fixed_t;
+typedef struct _dn_allocator_fixed_data_t dn_allocator_fixed_data_t;
+typedef struct _dn_allocator_fixed_or_malloc_t dn_allocator_fixed_or_malloc_t;
+typedef struct _dn_allocator_fixed_data_t dn_allocator_fixed_or_malloc_data_t;
 
 struct _dn_allocator_vtable_t {
 	void *(*_alloc)(dn_allocator_t *, size_t);
@@ -29,20 +29,20 @@ struct _dn_allocator_t {
 	dn_allocator_vtable_t *_vtable;
 };
 
-struct _dn_allocator_static_data_t {
+struct _dn_allocator_fixed_data_t {
 	void *_begin;
 	void *_end;
 	void *_ptr;
 };
 
-struct _dn_allocator_static_t {
+struct _dn_allocator_fixed_t {
 	dn_allocator_vtable_t *_vtable;
-	dn_allocator_static_data_t _data;
+	dn_allocator_fixed_data_t _data;
 };
 
-struct _dn_allocator_static_dynamic_t {
+struct _dn_allocator_fixed_or_malloc_t {
 	dn_allocator_vtable_t *_vtable;
-	dn_allocator_static_dynamic_data_t _data;
+	dn_allocator_fixed_or_malloc_data_t _data;
 };
 
 static inline void *
@@ -84,30 +84,30 @@ dn_allocator_init (dn_allocator_t *allocator)
 		true;
 }
 
-dn_allocator_static_t *
-dn_allocator_static_init (
-	dn_allocator_static_t *allocator,
+dn_allocator_fixed_t *
+dn_allocator_fixed_init (
+	dn_allocator_fixed_t *allocator,
 	void *block,
 	size_t size);
 
-dn_allocator_static_t *
-dn_allocator_static_reset (dn_allocator_static_t *allocator);
+dn_allocator_fixed_t *
+dn_allocator_fixed_reset (dn_allocator_fixed_t *allocator);
 
-dn_allocator_static_dynamic_t *
-dn_allocator_static_dynamic_init (
-	dn_allocator_static_dynamic_t *allocator,
+dn_allocator_fixed_or_malloc_t *
+dn_allocator_fixed_or_malloc_init (
+	dn_allocator_fixed_or_malloc_t *allocator,
 	void *block,
 	size_t size);
 
-dn_allocator_static_dynamic_t *
-dn_allocator_static_dynamic_reset (dn_allocator_static_dynamic_t *allocator);
+dn_allocator_fixed_or_malloc_t *
+dn_allocator_fixed_or_malloc_reset (dn_allocator_fixed_or_malloc_t *allocator);
 
-#define DN_ALLOCATOR_STATIC_DYNAMIC(var_name, buffer_size) \
+#define DN_ALLOCATOR_FIXED_OR_MALLOC(var_name, buffer_size) \
 	uint8_t __buffer_##var_name [buffer_size]; \
-	dn_allocator_static_dynamic_t var_name; \
-	dn_allocator_static_dynamic_init (&var_name, __buffer_##var_name, buffer_size);
+	dn_allocator_fixed_or_malloc_t var_name; \
+	dn_allocator_fixed_or_malloc_init (&var_name, __buffer_##var_name, buffer_size);
 
 #define DN_DEFAULT_ALLOCATOR NULL
-#define DN_LOCAL_ALLOCATOR(var_name, buffer_size) DN_ALLOCATOR_STATIC_DYNAMIC (var_name, buffer_size)
+#define DN_DEFAULT_LOCAL_ALLOCATOR(var_name, buffer_size) DN_ALLOCATOR_FIXED_OR_MALLOC (var_name, buffer_size)
 
 #endif /* __DN_ALLOCATOR_H__ */

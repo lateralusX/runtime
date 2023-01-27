@@ -589,9 +589,9 @@ buffer_manager_move_next_event_any_thread (
 	// at the same time.
 
 	// Step 1 - while holding m_lock get the oldest buffer from each thread
-	DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size * 2);
-	dn_ptr_vector_t *buffer_array = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
-	dn_ptr_vector_t *buffer_list_array = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
+	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size * 2);
+	dn_ptr_vector_t *buffer_array = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
+	dn_ptr_vector_t *buffer_list_array = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
 
 	ep_raise_error_if_nok (buffer_array && buffer_list_array);
 
@@ -1041,9 +1041,9 @@ ep_buffer_manager_suspend_write_event (
 	// All calls to this method must be synchronized by our caller
 	ep_requires_lock_held ();
 
-	DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size);
+	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size);
 
-	dn_ptr_vector_t *thread_vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
+	dn_ptr_vector_t *thread_vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
 	ep_raise_error_if_nok (thread_vector);
 
 	EP_SPIN_LOCK_ENTER (&buffer_manager->rt_lock, section1);
@@ -1181,9 +1181,9 @@ ep_buffer_manager_write_all_buffers_to_file_v4 (
 	EventPipeSequencePoint *sequence_point = NULL;
 	ep_timestamp_t current_timestamp_boundary = stop_timestamp;
 
-	DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size);
+	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size);
 
-	dn_ptr_vector_t *session_states_to_delete =  dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
+	dn_ptr_vector_t *session_states_to_delete =  dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
 	ep_raise_error_if_nok (session_states_to_delete);
 
 	EP_SPIN_LOCK_ENTER (&buffer_manager->rt_lock, section1)
@@ -1358,9 +1358,9 @@ ep_buffer_manager_deallocate_buffers (EventPipeBufferManager *buffer_manager)
 {
 	EP_ASSERT (buffer_manager != NULL);
 
-	DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size);
+	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size);
 
-	dn_ptr_vector_t *thread_session_states_to_remove = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size));
+	dn_ptr_vector_t *thread_session_states_to_remove = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
 	ep_raise_error_if_nok (thread_session_states_to_remove);
 
 	// Take the buffer manager manipulation lock

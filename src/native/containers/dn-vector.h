@@ -250,8 +250,8 @@ dn_vector_find (
 DN_DEFINE_VECTOR_T_STRUCT(dn_ ## name ## _vector, type); \
 typedef enum { \
 	DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, vector_element_size) = sizeof (type), \
-	DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, local_allocator_default_capacity_size) = 192, \
-	DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, local_allocator_default_byte_size) = ((sizeof (type) * DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, local_allocator_default_capacity_size)) + DN_ALLOCATOR_ALIGN_SIZE (sizeof (dn_vector_t), DN_ALLOCATOR_MEM_ALIGN8) + 32) \
+	DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, default_local_allocator_capacity_size) = 192, \
+	DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, default_local_allocator_byte_size) = ((sizeof (type) * DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, default_local_allocator_capacity_size)) + DN_ALLOCATOR_ALIGN_SIZE (sizeof (dn_vector_t), DN_ALLOCATOR_MEM_ALIGN8) + 32) \
 } DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, sizes); \
 static inline DN_DEFINE_VECTOR_T_NAME(name) * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_alloc) (dn_allocator_t *allocator) \

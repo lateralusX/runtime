@@ -639,9 +639,9 @@ static
 RESULT
 test_ptr_vector_default_local_alloc (void)
 {
-	DN_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_local_allocator_default_byte_size);
+	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size);
 
-	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size);
+	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
 	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc ((dn_allocator_t *)&allocator);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
@@ -667,8 +667,8 @@ test_ptr_vector_default_local_alloc (void)
 
 static
 bool
-ptr_vector_owned_by_static_allocator (
-	dn_allocator_static_t *allocator,
+ptr_vector_owned_by_fixed_allocator (
+	dn_allocator_fixed_t *allocator,
 	dn_ptr_vector_t *vector)
 {
 	return	allocator->_data._begin <= (void *)dn_ptr_vector_data (vector) &&
@@ -680,31 +680,31 @@ RESULT
 test_ptr_vector_local_alloc (void)
 {
 	uint8_t buffer [1024];
-	dn_allocator_static_dynamic_t allocator;
+	dn_allocator_fixed_or_malloc_t allocator;
 
-	dn_allocator_static_dynamic_init (&allocator, buffer, ARRAY_SIZE (buffer));
+	dn_allocator_fixed_or_malloc_init (&allocator, buffer, ARRAY_SIZE (buffer));
 	memset (buffer, 0, ARRAY_SIZE (buffer));
 
 	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc ((dn_allocator_t *)&allocator);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
-	// All should fit in static allocator.
+	// All should fit in fixed allocator.
 	for (uint32_t i = 0; i < ARRAY_SIZE (items); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i]))
 			return FAILED ("failed vector push_back using custom alloc #1");
 	}
 
-	if (!ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("custom alloc using static allocator failed");
+	if (!ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("custom alloc using fixed allocator failed");
 
-	// Make sure we run out of static allocator memory, should switch to dynamic allocator.
+	// Make sure we run out of fixed allocator memory, should switch to dynamic allocator.
 	for (uint32_t i = 0; i < ARRAY_SIZE (buffer); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc #2");
 	}
 
-	if (ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
+	if (ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
 		return FAILED ("custom alloc using dynamic allocator failed");
 
 	dn_ptr_vector_free (vector);
@@ -716,36 +716,36 @@ static
 RESULT
 test_ptr_vector_local_alloc_capacity (void)
 {
-	uint8_t buffer [dn_ptr_vector_local_allocator_default_byte_size];
-	dn_allocator_static_dynamic_t allocator;
+	uint8_t buffer [dn_ptr_vector_default_local_allocator_byte_size];
+	dn_allocator_fixed_or_malloc_t allocator;
 
-	dn_allocator_static_dynamic_init (&allocator, buffer, dn_ptr_vector_local_allocator_default_byte_size);
-	memset (buffer, 0, dn_ptr_vector_local_allocator_default_byte_size);
+	dn_allocator_fixed_or_malloc_init (&allocator, buffer, dn_ptr_vector_default_local_allocator_byte_size);
+	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
-	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size);
+	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
 	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
-	if (dn_ptr_vector_capacity (vector) != dn_ptr_vector_local_allocator_default_capacity_size)
-		return FAILED ("default local vector should have %d in capacity #1", dn_ptr_vector_local_allocator_default_capacity_size);
+	if (dn_ptr_vector_capacity (vector) != dn_ptr_vector_default_local_allocator_capacity_size)
+		return FAILED ("default local vector should have %d in capacity #1", dn_ptr_vector_default_local_allocator_capacity_size);
 
-	// Make sure pre-allocted static allocator is used.
-	if (!ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("custom alloc using static allocator failed #1");
+	// Make sure pre-allocted fixed allocator is used.
+	if (!ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("custom alloc using fixed allocator failed #1");
 
-	// Add pre-allocated amount of items, should fit into static buffer.
+	// Add pre-allocated amount of items, should fit into fixed buffer.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
 	}
 
-	if (dn_ptr_vector_capacity (vector) != dn_ptr_vector_local_allocator_default_capacity_size)
-		return FAILED ("default local vector should have %d in capacity #2", dn_ptr_vector_local_allocator_default_capacity_size);
+	if (dn_ptr_vector_capacity (vector) != dn_ptr_vector_default_local_allocator_capacity_size)
+		return FAILED ("default local vector should have %d in capacity #2", dn_ptr_vector_default_local_allocator_capacity_size);
 
-	// Make sure pre-allocted static allocator is used without reallocs (would cause OOM and switch to dynamic).
-	if (!ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("custom alloc using static allocator failed #2");
+	// Make sure pre-allocted fixed allocator is used without reallocs (would cause OOM and switch to dynamic).
+	if (!ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("custom alloc using fixed allocator failed #2");
 
 	dn_ptr_vector_free (vector);
 
@@ -754,20 +754,20 @@ test_ptr_vector_local_alloc_capacity (void)
 
 static
 RESULT
-test_ptr_vector_static_alloc_capacity (void)
+test_ptr_vector_fixed_alloc_capacity (void)
 {
-	uint8_t buffer [dn_ptr_vector_local_allocator_default_byte_size];
-	dn_allocator_static_t allocator;
+	uint8_t buffer [dn_ptr_vector_default_local_allocator_byte_size];
+	dn_allocator_fixed_t allocator;
 
-	dn_allocator_static_init (&allocator, buffer, dn_ptr_vector_local_allocator_default_byte_size);
-	memset (buffer, 0, dn_ptr_vector_local_allocator_default_byte_size);
+	dn_allocator_fixed_init (&allocator, buffer, dn_ptr_vector_default_local_allocator_byte_size);
+	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
-	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size);
+	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
 	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
-	// Add pre-allocated amount of items, should fit into static buffer.
+	// Add pre-allocated amount of items, should fit into fixed buffer.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
@@ -791,28 +791,28 @@ test_ptr_vector_static_alloc_capacity (void)
 
 static
 RESULT
-test_ptr_vector_static_dynamic_alloc_capacity (void)
+test_ptr_vector_fixed_or_malloc_alloc_capacity (void)
 {
-	uint8_t buffer [dn_ptr_vector_local_allocator_default_byte_size];
-	dn_allocator_static_dynamic_t allocator;
+	uint8_t buffer [dn_ptr_vector_default_local_allocator_byte_size];
+	dn_allocator_fixed_or_malloc_t allocator;
 
-	dn_allocator_static_dynamic_init (&allocator, buffer, dn_ptr_vector_local_allocator_default_byte_size);
-	memset (buffer, 0, dn_ptr_vector_local_allocator_default_byte_size);
+	dn_allocator_fixed_or_malloc_init (&allocator, buffer, dn_ptr_vector_default_local_allocator_byte_size);
+	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
-	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size);
+	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
 	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
-	// Add pre-allocated amount of items, should fit into static allocator.
+	// Add pre-allocated amount of items, should fit into fixed allocator.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc #1");
 	}
 
-	// Make sure pre-allocted static allocator is used.
-	if (!ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("custom alloc using static allocator failed");
+	// Make sure pre-allocted fixed allocator is used.
+	if (!ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("custom alloc using fixed allocator failed");
 
 	// Adding one more should not hit OOM.
 	if (!dn_ptr_vector_push_back (vector, (void *)items [0]))
@@ -830,8 +830,8 @@ test_ptr_vector_static_dynamic_alloc_capacity (void)
 		return FAILED ("unexpected vector capacity #2");
 
 	// Validate continious use of dynamic allocator.
-	if (ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("unexpected switch to static allocator");
+	if (ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("unexpected switch to fixed allocator");
 
 	// Adding one more should not hit OOM.
 	if (!dn_ptr_vector_push_back (vector, (void *)items [0]))
@@ -847,20 +847,20 @@ test_ptr_vector_static_dynamic_alloc_capacity (void)
 
 static
 RESULT
-test_ptr_vector_static_reset_alloc_capacity (void)
+test_ptr_vector_fixed_reset_alloc_capacity (void)
 {
-	uint8_t buffer [dn_ptr_vector_local_allocator_default_byte_size];
-	dn_allocator_static_t allocator;
+	uint8_t buffer [dn_ptr_vector_default_local_allocator_byte_size];
+	dn_allocator_fixed_t allocator;
 
-	dn_allocator_static_init (&allocator, buffer, dn_ptr_vector_local_allocator_default_byte_size);
-	memset (buffer, 0, dn_ptr_vector_local_allocator_default_byte_size);
+	dn_allocator_fixed_init (&allocator, buffer, dn_ptr_vector_default_local_allocator_byte_size);
+	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
-	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size);
+	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
 	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #1");
 
-	// Add pre-allocated amount of items, should fit into static allocator.
+	// Add pre-allocated amount of items, should fit into fixed allocator.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
@@ -872,15 +872,15 @@ test_ptr_vector_static_reset_alloc_capacity (void)
 
 	dn_ptr_vector_free (vector);
 
-	// Reset static allocator.
-	dn_allocator_static_reset (&allocator);
-	memset (buffer, 0, dn_ptr_vector_local_allocator_default_byte_size);
+	// Reset fixed allocator.
+	dn_allocator_fixed_reset (&allocator);
+	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
 	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #2");
 
-	// Add pre-allocated amount of items, should fit into static buffer.
+	// Add pre-allocated amount of items, should fit into fixed buffer.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
@@ -893,20 +893,20 @@ test_ptr_vector_static_reset_alloc_capacity (void)
 
 static
 RESULT
-test_ptr_vector_static_dynamic_reset_alloc_capacity (void)
+test_ptr_vector_fixed_or_malloc_reset_alloc_capacity (void)
 {
-	uint8_t buffer [dn_ptr_vector_local_allocator_default_byte_size];
-	dn_allocator_static_dynamic_t allocator;
+	uint8_t buffer [dn_ptr_vector_default_local_allocator_byte_size];
+	dn_allocator_fixed_or_malloc_t allocator;
 
-	dn_allocator_static_dynamic_init (&allocator, buffer, dn_ptr_vector_local_allocator_default_byte_size);
-	memset (buffer, 0, dn_ptr_vector_local_allocator_default_byte_size);
+	dn_allocator_fixed_or_malloc_init (&allocator, buffer, dn_ptr_vector_default_local_allocator_byte_size);
+	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
-	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_local_allocator_default_byte_size);
+	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
 	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #1");
 
-	// Add pre-allocated amount of items, should fit into static allocator.
+	// Add pre-allocated amount of items, should fit into fixed allocator.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
 		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc #1");
@@ -917,8 +917,8 @@ test_ptr_vector_static_dynamic_reset_alloc_capacity (void)
 		return FAILED ("failed vector push_back using custom alloc #2");
 
 	// Validate use of dynamic allocator.
-	if (ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("unexpected switch to static allocator #1");
+	if (ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("unexpected switch to fixed allocator #1");
 
 	dn_ptr_vector_free (vector);
 
@@ -927,22 +927,22 @@ test_ptr_vector_static_dynamic_reset_alloc_capacity (void)
 		return FAILED ("failed vector custom alloc #2");
 
 	// Validate use of dynamic allocator.
-	if (ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("unexpected switch to static allocator #2");
+	if (ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("unexpected switch to fixed allocator #2");
 
 	dn_ptr_vector_free (vector);
 
-	// Reset static part of allocator.
-	dn_allocator_static_dynamic_reset (&allocator);
-	memset (buffer, 0, dn_ptr_vector_local_allocator_default_byte_size);
+	// Reset fixed part of allocator.
+	dn_allocator_fixed_or_malloc_reset (&allocator);
+	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
 	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #2");
 
-	// Validate use of static allocator.
-	if (!ptr_vector_owned_by_static_allocator ((dn_allocator_static_t *)&allocator, vector))
-		return FAILED ("custom alloc using static allocator failed");
+	// Validate use of fixed allocator.
+	if (!ptr_vector_owned_by_fixed_allocator ((dn_allocator_fixed_t *)&allocator, vector))
+		return FAILED ("custom alloc using fixed allocator failed");
 
 	dn_ptr_vector_free (vector);
 
@@ -986,10 +986,10 @@ static Test dn_ptr_vector_tests [] = {
 	{"test_ptr_vector_default_local_alloc", test_ptr_vector_default_local_alloc},
 	{"test_ptr_vector_local_alloc", test_ptr_vector_local_alloc},
 	{"test_ptr_vector_local_alloc_capacity", test_ptr_vector_local_alloc_capacity},
-	{"test_ptr_vector_static_alloc_capacity", test_ptr_vector_static_alloc_capacity},
-	{"test_ptr_vector_static_dynamic_alloc_capacity", test_ptr_vector_static_dynamic_alloc_capacity},
-	{"test_ptr_vector_static_reset_alloc_capacity", test_ptr_vector_static_reset_alloc_capacity},
-	{"test_ptr_vector_static_dynamic_reset_alloc_capacity", test_ptr_vector_static_dynamic_reset_alloc_capacity},
+	{"test_ptr_vector_fixed_alloc_capacity", test_ptr_vector_fixed_alloc_capacity},
+	{"test_ptr_vector_fixed_or_malloc_alloc_capacity", test_ptr_vector_fixed_or_malloc_alloc_capacity},
+	{"test_ptr_vector_fixed_reset_alloc_capacity", test_ptr_vector_fixed_reset_alloc_capacity},
+	{"test_ptr_vector_fixed_or_malloc_reset_alloc_capacity", test_ptr_vector_fixed_or_malloc_reset_alloc_capacity},
 	{"test_ptr_vector_teardown", test_ptr_vector_teardown},
 	{NULL, NULL}
 };
