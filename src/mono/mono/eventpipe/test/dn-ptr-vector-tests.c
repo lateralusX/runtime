@@ -438,8 +438,8 @@ test_ptr_vector_foreach_free (void)
 
 	vector = dn_ptr_vector_alloc ();
 	
-	dn_ptr_vector_push_back (vector, _strdup (items [0]));
-	dn_ptr_vector_push_back (vector, _strdup (items [1]));
+	dn_ptr_vector_push_back (vector, malloc (10));
+	dn_ptr_vector_push_back (vector, malloc (100));
 	
 	dn_ptr_vector_for_each_fini (vector, ptr_vector_free_fini_func);
 	dn_ptr_vector_free (vector);

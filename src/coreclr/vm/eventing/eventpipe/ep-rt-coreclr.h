@@ -722,7 +722,7 @@ ep_rt_is_running (void)
 static
 inline
 void
-ep_rt_execute_rundown (dn_ptr_array_t *execution_checkpoints)
+ep_rt_execute_rundown (dn_ptr_vector_t *execution_checkpoints)
 {
 	STATIC_CONTRACT_NOTHROW;
 
@@ -1090,7 +1090,7 @@ ep_rt_temp_path_get (
 
 static
 void
-ep_rt_os_environment_get_utf16 (dn_ptr_array_t *env_array)
+ep_rt_os_environment_get_utf16 (dn_ptr_vector_t *env_array)
 {
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (env_array != NULL);
@@ -1099,7 +1099,7 @@ ep_rt_os_environment_get_utf16 (dn_ptr_array_t *env_array)
 	if (envs) {
 		LPWSTR next = envs;
 		while (*next) {
-			dn_ptr_array_ex_push_back (env_array, ep_rt_utf16_string_dup (reinterpret_cast<const ep_char16_t *>(next)));
+			dn_ptr_vector_push_back (env_array, ep_rt_utf16_string_dup (reinterpret_cast<const ep_char16_t *>(next)));
 			next += ep_rt_utf16_string_len (reinterpret_cast<const ep_char16_t *>(next)) + 1;
 		}
 		FreeEnvironmentStringsW (envs);

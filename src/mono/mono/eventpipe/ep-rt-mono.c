@@ -2636,7 +2636,7 @@ ep_rt_mono_os_environment_get_utf16 (dn_ptr_vector_t *os_env)
 #else
 	gchar **next = NULL;
 	for (next = environ; *next != NULL; ++next)
-		dn_ptr_array_ex_push_back (os_env, ep_rt_utf8_to_utf16le_string (*next, -1));
+		dn_ptr_vector_push_back (os_env, ep_rt_utf8_to_utf16le_string (*next, -1));
 #endif
 }
 
