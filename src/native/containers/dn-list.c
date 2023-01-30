@@ -1,465 +1,442 @@
-/*
- * glist.c: Doubly-linked list implementation
- *
- * Authors:
- *   Duncan Mak (duncan@novell.com)
- *   Raja R Harinath (rharinath@novell.com)
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * (C) 2006 Novell, Inc.
- */
-#include "dn-list-ex.h"
-#include "dn-malloc.h"
+#include "dn-list.h"
 
-dn_list_t *
-dn_list_alloc (void)
+static dn_list_node_t *
+list_new_node (
+	dn_allocator_t *allocator,
+	dn_list_node_t *prev,
+	dn_list_node_t *next,
+	void *data)
 {
-	return dn_new0 (dn_list_t, 1);
-}
+	dn_list_node_t *node = (dn_list_node_t *)dn_allocator_alloc (allocator, sizeof (dn_list_node_t));
+	if (DN_UNLIKELY (!node))
+		return NULL;
 
-static dn_list_t *
-new_node (
-	dn_list_t *prev,
-	void *data,
-	dn_list_t *next)
-{
-	dn_list_t *node = dn_list_alloc ();
-	if (node) {
-		node->data = data;
-		node->prev = prev;
-		node->next = next;
-		if (prev)
-			prev->next = node;
-		if (next)
-			next->prev = node;
-	}
+	node->data = data;
+	node->prev = prev;
+	node->next = next;
+
+	if (prev)
+		prev->next = node;
+	if (next)
+		next->prev = node;
+
 	return node;
 }
 
-static dn_list_t*
-disconnect_node (dn_list_t *node)
+static dn_list_node_t*
+list_unlink_node (dn_list_node_t *node)
 {
 	if (node->next)
 		node->next->prev = node->prev;
 	if (node->prev)
 		node->prev->next = node->next;
+
 	return node;
 }
 
-dn_list_t *
-dn_list_prepend (
-	dn_list_t *list,
+
+static dn_list_node_t *
+list_insert_node_before (
+	dn_allocator_t *allocator,
+	dn_list_node_t *node,
 	void *data)
 {
-	return new_node (list ? list->prev : NULL, data, list);
+	return list_new_node (allocator, node ? node->prev : NULL, node, data);
 }
 
-void
-dn_list_free_1 (dn_list_t *list)
+static dn_list_node_t *
+list_insert_node_after (
+	dn_allocator_t *allocator,
+	dn_list_node_t *node,
+	void *data)
 {
-	dn_free (list);
+	return list_new_node (allocator, node, node ? node->next : NULL, data);
+}
+
+static void
+list_free_node (
+	dn_allocator_t *allocator,
+	dn_list_node_t *node)
+{
+	dn_allocator_free (allocator, node);
+}
+
+static void
+list_dispose_node (
+	dn_allocator_t *allocator,
+	dn_dispose_func_t dispose_func,
+	dn_list_node_t *node)
+{
+	if (node && dispose_func)
+		dispose_func (node->data);
+	list_free_node (allocator, node);
+}
+
+dn_list_t *
+_dn_list_alloc (
+	dn_allocator_t *allocator,
+	dn_dispose_func_t dispose_func)
+{
+	dn_list_t *list = (dn_list_t *)dn_allocator_alloc (allocator, sizeof (dn_list_t));
+	if (!_dn_list_init (list, allocator, dispose_func)) {
+		dn_allocator_free (allocator, list);
+		return NULL;
+	}
+
+	return list;
+}
+
+bool
+_dn_list_init (
+	dn_list_t *list,
+	dn_allocator_t *allocator,
+	dn_dispose_func_t dispose_func)
+{
+	if (DN_UNLIKELY (!list))
+		return false;
+
+	memset (list, 0, sizeof(dn_list_t));
+	list->_internal._allocator = allocator;
+	list->_internal._dispose_func = dispose_func;
+
+	return true;
 }
 
 void
 dn_list_free (dn_list_t *list)
 {
-	while (list) {
-		dn_list_t *next = list->next;
-		dn_list_free_1 (list);
-		list = next;
+	if (list) {
+		dn_list_dispose (list);
+		dn_allocator_free (list->_internal._allocator, list);
 	}
 }
 
-dn_list_t *
-dn_list_append (
-	dn_list_t *list,
-	void *data)
+void
+dn_list_dispose (dn_list_t *list)
 {
-	dn_list_t *node = new_node (dn_list_last (list), data, NULL);
-	return list ? list : node;
-}
+	if (DN_UNLIKELY(!list))
+		return;
 
-dn_list_t *
-dn_list_concat (
-	dn_list_t *list1,
-	dn_list_t *list2)
-{
-	if (list1 && list2) {
-		list2->prev = dn_list_last (list1);
-		list2->prev->next = list2;
+	dn_list_node_t *current = list->head;
+	while (current) {
+		dn_list_node_t *next = current->next;
+		list_dispose_node (list->_internal._allocator, list->_internal._dispose_func, current);
+		current = next;
 	}
-	return list1 ? list1 : list2;
 }
 
 uint32_t
-dn_list_length (dn_list_t *list)
+dn_list_size (const dn_list_t *list)
 {
-	uint32_t length = 0;
+	if (DN_UNLIKELY(!list))
+		return 0;
 
-	while (list) {
-		length ++;
-		list = list->next;
+	uint32_t size = 0;
+	dn_list_node_t *nodes = list->head;
+
+	while (nodes) {
+		size ++;
+		nodes = nodes->next;
 	}
 
-	return length;
+	return size;
 }
 
-dn_list_t *
+void
+dn_list_clear (dn_list_t *list)
+{
+	if (DN_UNLIKELY(!list))
+		return;
+
+	dn_list_dispose (list);
+
+	list->head = NULL;
+	list->tail = NULL;
+}
+
+dn_list_it_t
+dn_list_insert (
+	dn_list_it_t position,
+	void *data,
+	bool *result)
+{
+	dn_list_t *list = position._internal._list;
+
+	if (!list->head)
+		position.it = list_insert_node_before (list->_internal._allocator, list->head, data);
+	else if (!position.it)
+		position.it = list_insert_node_after (list->_internal._allocator, list->tail, data);
+	else
+		position.it = list_insert_node_before (list->_internal._allocator, position.it, data);
+
+	if (position.it) {
+		if (!position.it->prev)
+			list->head = position.it;
+		if (!position.it->next)
+			list->tail = position.it;
+	}
+
+	if (result)
+		*result = position.it;
+
+	return position;
+}
+
+dn_list_it_t
+dn_list_insert_range (
+	dn_list_it_t position,
+	dn_list_it_t first,
+	dn_list_it_t last,
+	bool *result)
+{
+	if (first.it == last.it)
+		return position;
+
+	dn_list_it_t first_inserted = dn_list_insert (position, first.it->data, result);
+
+	for (first.it = first.it->next; first.it && first.it != last.it; first.it = first.it->next)
+		dn_list_insert (position, first.it->data, result);
+
+	if (last.it)
+		dn_list_insert (position, last.it->data, result);
+
+	return first_inserted;
+}
+
+dn_list_it_t
+dn_list_erase (dn_list_it_t position)
+{
+	if (DN_UNLIKELY(!position.it))
+		return position;
+
+	dn_list_t *list = position._internal._list;
+
+	if (position.it == list->head) {
+		dn_list_pop_front (list);
+		position.it = list->head;
+	} else if (position.it == list->tail) {
+		dn_list_pop_back (list);
+		position.it = NULL;
+	} else if (position.it) {
+		dn_list_node_t *to_remove = position.it;
+		position.it = position.it->next;
+		list_free_node (list->_internal._allocator, list_unlink_node (to_remove));
+	}
+
+	return position;
+}
+
+bool
+dn_list_push_back (
+	dn_list_t *list,
+	void *data)
+{
+	if (DN_UNLIKELY(!list))
+		return false;
+
+	bool result;
+	dn_list_insert (dn_list_end (list), data, &result);
+	return result;
+}
+
+void
+dn_list_pop_back (dn_list_t *list)
+{
+	if (DN_UNLIKELY(!list || !list->tail))
+		return;
+
+	dn_list_node_t *prev = list->tail->prev;
+	list_free_node (list->_internal._allocator, list_unlink_node (list->tail));
+
+	list->tail = prev;
+	if (!list->tail)
+		list->head = NULL;
+}
+
+bool
+dn_list_push_front (
+	dn_list_t *list,
+	void *data)
+{
+	if (DN_UNLIKELY(!list))
+		return false;
+
+	bool result;
+	dn_list_insert (dn_list_begin (list), data, &result);
+	return result;
+}
+
+void
+dn_list_pop_front (dn_list_t *list)
+{
+	if (DN_UNLIKELY(!list || !list->head))
+		return;
+
+	dn_list_node_t *next = list->head->next;
+	list_free_node (list->_internal._allocator, list_unlink_node (list->head));
+
+	list->head = next;
+	if (!list->head)
+		list->tail = NULL;
+}
+
+void
+dn_list_resize (
+	dn_list_t *list,
+	uint32_t count)
+{
+	if (DN_UNLIKELY(!list))
+		return;
+
+	if (count == 0) {
+		dn_list_clear (list);
+		return;
+	}
+
+	dn_list_node_t *current = list->head;
+	uint32_t i = 0;
+	while (current) {
+		i++;
+		if (i == count) {
+			dn_list_node_t *to_dispose = current->next;
+			while (to_dispose) {
+				dn_list_node_t *next = to_dispose->next;
+				list_dispose_node (list->_internal._allocator, list->_internal._dispose_func, list_unlink_node (to_dispose));
+				to_dispose = next;
+			}
+			list->tail = current;
+			break;
+		}
+		current = current->next;
+	}
+
+	while (count++ < i)
+		dn_list_insert (dn_list_end (list), NULL, NULL);
+}
+
+void
 dn_list_remove (
 	dn_list_t *list,
 	const void *data)
 {
-	dn_list_t *current = dn_list_find (list, data);
-	if (!current)
-		return list;
+	if (DN_UNLIKELY (!list))
+		return;
 
-	if (current == list)
-		list = list->next;
-	dn_list_free_1 (disconnect_node (current));
-
-	return list;
-}
-
-dn_list_t *
-dn_list_remove_all (
-	dn_list_t *list,
-	const void *data)
-{
-	dn_list_t *current = dn_list_find (list, data);
-	if (!current)
-		return list;
+	dn_list_node_t *current = list->head;
+	dn_list_node_t *next;
 
 	while (current) {
-		if (current == list)
-			list = list->next;
-		dn_list_free_1 (disconnect_node (current));
-
-		current = dn_list_find (list, data);
+		next = current->next;
+		if (current->data == data) {
+			if (current == list->head)
+				list->head = next;
+			if (current == list->tail)
+				list->tail = current->prev;
+			list_dispose_node (list->_internal._allocator, list->_internal._dispose_func, list_unlink_node (current));
+		}
+		current = next;
 	}
-
-	return list;
 }
 
-dn_list_t *
-dn_list_remove_link (
+void
+dn_list_remove_if (
 	dn_list_t *list,
-	dn_list_t *link)
+	dn_remove_func_t remove_func,
+	void * user_data)
 {
-	if (list == link)
-		list = list->next;
+	if (DN_UNLIKELY (!list))
+		return;
 
-	disconnect_node (link);
-	link->next = NULL;
-	link->prev = NULL;
+	dn_list_node_t *current = list->head;
+	dn_list_node_t *next;
 
-	return list;
-}
-
-dn_list_t *
-dn_list_delete_link (
-	dn_list_t *list,
-	dn_list_t *link)
-{
-	list = dn_list_remove_link (list, link);
-	dn_list_free_1 (link);
-
-	return list;
-}
-
-dn_list_t *
-dn_list_find (
-	dn_list_t *list,
-	const void *data)
-{
-	while (list){
-		if (list->data == data)
-			return list;
-
-		list = list->next;
+	while (current) {
+		next = current->next;
+		if (!remove_func || remove_func (current->data, user_data)) {
+			if (current == list->head)
+				list->head = next;
+			if (current == list->tail)
+				list->tail = current->prev;
+			list_dispose_node (list->_internal._allocator, list->_internal._dispose_func, list_unlink_node (current));
+		}
+		current = next;
 	}
-
-	return NULL;
 }
 
-dn_list_t *
-dn_list_find_custom (
-	dn_list_t *list,
-	const void *data,
-	dn_compare_func_t func)
-{
-	if (!func)
-		return NULL;
-
-	while (list) {
-		if (func (list->data, data) == 0)
-			return list;
-
-		list = list->next;
-	}
-
-	return NULL;
-}
-
-dn_list_t *
+void
 dn_list_reverse (dn_list_t *list)
 {
-	dn_list_t *reverse = NULL;
+	if (DN_UNLIKELY (!list))
+		return;
 
-	while (list) {
-		reverse = list;
-		list = reverse->next;
+	dn_list_node_t *node = list->head;
+	dn_list_node_t *reverse;
+
+	list->head = list->tail;
+	list->tail = node;
+
+	while (node) {
+		reverse = node;
+		node = reverse->next;
 
 		reverse->next = reverse->prev;
-		reverse->prev = list;
+		reverse->prev = node;
 	}
-
-	return reverse;
-}
-
-dn_list_t *
-dn_list_first (dn_list_t *list)
-{
-	if (!list)
-		return NULL;
-
-	while (list->prev)
-		list = list->prev;
-
-	return list;
-}
-
-dn_list_t *
-dn_list_last (dn_list_t *list)
-{
-	if (!list)
-		return NULL;
-
-	while (list->next)
-		list = list->next;
-
-	return list;
-}
-
-dn_list_t *
-dn_list_insert_sorted (
-	dn_list_t *list,
-	void *data,
-	dn_compare_func_t func)
-{
-	dn_list_t *prev = NULL;
-	dn_list_t *current;
-	dn_list_t *node;
-
-	if (!func)
-		return list;
-
-	/* Invariant: !prev || func (prev->data, data) <= 0) */
-	for (current = list; current; current = current->next) {
-		if (func (current->data, data) > 0)
-			break;
-		prev = current;
-	}
-
-	node = new_node (prev, data, current);
-	return list == current ? node : list;
-}
-
-dn_list_t *
-dn_list_insert_before (
-	dn_list_t *list,
-	dn_list_t *sibling,
-	void *data)
-{
-	if (sibling) {
-		dn_list_t *node = new_node (sibling->prev, data, sibling);
-		return list == sibling ? node : list;
-	}
-	return dn_list_append (list, data);
 }
 
 void
-dn_list_foreach (
+dn_list_for_each (
 	dn_list_t *list,
-	dn_func_t func,
+	dn_func_t foreach_func,
 	void *user_data)
 {
-	while (list){
-		(*func) (list->data, user_data);
-		list = list->next;
-	}
+	if (DN_UNLIKELY (!list || !foreach_func))
+		return;
+
+	for (dn_list_node_t *it = list->head; it; it = it->next)
+		foreach_func (it->data, user_data);
 }
 
-int32_t
-dn_list_index (
-	dn_list_t *list,
-	const void *data)
-{
-	int32_t index = 0;
-
-	while (list){
-		if (list->data == data)
-			return index;
-
-		index ++;
-		list = list->next;
-	}
-
-	return -1;
-}
-
-dn_list_t *
-dn_list_nth (
-	dn_list_t *list,
-	uint32_t n)
-{
-	for (; list; list = list->next) {
-		if (n == 0)
-			break;
-		n--;
-	}
-	return list;
-}
-
-void *
-dn_list_nth_data (
-	dn_list_t *list,
-	uint32_t n)
-{
-	dn_list_t *node = dn_list_nth (list, n);
-	return node ? node->data : NULL;
-}
-
-dn_list_t *
-dn_list_copy (const dn_list_t *list)
-{
-	dn_list_t *copy = NULL;
-
-	if (list) {
-		dn_list_t *tmp = new_node (NULL, list->data, NULL);
-		copy = tmp;
-
-		for (list = list->next; list; list = list->next)
-			tmp = new_node (tmp, list->data, NULL);
-	}
-
-	return copy;
-}
+typedef dn_list_node_t list_node;
+#include "dn-sort-frag.inc"
 
 void
-dn_list_ex_free (dn_list_t **list)
-{
-	dn_list_free (*list);
-	*list = NULL;
-}
-
-void
-dn_list_ex_for_each_free (
-	dn_list_t **list,
-	dn_free_func_t func)
-{
-	if (*list && func) {
-		for (dn_list_t *it = *list; it; it = it->next)
-			func (it->data);
-	}
-
-	dn_list_free (*list);
-	*list = NULL;
-}
-
-bool
-dn_list_ex_push_back (
-	dn_list_t **list,
-	void *data)
-{
-	dn_list_t *result = dn_list_append (*list, data);
-	if (result)
-		*list = result;
-	return result != NULL;
-}
-
-bool
-dn_list_ex_push_front (
-	dn_list_t **list,
-	void *data)
-{
-	dn_list_t *result = dn_list_prepend (*list, data);
-	if (result)
-		*list = result;
-	return result != NULL;
-}
-
-bool
-dn_list_ex_erase (
-	dn_list_t **list,
-	const void *data)
-{
-	dn_list_t *current = dn_list_find (*list, data);
-	if (!current)
-		return false;
-
-	if (current == *list)
-		*list = (*list)->next;
-	dn_list_free_1 (disconnect_node (current));
-
-	return true;
-}
-
-bool
-dn_list_ex_find(
-	const dn_list_t *list,
-	const void *data,
-	dn_list_t **found)
-{
-	*found = dn_list_find ((dn_list_t *)list, data);
-	return *found != NULL;
-}
-
-bool
-dn_list_ex_find_custom(
-	const dn_list_t *list,
-	const void *data,
-	dn_compare_func_t func,
-	dn_list_t **found)
-{
-	*found = dn_list_find_custom ((dn_list_t *)list, data, func);
-	return *found != NULL;
-}
-
-typedef dn_list_t list_node;
-#include "dn-sort-frag.h"
-
-dn_list_t *
 dn_list_sort (
 	dn_list_t *list,
-	dn_compare_func_t func)
+	dn_compare_func_t compare_func)
 {
-	dn_list_t *current;
-	if (!list || !list->next)
-		return list;
-	list = do_sort (list, func);
+	if (DN_UNLIKELY (!list || !list->head || !list->head->next || !compare_func))
+		return;
 
-	/* Fixup: do_sort doesn't update 'prev' pointers */
-	list->prev = NULL;
-	for (current = list; current->next; current = current->next)
+	list->head = do_sort (list->head, compare_func);
+	list->head->prev = NULL;
+
+	dn_list_node_t *current;
+	for (current = list->head; current->next; current = current->next)
 		current->next->prev = current;
 
-	return list;
+	list->tail = current;
+}
+
+dn_list_it_t
+dn_list_find (
+	dn_list_t *list,
+	const void *data,
+	dn_compare_func_t compare_func)
+{
+	dn_list_it_t found;
+	found.it = NULL;
+	found._internal._list = list;
+
+	if (DN_UNLIKELY (!list))
+		return found;
+
+	for (dn_list_node_t *it = list->head; it; it = it->next) {
+		if ((compare_func && !compare_func (it->data, data)) || it->data == data) {
+			found.it = it;
+			break;
+		}
+	}
+
+	return found;
 }

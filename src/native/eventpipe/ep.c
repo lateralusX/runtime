@@ -195,7 +195,7 @@ EventPipeProviderCallbackDataQueue *
 ep_provider_callback_data_queue_init (EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
 {
 	EP_ASSERT (provider_callback_data_queue != NULL);
-	provider_callback_data_queue->queue = dn_queue_ex_alloc ();
+	provider_callback_data_queue->queue = dn_queue_alloc ();
 	return provider_callback_data_queue->queue ? provider_callback_data_queue : NULL;
 }
 
@@ -203,7 +203,8 @@ void
 ep_provider_callback_data_queue_fini (EventPipeProviderCallbackDataQueue *provider_callback_data_queue)
 {
 	ep_return_void_if_nok (provider_callback_data_queue != NULL);
-	dn_queue_ex_free (&provider_callback_data_queue->queue);
+	dn_queue_free (provider_callback_data_queue->queue);
+	provider_callback_data_queue->queue = NULL;
 }
 
 /*
@@ -1600,7 +1601,7 @@ ep_provider_callback_data_queue_enqueue (
 	EP_ASSERT (provider_callback_data_queue != NULL);
 	EventPipeProviderCallbackData *provider_callback_data_move = ep_provider_callback_data_alloc_move (provider_callback_data);
 	ep_raise_error_if_nok (provider_callback_data_move != NULL);
-	ep_raise_error_if_nok (dn_queue_ex_push_back (ep_provider_callback_data_queue_get_queue (provider_callback_data_queue), provider_callback_data_move));
+	ep_raise_error_if_nok (dn_queue_push (ep_provider_callback_data_queue_get_queue (provider_callback_data_queue), provider_callback_data_move));
 
 	return true;
 
@@ -1617,10 +1618,10 @@ ep_provider_callback_data_queue_try_dequeue (
 	EP_ASSERT (provider_callback_data_queue != NULL);
 
 	dn_queue_t *queue = ep_provider_callback_data_queue_get_queue (provider_callback_data_queue);
-	ep_return_false_if_nok (!dn_queue_ex_empty (queue));
+	ep_return_false_if_nok (!dn_queue_empty (queue));
 
-	EventPipeProviderCallbackData *value = (EventPipeProviderCallbackData *)dn_queue_ex_front (queue);
-	dn_queue_ex_pop_front (queue);
+	EventPipeProviderCallbackData *value = *dn_queue_front_t (queue, EventPipeProviderCallbackData *);
+	dn_queue_pop (queue);
 
 	ep_raise_error_if_nok (value != NULL);
 	ep_provider_callback_data_init_move (provider_callback_data, value);

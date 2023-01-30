@@ -101,6 +101,9 @@ ep_session_provider_list_alloc (
 	EventPipeSessionProviderList *instance = ep_rt_object_alloc (EventPipeSessionProviderList);
 	ep_raise_error_if_nok (instance != NULL);
 
+	instance->providers = dn_list_custom_alloc (DN_DEFAULT_ALLOCATOR, session_provider_free_func);
+	ep_raise_error_if_nok (instance->providers != NULL);
+
 	instance->catch_all_provider = NULL;
 
 	for (uint32_t i = 0; i < configs_len; ++i) {
@@ -120,7 +123,7 @@ ep_session_provider_list_alloc (
 				ep_provider_config_get_keywords (config),
 				ep_provider_config_get_logging_level (config),
 				ep_provider_config_get_filter_data (config));
-			ep_raise_error_if_nok (dn_list_ex_push_back (&instance->providers, session_provider));
+			ep_raise_error_if_nok (dn_list_push_back (instance->providers, session_provider));
 		}
 	}
 
@@ -138,7 +141,7 @@ ep_session_provider_list_free (EventPipeSessionProviderList *session_provider_li
 {
 	ep_return_void_if_nok (session_provider_list != NULL);
 
-	dn_list_ex_for_each_free (&session_provider_list->providers, session_provider_free_func);
+	dn_list_free (session_provider_list->providers);
 	ep_session_provider_free (session_provider_list->catch_all_provider);
 	ep_rt_object_free (session_provider_list);
 }
@@ -147,14 +150,14 @@ void
 ep_session_provider_list_clear (EventPipeSessionProviderList *session_provider_list)
 {
 	EP_ASSERT (session_provider_list != NULL);
-	dn_list_ex_for_each_clear (&session_provider_list->providers, session_provider_free_func);
+	dn_list_clear (session_provider_list->providers);
 }
 
 bool
 ep_session_provider_list_is_empty (const EventPipeSessionProviderList *session_provider_list)
 {
 	EP_ASSERT (session_provider_list != NULL);
-	return (dn_list_ex_empty (session_provider_list->providers) && session_provider_list->catch_all_provider == NULL);
+	return (dn_list_empty (session_provider_list->providers) && session_provider_list->catch_all_provider == NULL);
 }
 
 bool
@@ -165,7 +168,7 @@ ep_session_provider_list_add_session_provider (
 	EP_ASSERT (session_provider_list != NULL);
 	EP_ASSERT (session_provider != NULL);
 
-	return dn_list_ex_push_back (&session_provider_list->providers, session_provider);
+	return dn_list_push_back (session_provider_list->providers, session_provider);
 }
 
 EventPipeSessionProvider *
@@ -173,8 +176,8 @@ ep_session_provider_list_find_by_name (
 	dn_list_t *list,
 	const ep_char8_t *name)
 {
-	dn_list_t *item = dn_list_find_custom (list, name, session_provider_compare_name_func);
-	return (item != NULL) ? dn_list_ex_data(item, EventPipeSessionProvider *) : NULL;
+	dn_list_it_t found = dn_list_find (list, name, session_provider_compare_name_func);
+	return (!dn_list_it_end (found)) ? *dn_list_it_data_t(found, EventPipeSessionProvider *) : NULL;
 }
 
 #endif /* !defined(EP_INCLUDE_SOURCE_FILES) || defined(EP_FORCE_INCLUDE_SOURCE_FILES) */

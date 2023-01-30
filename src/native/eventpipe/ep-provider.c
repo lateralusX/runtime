@@ -94,9 +94,9 @@ provider_refresh_all_events (EventPipeProvider *provider)
 
 	ep_requires_lock_held ();
 
-	DN_LIST_EX_FOREACH_BEGIN (provider->event_list, EventPipeEvent *, current_event) {
+	DN_LIST_FOREACH_BEGIN (provider->event_list, EventPipeEvent *, current_event) {
 		provider_refresh_event_state (current_event);
-	} DN_LIST_EX_FOREACH_END;
+	} DN_LIST_FOREACH_END;
 
 	ep_requires_lock_held ();
 	return;
@@ -180,6 +180,9 @@ ep_provider_alloc (
 	instance->provider_name_utf16 = ep_rt_utf8_to_utf16le_string (provider_name, -1);
 	ep_raise_error_if_nok (instance->provider_name_utf16 != NULL);
 
+	instance->event_list = dn_list_custom_alloc (DN_DEFAULT_ALLOCATOR, event_free_func);
+	ep_raise_error_if_nok (instance->event_list != NULL);
+
 	instance->keywords = 0;
 	instance->provider_level = EP_EVENT_LEVEL_CRITICAL;
 	instance->callback_func = callback_func;
@@ -204,9 +207,10 @@ ep_provider_free (EventPipeProvider * provider)
 
 	ep_requires_lock_not_held ();
 
-	if (!dn_list_ex_empty (provider->event_list)) {
+	if (provider->event_list) {
 		EP_LOCK_ENTER (section1)
-			dn_list_ex_for_each_free (&provider->event_list, event_free_func);
+			dn_list_free (provider->event_list);
+			provider->event_list = NULL;
 		EP_LOCK_EXIT (section1)
 	}
 
@@ -261,7 +265,7 @@ ep_provider_add_event (
 
 	// Take the config lock before inserting a new event.
 	EP_LOCK_ENTER (section1)
-		ep_raise_error_if_nok_holding_lock (dn_list_ex_push_back (&provider->event_list, instance), section1);
+		ep_raise_error_if_nok_holding_lock (dn_list_push_back (provider->event_list, instance), section1);
 		provider_refresh_event_state (instance);
 	EP_LOCK_EXIT (section1)
 
@@ -449,8 +453,7 @@ provider_free (EventPipeProvider * provider)
 
 	ep_requires_lock_held ();
 
-	if (!dn_list_ex_empty (provider->event_list))
-		dn_list_ex_for_each_free (&provider->event_list, event_free_func);
+	dn_list_free (provider->event_list);
 
 	ep_rt_utf16_string_free (provider->provider_name_utf16);
 	ep_rt_utf8_string_free (provider->provider_name);
@@ -484,7 +487,7 @@ provider_add_event (
 
 	ep_raise_error_if_nok (instance != NULL);
 
-	ep_raise_error_if_nok (dn_list_ex_push_back (&provider->event_list, instance));
+	ep_raise_error_if_nok (dn_list_push_back (provider->event_list, instance));
 	provider_refresh_event_state (instance);
 
 ep_on_exit:

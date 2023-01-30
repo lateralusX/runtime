@@ -246,31 +246,38 @@ dn_unordered_map_size (dn_unordered_map_t *map)
 dn_list_t *
 dn_unordered_map_get_keys (dn_unordered_map_t *map)
 {
-	dn_unordered_map_iter_t iter;
-	dn_list_t *rv = NULL;
-	void *key;
+	dn_list_t *rv = dn_list_alloc ();
+	if (rv) {
+		void *key;
+		dn_unordered_map_iter_t iter;
 
-	dn_unordered_map_iter_init (&iter, map);
+		dn_unordered_map_iter_init (&iter, map);
+		while (dn_unordered_map_iter_next (&iter, &key, NULL))
+			dn_list_push_front (rv, key);
 
-	while (dn_unordered_map_iter_next (&iter, &key, NULL))
-		rv = dn_list_prepend (rv, key);
+		dn_list_reverse (rv);
+	}
 
-	return dn_list_reverse (rv);
+	return rv;
 }
 
 dn_list_t *
 dn_unordered_map_get_values (dn_unordered_map_t *map)
 {
-	dn_unordered_map_iter_t iter;
-	dn_list_t *rv = NULL;
-	void *value;
+	dn_list_t *rv = dn_list_alloc ();
+	if (rv) {
+		void *value;
+		dn_unordered_map_iter_t iter;
 
-	dn_unordered_map_iter_init (&iter, map);
+		dn_unordered_map_iter_init (&iter, map);
 
-	while (dn_unordered_map_iter_next (&iter, NULL, &value))
-		rv = dn_list_prepend (rv, value);
+		while (dn_unordered_map_iter_next (&iter, NULL, &value))
+			dn_list_push_front (rv, value);
 
-	return dn_list_reverse (rv);
+		dn_list_reverse (rv);
+	}
+
+	return rv;
 }
 
 bool

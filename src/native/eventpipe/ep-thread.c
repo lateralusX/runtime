@@ -87,6 +87,10 @@ ep_thread_init (void)
 	ep_rt_spin_lock_alloc (&_ep_threads_lock);
 	if (!ep_rt_spin_lock_is_valid (&_ep_threads_lock))
 		EP_UNREACHABLE ("Failed to allocate threads lock.");
+
+	_ep_threads = dn_list_alloc ();
+	if (!_ep_threads)
+		EP_UNREACHABLE ("Failed to allocate threads list.");
 }
 
 void
@@ -95,8 +99,9 @@ ep_thread_fini (void)
 	// If threads are still included in list (depending on runtime shutdown order),
 	// don't clean up since TLS destructor migh callback freeing items, no new
 	// threads should however not be added to list at this stage.
-	if (dn_list_ex_empty (_ep_threads)) {
-		dn_list_ex_free (&_ep_threads);
+	if (dn_list_empty (_ep_threads)) {
+		dn_list_free (_ep_threads);
+		_ep_threads = NULL;
 		ep_rt_spin_lock_free (&_ep_threads_lock);
 	}
 }
@@ -113,7 +118,7 @@ ep_thread_register (EventPipeThread *thread)
 	ep_thread_addref (thread);
 
 	ep_rt_spin_lock_acquire (&_ep_threads_lock);
-		result = dn_list_ex_push_back (&_ep_threads, thread);
+		result = dn_list_push_back (_ep_threads, thread);
 	ep_rt_spin_lock_release (&_ep_threads_lock);
 
 	if (!result)
@@ -134,15 +139,15 @@ ep_thread_unregister (EventPipeThread *thread)
 	bool found = false;
 	EP_SPIN_LOCK_ENTER (&_ep_threads_lock, section1)
 		// Remove ourselves from the global list
-		DN_LIST_EX_FOREACH_BEGIN (_ep_threads, EventPipeThread *, current_thread) {
+		DN_LIST_FOREACH_BEGIN (_ep_threads, EventPipeThread *, current_thread) {
 			if (current_thread == thread) {
-				dn_list_ex_erase (&_ep_threads, thread);
+				dn_list_remove (_ep_threads, thread);
 				ep_rt_volatile_store_uint32_t(&thread->unregistered, 1);
 				ep_thread_release (thread);
 				found = true;
 				break;
 			}
-		} DN_LIST_EX_FOREACH_END;
+		} DN_LIST_FOREACH_END;
 	EP_SPIN_LOCK_EXIT (&_ep_threads_lock, section1)
 
 	EP_ASSERT (found || !"We couldn't find ourselves in the global thread list");

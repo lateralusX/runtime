@@ -1,5 +1,5 @@
 /*
- * dn-sort-frag.h: Common implementation of linked-list sorting
+ * dn-sort-frag.inc: Common implementation of linked-list sorting
  *
  * Author:
  *   Raja R Harinath (rharinath@novell.com)

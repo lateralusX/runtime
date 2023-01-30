@@ -38,7 +38,7 @@ test_vector_alloc (void)
 
 	dn_vector_free (vector);
 
-	vector = dn_vector_custom_alloc_t (DN_DEFAULT_ALLOCATOR, int32_t);
+	vector = dn_vector_custom_alloc_t (DN_DEFAULT_ALLOCATOR, NULL, int32_t);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -62,9 +62,9 @@ test_vector_init (void)
 	if (vector.size != 0)
 		return FAILED ("vector size didn't match");
 
-	dn_vector_fini (&vector);
+	dn_vector_dispose (&vector);
 
-	if (!dn_vector_custom_init_t (&vector, DN_DEFAULT_ALLOCATOR, int32_t))
+	if (!dn_vector_custom_init_t (&vector, DN_DEFAULT_ALLOCATOR, NULL, int32_t))
 		return FAILED ("init vector");
 
 	if (vector.size != 0)
@@ -73,7 +73,7 @@ test_vector_init (void)
 	if (0 != *dn_vector_index_t (&vector, int32_t, 0))
 		return FAILED ("vector was not cleared when allocated");
 
-	dn_vector_fini (&vector);
+	dn_vector_dispose (&vector);
 
 	return OK;
 }
@@ -99,7 +99,7 @@ test_vector_alloc_capacity (void)
 
 	dn_vector_free (vector);
 
-	vector = dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, int32_t, PREALLOC_SIZE);
+	vector = dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, NULL, int32_t, PREALLOC_SIZE);
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
@@ -119,7 +119,7 @@ test_vector_init_capacity (void)
 {
 	dn_vector_t vector;
 
-	if (!dn_vector_custom_init_capacity_t (&vector, DN_DEFAULT_ALLOCATOR, int32_t, PREALLOC_SIZE))
+	if (!dn_vector_custom_init_capacity_t (&vector, DN_DEFAULT_ALLOCATOR, NULL, int32_t, PREALLOC_SIZE))
 		return FAILED ("init vector");
 
 	if (vector.size != 0)
@@ -132,7 +132,7 @@ test_vector_init_capacity (void)
 			return FAILED ("vector pre-alloc failed");
 	}
 
-	dn_vector_fini (&vector);
+	dn_vector_dispose (&vector);
 
 	if (!dn_vector_init_capacity_t (&vector, int32_t, PREALLOC_SIZE))
 		return FAILED ("init vector");
@@ -145,7 +145,7 @@ test_vector_init_capacity (void)
 			return FAILED ("vector was not cleared when allocated");
 	}
 
-	dn_vector_fini (&vector);
+	dn_vector_dispose (&vector);
 
 	return OK;
 }
@@ -167,16 +167,16 @@ test_vector_free (void)
 
 static
 RESULT
-test_vector_fini (void)
+test_vector_dispose (void)
 {
 	dn_vector_t vector;
 
-	if (!dn_vector_custom_init_t (&vector, DN_DEFAULT_ALLOCATOR, int32_t))
+	if (!dn_vector_custom_init_t (&vector, DN_DEFAULT_ALLOCATOR, NULL, int32_t))
 		return FAILED ("init vector");
 	if (vector.size != 0)
 		return FAILED ("vector size didn't match");
 
-	dn_vector_fini (&vector);
+	dn_vector_dispose (&vector);
 
 	return OK;
 }
@@ -812,7 +812,7 @@ static Test dn_vector_tests [] = {
 	{"test_vector_alloc_capacity", test_vector_alloc_capacity},
 	{"test_vector_init_capacity", test_vector_init_capacity},
 	{"test_vector_free", test_vector_free},
-	{"test_vector_fini", test_vector_fini},
+	{"test_vector_dipose", test_vector_dispose},
 	{"test_vector_index", test_vector_index},
 	{"test_vector_front", test_vector_front},
 	{"test_vector_back", test_vector_back},

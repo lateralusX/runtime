@@ -263,8 +263,8 @@ ds_ipc_stream_factory_configure (ds_ipc_error_callback_func callback)
 
 		DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size * 2);
 
-		dn_ptr_vector_t *port_configs = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
-		dn_ptr_vector_t *port_config_parts = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
+		dn_ptr_vector_t *port_configs = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, NULL, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
+		dn_ptr_vector_t *port_config_parts = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, NULL, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
 
 		if (port_configs && port_config_parts) {
 			ipc_stream_factory_split_port_config (ports, ";", port_configs);

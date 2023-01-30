@@ -16,8 +16,8 @@
 
 #include <containers/dn-vector.h>
 #include <containers/dn-ptr-vector.h>
-#include <containers/dn-list-ex.h>
-#include <containers/dn-queue-ex.h>
+#include <containers/dn-list.h>
+#include <containers/dn-queue.h>
 #include <containers/dn-unordered-map-ex.h>
 
 /*

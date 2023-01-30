@@ -109,7 +109,7 @@ config_register_provider (
 	ep_requires_lock_held ();
 
 	// The provider has not been registered, so register it.
-	if (!dn_list_ex_push_back (&config->provider_list, provider))
+	if (!dn_list_push_back (config->provider_list, provider))
 		return false;
 
 	int64_t keyword_for_all_sessions;
@@ -157,17 +157,20 @@ config_unregister_provider (
 
 	ep_requires_lock_held ();
 
-	dn_list_t *existing_provider_node = NULL;
+	bool unregistered = false;
 
 	// The provider list should be non-NULL, but can be NULL on shutdown.
-	if (!dn_list_ex_empty (config->provider_list)) {
+	if (!dn_list_empty (config->provider_list)) {
 		// If we found the provider, remove it.
-		if (dn_list_ex_find (config->provider_list, provider, &existing_provider_node))
-			dn_list_ex_erase (&config->provider_list, dn_list_ex_data (existing_provider_node, const void *));
+		dn_list_it_t found = dn_list_find (config->provider_list, provider, NULL);
+		if (!dn_list_it_end (found)) {
+			dn_list_erase (found);
+			unregistered = true;
+		}
 	}
 
 	ep_requires_lock_held ();
-	return (existing_provider_node != NULL);
+	return unregistered;
 }
 
 static
@@ -185,8 +188,8 @@ EventPipeProvider *
 config_find_provider_by_name (dn_list_t *list,
 	const ep_char8_t *name)
 {
-	dn_list_t *item = dn_list_find_custom (list, name, config_compare_provider_name_func);
-	return (item != NULL) ? dn_list_ex_data (item, EventPipeProvider *) : NULL;
+	dn_list_it_t found = dn_list_find (list, name, config_compare_provider_name_func);
+	return (!dn_list_it_end (found)) ? *dn_list_it_data_t (found, EventPipeProvider *) : NULL;
 }
 
 EventPipeConfiguration *
@@ -199,6 +202,9 @@ ep_config_init (EventPipeConfiguration *config)
 	EventPipeProviderCallbackDataQueue callback_data_queue;
 	EventPipeProviderCallbackData provider_callback_data;
 	EventPipeProviderCallbackDataQueue *provider_callback_data_queue = ep_provider_callback_data_queue_init (&callback_data_queue);
+
+	config->provider_list = dn_list_alloc ();
+	ep_raise_error_if_nok (config->provider_list != NULL);
 
 	EP_LOCK_ENTER (section1)
 		config->config_provider = provider_create_register (ep_config_get_default_provider_name_utf8 (), NULL, NULL, provider_callback_data_queue);
@@ -251,7 +257,8 @@ ep_config_shutdown (EventPipeConfiguration *config)
 	// Take the lock before manipulating the list.
 	EP_LOCK_ENTER (section1)
 		// We don't delete provider itself because it can be in-use
-		dn_list_ex_free (&config->provider_list);
+		dn_list_free (config->provider_list);
+		config->provider_list = NULL;
 	EP_LOCK_EXIT (section1)
 
 ep_on_exit:
@@ -476,7 +483,7 @@ config_get_provider (
 	ep_requires_lock_held ();
 
 	// The provider list should be non-NULL, but can be NULL on shutdown.
-	ep_return_null_if_nok (!dn_list_ex_empty (config->provider_list));
+	ep_return_null_if_nok (!dn_list_empty (config->provider_list));
 	EventPipeProvider *provider = config_find_provider_by_name (config->provider_list, name);
 
 	ep_requires_lock_held ();
@@ -536,14 +543,14 @@ config_delete_deferred_providers (EventPipeConfiguration *config)
 	ep_requires_lock_held ();
 
 	// The provider list should be non-NULL, but can be NULL on shutdown.
-	if (!dn_list_ex_empty (config->provider_list)) {
+	if (!dn_list_empty (config->provider_list)) {
 
-		for (dn_list_t *it = config->provider_list; it; ) {
-			EventPipeProvider *provider = dn_list_ex_data(it, EventPipeProvider *);
+		for (dn_list_it_t it = dn_list_begin (config->provider_list); !dn_list_it_end (it); ) {
+			EventPipeProvider *provider = *dn_list_it_data_t(it, EventPipeProvider *);
 			EP_ASSERT (provider != NULL);
 
 			// Get next item before deleting current.
-			it = it->next;
+			it = dn_list_it_next (it);
 
 			if (ep_provider_get_delete_deferred (provider))
 				config_delete_provider (config, provider);
@@ -567,8 +574,8 @@ config_enable_disable (
 	EP_ASSERT (session != NULL);
 
 	// The provider list should be non-NULL, but can be NULL on shutdown.
-	if (!dn_list_ex_empty (config->provider_list)) {
-		DN_LIST_EX_FOREACH_BEGIN (config->provider_list, EventPipeProvider *, provider) {
+	if (!dn_list_empty (config->provider_list)) {
+		DN_LIST_FOREACH_BEGIN (config->provider_list, EventPipeProvider *, provider) {
 			if (provider) {
 				// Enable/Disable the provider if it has been configured.
 				EventPipeSessionProvider *session_provider = config_get_session_provider (config, session, provider);
@@ -604,7 +611,7 @@ config_enable_disable (
 					ep_provider_callback_data_fini (&provider_callback_data);
 				}
 			}
-		} DN_LIST_EX_FOREACH_END;
+		} DN_LIST_FOREACH_END;
 	}
 
 	ep_requires_lock_held ();

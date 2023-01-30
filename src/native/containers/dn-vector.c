@@ -3,16 +3,6 @@
 
 #include "dn-vector.h"
 
-#define CHECK_VERSION_RETURN_VALUE(vector,return_value) do { \
-	if (DN_UNLIKELY ((vector)->version != sizeof (dn_vector_t))) \
-		return (return_value); \
-} while (0)
-
-#define CHECK_VERSION_RETURN_VOID(vector) do { \
-	if (DN_UNLIKELY ((vector)->version != sizeof (dn_vector_t))) \
-		return; \
-} while (0)
-
 #define INITIAL_CAPACITY 16
 #define CALC_NEW_CAPACITY(capacity) ((capacity + (capacity >> 1) + 63) & ~63)
 
@@ -122,57 +112,60 @@ vector_append_range (
 dn_vector_t *
 _dn_vector_alloc (
 	dn_allocator_t *allocator,
+	dn_dispose_func_t dispose_func,
 	uint32_t element_size)
 {
-	return _dn_vector_alloc_capacity (allocator, element_size, INITIAL_CAPACITY);
+	return _dn_vector_alloc_capacity (allocator, dispose_func, element_size, INITIAL_CAPACITY);
 }
 
 dn_vector_t *
 _dn_vector_alloc_capacity (
 	dn_allocator_t *allocator,
+	dn_dispose_func_t dispose_func,
 	uint32_t element_size,
 	uint32_t capacity)
 {
 	dn_vector_t *vector = (dn_vector_t *)dn_allocator_alloc (allocator, sizeof (dn_vector_t));
-	dn_vector_t *vector_init = _dn_vector_init_capacity (vector, allocator, sizeof (dn_vector_t), element_size, capacity);
-	if (!vector_init)
+	if (!_dn_vector_init_capacity (vector, allocator, dispose_func, element_size, capacity)) {
 		dn_allocator_free (allocator, vector);
-
-	return vector_init;
-}
-
-dn_vector_t *
-_dn_vector_init (
-	dn_vector_t *vector,
-	dn_allocator_t *allocator,
-	uint32_t version,
-	uint32_t element_size)
-{
-	return _dn_vector_init_capacity (vector, allocator, version, element_size, INITIAL_CAPACITY);
-}
-
-dn_vector_t *
-_dn_vector_init_capacity (
-	dn_vector_t *vector,
-	dn_allocator_t *allocator,
-	uint32_t version,
-	uint32_t element_size,
-	uint32_t capacity)
-{
-	if (DN_UNLIKELY (!vector || version != sizeof (dn_vector_t)))
-		return NULL;
-
-	memset (vector, 0, sizeof(dn_vector_t));
-	vector->version = version;
-	vector->_internal._allocator = allocator;
-	vector->_internal._element_size = element_size;
-
-	if (DN_UNLIKELY (!ensure_capacity (vector, capacity))) {
-		dn_vector_fini (vector);
 		return NULL;
 	}
 
 	return vector;
+}
+
+bool
+_dn_vector_init (
+	dn_vector_t *vector,
+	dn_allocator_t *allocator,
+	dn_dispose_func_t dispose_func,
+	uint32_t element_size)
+{
+	return _dn_vector_init_capacity (vector, allocator, dispose_func, element_size, INITIAL_CAPACITY);
+}
+
+bool
+_dn_vector_init_capacity (
+	dn_vector_t *vector,
+	dn_allocator_t *allocator,
+	dn_dispose_func_t dispose_func,
+	uint32_t element_size,
+	uint32_t capacity)
+{
+	if (DN_UNLIKELY (!vector))
+		return false;
+
+	memset (vector, 0, sizeof(dn_vector_t));
+	vector->_internal._allocator = allocator;
+	vector->_internal._dispose_func = dispose_func;
+	vector->_internal._element_size = element_size;
+
+	if (DN_UNLIKELY (!ensure_capacity (vector, capacity))) {
+		dn_vector_dispose (vector);
+		return false;
+	}
+
+	return true;
 }
 
 bool
@@ -182,7 +175,8 @@ _dn_vector_insert_range (
 	const uint8_t *elements,
 	uint32_t element_count)
 {
-	CHECK_VERSION_RETURN_VALUE (vector, false);
+	if (DN_UNLIKELY (!vector || !elements))
+		return false;
 
 	if ((uint32_t)position == vector->size)
 		return vector_append_range (vector, elements, element_count);
@@ -195,7 +189,8 @@ _dn_vector_erase_if (
 	dn_vector_t *vector,
 	const uint8_t *value)
 {
-	CHECK_VERSION_RETURN_VALUE (vector, false);
+	if (DN_UNLIKELY (!vector))
+		return false;
 
 	for (uint32_t i = 0; i < vector->size; i++) {
 		if (!memcmp (element_offset (vector, i), value, element_length (vector, 1))) {
@@ -212,7 +207,8 @@ _dn_vector_erase_fast_if (
 	dn_vector_t *vector,
 	const uint8_t *value)
 {
-	CHECK_VERSION_RETURN_VALUE (vector, false);
+	if (DN_UNLIKELY (!vector))
+		return false;
 
 	for (uint32_t i = 0; i < vector->size; i++) {
 		if (!memcmp (element_offset (vector, i), value, element_length (vector, 1))) {
@@ -245,15 +241,22 @@ _dn_vector_buffer_capacity (
 void
 dn_vector_free (dn_vector_t *vector)
 {
-	dn_vector_fini (vector);
+	dn_vector_dispose (vector);
 	dn_allocator_free (vector->_internal._allocator, vector);
 }
 
 void
-dn_vector_fini (dn_vector_t *vector)
+dn_vector_dispose (dn_vector_t *vector)
 {
-	if (vector)
-		dn_allocator_free (vector->_internal._allocator, vector->data);
+	if (DN_UNLIKELY (!vector))
+		return;
+
+	if (vector->_internal._dispose_func) {
+		for(uint32_t i = 0; i < vector->size; i++)
+			vector->_internal._dispose_func ((void *)(element_offset (vector, i)));
+	}
+
+	dn_allocator_free (vector->_internal._allocator, vector->data);
 }
 
 bool
@@ -261,12 +264,18 @@ dn_vector_reserve (
 	dn_vector_t *vector,
 	uint32_t capacity)
 {
+	if (DN_UNLIKELY (!vector))
+		return false;
+
 	return ensure_capacity (vector, capacity);
 }
 
 uint32_t
-dn_vector_capacity (dn_vector_t *vector)
+dn_vector_capacity (const dn_vector_t *vector)
 {
+	if (DN_UNLIKELY (!vector))
+		return 0;
+
 	return vector->_internal._capacity;
 }
 
@@ -275,12 +284,17 @@ dn_vector_erase (
 	dn_vector_t *vector,
 	uint32_t position)
 {
-	CHECK_VERSION_RETURN_VALUE (vector, false);
+	if (DN_UNLIKELY (!vector))
+		return false;
 
 	uint64_t insert_offset = (uint64_t)position + 1;
 	int64_t size_to_move = (int64_t)vector->size - (int64_t)position;
 	if (DN_UNLIKELY (insert_offset > vector->_internal._capacity || size_to_move < 0))
 		return false;
+
+	if (vector->_internal._dispose_func) {
+		vector->_internal._dispose_func ((void *)(element_offset (vector, position)));
+	}
 	
 	/* element_offset won't overflow since insert_offset and position is smaller than current capacity */
 	/* element_length won't overflow since size_to_move is smaller than current capacity */
@@ -299,10 +313,12 @@ dn_vector_erase_fast (
 	dn_vector_t *vector,
 	uint32_t position)
 {
-	CHECK_VERSION_RETURN_VALUE (vector, false);
-
-	if (DN_UNLIKELY (vector->size == 0 || (uint32_t)position > vector->size))
+	if (DN_UNLIKELY (!vector || vector->size == 0 || (uint32_t)position > vector->size))
 		return false;
+
+	if (vector->_internal._dispose_func) {
+		vector->_internal._dispose_func ((void *)(element_offset (vector, position)));
+	}
 
 	/* element_offset won't overflow since position is smaller than current capacity */
 	/* element_offset won't overflow since vector->size - 1 is smaller than current capacity */
@@ -321,7 +337,8 @@ dn_vector_resize (
 	dn_vector_t *vector,
 	uint32_t size)
 {
-	CHECK_VERSION_RETURN_VALUE (vector, false);
+	if (DN_UNLIKELY (!vector))
+		return false;
 
 	if (size == vector->_internal._capacity)
 		return true;
@@ -330,37 +347,25 @@ dn_vector_resize (
 		if (DN_UNLIKELY (!ensure_capacity (vector, size)))
 			return false;
 	
-	//TODO: If new size < vector->size check dn_allocator_init and clear if needed.
+	//TODO: If new size < vector->size:
+	// * Call dispose_func if present.
+	// * Check dn_allocator_init and clear if needed.
+
 	vector->size = size;
 	return true;
 }
 
 void
 dn_vector_for_each (
-	dn_vector_t *vector,
+	const dn_vector_t *vector,
 	dn_func_t func,
 	void *user_data)
 {
-	CHECK_VERSION_RETURN_VOID (vector);
+	if (DN_UNLIKELY (!vector || !func))
+		return;
 
-	if (vector && func) {
-		for(uint32_t i = 0; i < vector->size; i++) {
-			func ((void *)(element_offset (vector, i)), user_data);
-		}
-	}
-}
-
-void
-dn_vector_for_each_fini (
-	dn_vector_t *vector,
-	dn_fini_func_t func)
-{
-	CHECK_VERSION_RETURN_VOID (vector);
-
-	if (vector && func) {
-		for (uint32_t i = 0; i < vector->size; ++i)
-			func ((void *)(element_offset (vector, i)));
-	}
+	for(uint32_t i = 0; i < vector->size; i++)
+		func ((void *)(element_offset (vector, i)), user_data);
 }
 
 void
@@ -368,17 +373,18 @@ dn_vector_sort (
 	dn_vector_t *vector,
 	dn_compare_func_t func)
 {
-	if (vector == NULL || vector->size < 2)
+	if (DN_UNLIKELY (!vector || vector->size < 2))
 		return;
+
 	qsort ((void *)vector->data, vector->size, element_length (vector, 1), (int (DN_CALLBACK_CALLTYPE *)(const void *, const void *))func);
 }
 
 uint32_t
 dn_vector_find (
-	dn_vector_t *vector,
+	const dn_vector_t *vector,
 	const uint8_t *value)
 {
-	if (vector == NULL)
+	if (DN_UNLIKELY (!vector))
 		return 0;
 
 	for (uint32_t i = 0; i < vector->size; i++) {

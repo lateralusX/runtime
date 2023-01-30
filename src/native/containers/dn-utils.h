@@ -45,7 +45,8 @@ typedef void (DN_CALLBACK_CALLTYPE *dn_destory_notify_func_t) (void *data);
 typedef uint32_t (DN_CALLBACK_CALLTYPE *dn_hash_func_t) (const void *key);
 typedef bool (DN_CALLBACK_CALLTYPE *dn_equal_func_t) (const void *a, const void *b);
 typedef void (DN_CALLBACK_CALLTYPE *dn_free_func_t) (void *data);
-typedef void (DN_CALLBACK_CALLTYPE *dn_fini_func_t) (void *data);
+typedef bool (DN_CALLBACK_CALLTYPE *dn_remove_func_t) (const void *data, void *user_data);
+typedef void (DN_CALLBACK_CALLTYPE *dn_dispose_func_t) (void *data);
 
 #if defined(__GNUC__) && (__GNUC__ > 2)
 #define DN_LIKELY(expr) (__builtin_expect ((expr) != 0, 1))
