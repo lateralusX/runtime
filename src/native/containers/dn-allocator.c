@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 #include "dn-allocator.h"
 #include "dn-malloc.h"
 
@@ -171,7 +174,7 @@ fixed_realloc (
 	return (uint8_t *)ptr + DN_ALLOCATOR_MEM_ALIGN8;
 }
 
-static inline void
+static void
 fixed_free (
 	dn_allocator_fixed_data_t *data,
 	void *block)
@@ -179,7 +182,7 @@ fixed_free (
 	DN_UNREFERENCED_PARAMETER (data);
 	DN_UNREFERENCED_PARAMETER (block);
 
-	// Sttaic buffer doesn't support free.
+	// Fixed buffer doesn't support free.
 }
 
 static inline bool
