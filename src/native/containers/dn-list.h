@@ -248,7 +248,7 @@ dn_list_push_front (
 void
 dn_list_pop_front (dn_list_t *list);
 
-void
+bool
 dn_list_resize (
 	dn_list_t *list,
 	uint32_t count);

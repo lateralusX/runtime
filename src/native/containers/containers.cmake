@@ -16,9 +16,7 @@ list(APPEND SHARED_CONTAINER_HEADERS
     dn-malloc.h
     dn-fwd-list.h
     dn-list.h
-    dn-list-ex.h
     dn-queue.h
-    dn-queue-ex.h
     dn-unordered-map.h
     dn-unordered-map-ex.h
     dn-sort-frag.inc

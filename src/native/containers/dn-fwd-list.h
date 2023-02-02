@@ -213,7 +213,7 @@ dn_fwd_list_push_front (
 void
 dn_fwd_list_pop_front (dn_fwd_list_t *list);
 
-void
+bool
 dn_fwd_list_resize (
 	dn_fwd_list_t *list,
 	uint32_t count);
