@@ -101,7 +101,7 @@ ep_session_provider_list_alloc (
 	EventPipeSessionProviderList *instance = ep_rt_object_alloc (EventPipeSessionProviderList);
 	ep_raise_error_if_nok (instance != NULL);
 
-	instance->providers = dn_list_custom_alloc (DN_DEFAULT_ALLOCATOR, session_provider_free_func);
+	instance->providers = dn_list_custom_alloc (DN_DEFAULT_ALLOCATOR);
 	ep_raise_error_if_nok (instance->providers != NULL);
 
 	instance->catch_all_provider = NULL;
@@ -141,7 +141,7 @@ ep_session_provider_list_free (EventPipeSessionProviderList *session_provider_li
 {
 	ep_return_void_if_nok (session_provider_list != NULL);
 
-	dn_list_free (session_provider_list->providers);
+	dn_list_free_for_each (session_provider_list->providers, session_provider_free_func);
 	ep_session_provider_free (session_provider_list->catch_all_provider);
 	ep_rt_object_free (session_provider_list);
 }
@@ -150,7 +150,7 @@ void
 ep_session_provider_list_clear (EventPipeSessionProviderList *session_provider_list)
 {
 	EP_ASSERT (session_provider_list != NULL);
-	dn_list_clear (session_provider_list->providers);
+	dn_list_clear_for_each (session_provider_list->providers, session_provider_free_func);
 }
 
 bool

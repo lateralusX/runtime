@@ -16,50 +16,60 @@ struct _dn_queue_t {
 };
 
 dn_queue_t *
-_dn_queue_alloc (
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func);
+_dn_queue_alloc (dn_allocator_t *allocator);
 
 bool
 _dn_queue_init (
 	dn_queue_t *queue,
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func);
+	dn_allocator_t *allocator);
 
 static inline dn_queue_t *
-dn_queue_custom_alloc (
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+dn_queue_custom_alloc (dn_allocator_t *allocator)
 {
-	return _dn_queue_alloc (allocator, dispose_func);
+	return _dn_queue_alloc (allocator);
 }
 
 static inline dn_queue_t *
 dn_queue_alloc (void)
 {
-	return _dn_queue_alloc (DN_DEFAULT_ALLOCATOR, NULL);
+	return _dn_queue_alloc (DN_DEFAULT_ALLOCATOR);
 }
 
 void
-dn_queue_free (dn_queue_t *queue);
+dn_queue_free_for_each (
+	dn_queue_t *queue,
+	dn_dispose_func_t dispose_func);
+
+static inline void
+dn_queue_free (dn_queue_t *queue)
+{
+	dn_queue_free_for_each (queue, NULL);
+}
 
 static inline bool
 dn_queue_custom_init (
 	dn_queue_t *queue,
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+	dn_allocator_t *allocator)
 {
-	return _dn_queue_init (queue, allocator, dispose_func);
+	return _dn_queue_init (queue, allocator);
 }
 
 static inline bool
 dn_queue_init (dn_queue_t *queue)
 {
-	return _dn_queue_init (queue, DN_DEFAULT_ALLOCATOR, NULL);
+	return _dn_queue_init (queue, DN_DEFAULT_ALLOCATOR);
 }
 
 void
-dn_queue_dispose (dn_queue_t *queue);
+dn_queue_dispose_for_each (
+	dn_queue_t *queue,
+	dn_dispose_func_t dispose_func);
+
+static inline void
+dn_queue_dispose (dn_queue_t *queue)
+{
+	dn_queue_dispose_for_each (queue, NULL);
+}
 
 static inline void **
 dn_queue_front (dn_queue_t *queue)
@@ -123,12 +133,20 @@ dn_queue_pop (dn_queue_t *queue)
 }
 
 static inline void
-dn_queue_clear (dn_queue_t *queue)
+dn_queue_clear_for_each (
+	dn_queue_t *queue,
+	dn_dispose_func_t dispose_func)
 {
 	if (queue) {
-		dn_list_clear (&queue->_internal.list);
+		dn_list_clear_for_each (&queue->_internal.list, dispose_func);
 		queue->size = 0;
 	}
+}
+
+static inline void
+dn_queue_clear (dn_queue_t *queue)
+{
+	dn_queue_clear_for_each (queue, NULL);
 }
 
 #endif /* __DN_QUEUE_H__ */

@@ -18,7 +18,6 @@ struct _dn_list_t {
 	dn_list_node_t *tail;
 	struct {
 		dn_allocator_t *_allocator;
-		dn_dispose_func_t _dispose_func;
 	} _internal;
 };
 
@@ -114,50 +113,61 @@ dn_list_it_end (dn_list_it_t it)
 	} while (0)
 
 dn_list_t *
-_dn_list_alloc (
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func);
+_dn_list_alloc (dn_allocator_t *allocator);
 
 bool
 _dn_list_init (
 	dn_list_t *list,
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func);
+	dn_allocator_t *allocator);
 
 static inline dn_list_t *
 dn_list_custom_alloc (
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+	dn_allocator_t *allocator)
 {
-	return _dn_list_alloc (allocator, dispose_func);
+	return _dn_list_alloc (allocator);
 }
 
 static inline dn_list_t *
 dn_list_alloc (void)
 {
-	return _dn_list_alloc (DN_DEFAULT_ALLOCATOR, NULL);
+	return _dn_list_alloc (DN_DEFAULT_ALLOCATOR);
 }
 
 void
-dn_list_free (dn_list_t *list);
+dn_list_free_for_each (
+	dn_list_t *list,
+	dn_dispose_func_t dispose_func);
+
+static inline void
+dn_list_free (dn_list_t *list)
+{
+	dn_list_free_for_each (list, NULL);
+}
 
 static inline bool
 dn_list_custom_init (
 	dn_list_t *list,
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+	dn_allocator_t *allocator)
 {
-	return _dn_list_init (list, allocator, dispose_func);
+	return _dn_list_init (list, allocator);
 }
 
 static inline bool
 dn_list_init (dn_list_t *list)
 {
-	return _dn_list_init (list, DN_DEFAULT_ALLOCATOR, NULL);
+	return _dn_list_init (list, DN_DEFAULT_ALLOCATOR);
 }
 
 void
-dn_list_dispose (dn_list_t *list);
+dn_list_dispose_for_each (
+	dn_list_t *list,
+	dn_dispose_func_t dispose_func);
+
+static inline void
+dn_list_dispose (dn_list_t *list)
+{
+	dn_list_dispose_for_each (list, NULL);
+}
 
 static inline void **
 dn_list_front (const dn_list_t *list)
@@ -214,7 +224,16 @@ dn_list_max_size (const dn_list_t *list)
 }
 
 void
-dn_list_clear (dn_list_t *list);
+dn_list_clear_for_each (
+	dn_list_t *list,
+	dn_dispose_func_t dispose_func);
+
+
+static inline void
+dn_list_clear (dn_list_t *list)
+{
+	dn_list_clear_for_each (list, NULL);
+}
 
 dn_list_it_t
 dn_list_insert (
@@ -230,7 +249,15 @@ dn_list_insert_range (
 	bool *result);
 
 dn_list_it_t
-dn_list_erase (dn_list_it_t position);
+dn_list_erase_for_each (
+	dn_list_it_t position,
+	dn_dispose_func_t dispose_func);
+
+static inline dn_list_it_t
+dn_list_erase (dn_list_it_t position)
+{
+	return dn_list_erase_for_each (position, NULL);
+}
 
 bool
 dn_list_push_back (
@@ -249,20 +276,48 @@ void
 dn_list_pop_front (dn_list_t *list);
 
 bool
+dn_list_resize_for_each (
+	dn_list_t *list,
+	uint32_t count,
+	dn_dispose_func_t dispose_func);
+
+static inline bool
 dn_list_resize (
 	dn_list_t *list,
-	uint32_t count);
+	uint32_t count)
+{
+	return dn_list_resize_for_each (list, count, NULL);
+}
 
 void
+dn_list_remove_for_each (
+	dn_list_t *list,
+	const void *data,
+	dn_dispose_func_t dispose_func);
+
+static inline void
 dn_list_remove (
 	dn_list_t *list,
-	const void *data);
+	const void *data)
+{
+	dn_list_remove_for_each (list, data, NULL);
+}
 
 void
+dn_list_remove_if_for_each (
+	dn_list_t *list,
+	dn_remove_func_t remove_func,
+	void *user_data,
+	dn_dispose_func_t dispose_func);
+
+static inline void
 dn_list_remove_if (
 	dn_list_t *list,
 	dn_remove_func_t remove_func,
-	void *user_data);
+	void *user_data)
+{
+	dn_list_remove_if_for_each (list, remove_func, user_data, NULL);
+}
 
 void
 dn_list_reverse (dn_list_t *list);
