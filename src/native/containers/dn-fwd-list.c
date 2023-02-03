@@ -60,12 +60,10 @@ fwd_list_dispose_node (
 }
 
 dn_fwd_list_t *
-_dn_fwd_list_alloc (
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+_dn_fwd_list_alloc (dn_allocator_t *allocator)
 {
 	dn_fwd_list_t *list = (dn_fwd_list_t *)dn_allocator_alloc (allocator, sizeof (dn_fwd_list_t));
-	if (!_dn_fwd_list_init (list, allocator, dispose_func)) {
+	if (!_dn_fwd_list_init (list, allocator)) {
 		dn_allocator_free (allocator, list);
 		return NULL;
 	}
@@ -76,30 +74,32 @@ _dn_fwd_list_alloc (
 bool
 _dn_fwd_list_init (
 	dn_fwd_list_t *list,
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+	dn_allocator_t *allocator)
 {
 	if (DN_UNLIKELY (!list))
 		return false;
 
 	memset (list, 0, sizeof(dn_fwd_list_t));
 	list->_internal._allocator = allocator;
-	list->_internal._dispose_func = dispose_func;
 
 	return true;
 }
 
 void
-dn_fwd_list_free (dn_fwd_list_t *list)
+dn_fwd_list_free_for_each (
+	dn_fwd_list_t *list,
+	dn_dispose_func_t dispose_func)
 {
 	if (list) {
-		dn_fwd_list_dispose (list);
+		dn_fwd_list_dispose_for_each (list, dispose_func);
 		dn_allocator_free (list->_internal._allocator, list);
 	}
 }
 
 void
-dn_fwd_list_dispose (dn_fwd_list_t *list)
+dn_fwd_list_dispose_for_each (
+	dn_fwd_list_t *list,
+	dn_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return;
@@ -107,20 +107,22 @@ dn_fwd_list_dispose (dn_fwd_list_t *list)
 	dn_fwd_list_node_t *current = list->head;
 	while (current) {
 		dn_fwd_list_node_t *next = current->next;
-		if (list->_internal._dispose_func)
-			list->_internal._dispose_func (current->data);
+		if (dispose_func)
+			dispose_func (current->data);
 		dn_allocator_free (list->_internal._allocator, current);
 		current = next;
 	}
 }
 
 void
-dn_fwd_list_clear (dn_fwd_list_t *list)
+dn_fwd_list_clear_for_each (
+	dn_fwd_list_t *list,
+	dn_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return;
 
-	dn_fwd_list_dispose (list);
+	dn_fwd_list_dispose_for_each (list, dispose_func);
 
 	list->head = NULL;
 	list->tail = NULL;
@@ -173,18 +175,22 @@ dn_fwd_list_insert_range_after (
 }
 
 dn_fwd_list_it_t
-dn_fwd_list_erase_after (dn_fwd_list_it_t position)
+dn_fwd_list_erase_after_for_each (
+	dn_fwd_list_it_t position,
+	dn_dispose_func_t dispose_func)
 {
 	dn_fwd_list_t *list = position._internal._list;
 
 	if (position.it) {
 		if (position.it == &_fwd_list_before_begin_it_node) {
+			if (dispose_func)
+				dispose_func (*dn_fwd_list_front (list));
 			dn_fwd_list_pop_front (list);
 			position.it = list->head;
 		} else if (position.it->next) {
 			dn_fwd_list_node_t *to_erase = position.it->next;
 			position.it->next = position.it->next->next;
-			fwd_list_free_node (position._internal._list->_internal._allocator, to_erase);
+			fwd_list_dispose_node (position._internal._list->_internal._allocator, dispose_func, to_erase);
 		}
 
 		if (!position.it->next) {
@@ -224,9 +230,10 @@ dn_fwd_list_pop_front (dn_fwd_list_t *list)
 }
 
 bool
-dn_fwd_list_resize (
+dn_fwd_list_resize_for_each (
 	dn_fwd_list_t *list,
-	uint32_t count)
+	uint32_t count,
+	dn_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return false;
@@ -245,7 +252,7 @@ dn_fwd_list_resize (
 
 			while (to_dispose) {
 				dn_fwd_list_node_t *next = to_dispose->next;
-				fwd_list_dispose_node (list->_internal._allocator, list->_internal._dispose_func, to_dispose);
+				fwd_list_dispose_node (list->_internal._allocator, dispose_func, to_dispose);
 				to_dispose = next;
 			}
 
@@ -263,9 +270,10 @@ dn_fwd_list_resize (
 }
 
 void
-dn_fwd_list_remove (
+dn_fwd_list_remove_for_each (
 	dn_fwd_list_t *list,
-	const void *data)
+	const void *data,
+	dn_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!list))
 		return;
@@ -285,7 +293,7 @@ dn_fwd_list_remove (
 			} else {
 				prev->next = next;
 			}
-			fwd_list_dispose_node (list->_internal._allocator, list->_internal._dispose_func, current);
+			fwd_list_dispose_node (list->_internal._allocator, dispose_func, current);
 		} else {
 			prev = current;
 		}
@@ -295,10 +303,11 @@ dn_fwd_list_remove (
 }
 
 void
-dn_fwd_list_remove_if (
+dn_fwd_list_remove_if_for_each (
 	dn_fwd_list_t *list,
 	dn_remove_func_t remove_func,
-	void * user_data)
+	void *user_data,
+	dn_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!list))
 		return;
@@ -318,7 +327,7 @@ dn_fwd_list_remove_if (
 			} else {
 				prev->next = next;
 			}
-			fwd_list_dispose_node (list->_internal._allocator, list->_internal._dispose_func, current);
+			fwd_list_dispose_node (list->_internal._allocator, dispose_func, current);
 		} else {
 			prev = current;
 		}

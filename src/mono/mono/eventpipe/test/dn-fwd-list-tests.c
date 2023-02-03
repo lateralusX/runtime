@@ -67,14 +67,14 @@ RESULT
 test_fwd_list_free (void)
 {
 	uint32_t dispose_count = 0;
-	dn_fwd_list_t *list = dn_fwd_list_custom_alloc (DN_DEFAULT_ALLOCATOR, fwd_list_dispose_func);
+	dn_fwd_list_t *list = dn_fwd_list_custom_alloc (DN_DEFAULT_ALLOCATOR);
 	if (!list)
 		return FAILED ("failed to custom alloc list");
 
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 
-	dn_fwd_list_free (list);
+	dn_fwd_list_free_for_each (list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on free");
@@ -88,13 +88,13 @@ test_fwd_list_dispose (void)
 {
 	uint32_t dispose_count = 0;
 	dn_fwd_list_t list;
-	if (!dn_fwd_list_custom_init (&list, DN_DEFAULT_ALLOCATOR, fwd_list_dispose_func))
+	if (!dn_fwd_list_custom_init (&list, DN_DEFAULT_ALLOCATOR))
 		return FAILED ("failed to custom init list");
 
 	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count, NULL);
 	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count, NULL);
 
-	dn_fwd_list_dispose (&list);
+	dn_fwd_list_dispose_for_each (&list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on free");
@@ -200,18 +200,18 @@ test_fwd_list_clear (void)
 
 	dn_fwd_list_free (list);
 
-	list = dn_fwd_list_custom_alloc (DN_DEFAULT_ALLOCATOR, fwd_list_dispose_func);
+	list = dn_fwd_list_custom_alloc (DN_DEFAULT_ALLOCATOR);
 
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 
-	dn_fwd_list_clear (list);
+	dn_fwd_list_clear_for_each (list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on clear");
 
 	dispose_count = 0;
-	dn_fwd_list_free (list);
+	dn_fwd_list_free_for_each (list, fwd_list_dispose_func);
 
 	if (dispose_count != 0)
 		return FAILED ("invalid dispose count on clear/free");
@@ -424,7 +424,7 @@ test_fwd_list_pop_front (void)
 
 	dn_fwd_list_t list;
 
-	dn_fwd_list_custom_init (&list, DN_DEFAULT_ALLOCATOR, NULL);
+	dn_fwd_list_custom_init (&list, DN_DEFAULT_ALLOCATOR);
 
 	dn_fwd_list_push_front (&list, items [2]);
 	dn_fwd_list_push_front (&list, items [1]);
@@ -447,7 +447,7 @@ test_fwd_list_pop_front (void)
 
 	dn_fwd_list_dispose (&list);
 
-	dn_fwd_list_custom_init (&list, DN_DEFAULT_ALLOCATOR, fwd_list_dispose_func);
+	dn_fwd_list_custom_init (&list, DN_DEFAULT_ALLOCATOR);
 
 	dn_fwd_list_push_front (&list, &dispose_count);
 	dn_fwd_list_push_front (&list, &dispose_count);
@@ -458,7 +458,7 @@ test_fwd_list_pop_front (void)
 	if (dispose_count != 0)
 		return FAILED ("pop_front dispose count failed #1");
 
-	dn_fwd_list_dispose (&list);
+	dn_fwd_list_dispose_for_each (&list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("pop_front dispose count failed #2");
@@ -471,25 +471,25 @@ RESULT
 test_fwd_list_resize (void)
 {
 	uint32_t dispose_count = 0;
-	dn_fwd_list_t *list = dn_fwd_list_custom_alloc (DN_DEFAULT_ALLOCATOR, fwd_list_dispose_func);
+	dn_fwd_list_t *list = dn_fwd_list_custom_alloc (DN_DEFAULT_ALLOCATOR);
 
 	for (uint32_t i = 0; i < 100; i++)
 		dn_fwd_list_push_front (list, &dispose_count);
 
-	dn_fwd_list_resize (list, 90);
+	dn_fwd_list_resize_for_each (list, 90, fwd_list_dispose_func);
 
 	if (dispose_count != 10)
 		return FAILED ("failed resize #1");
 
 	dispose_count = 0;
-	dn_fwd_list_resize (list, 10);
+	dn_fwd_list_resize_for_each (list, 10, fwd_list_dispose_func);
 
 	if (dispose_count != 80)
 		return FAILED ("failed resize #2");
 
 	dispose_count = 0;
 
-	dn_fwd_list_free (list);
+	dn_fwd_list_free_for_each (list, fwd_list_dispose_func);
 
 	if (dispose_count != 10)
 		return FAILED ("failed free");

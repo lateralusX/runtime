@@ -17,7 +17,6 @@ struct _dn_fwd_list_t {
 	dn_fwd_list_node_t *tail;
 	struct {
 		dn_allocator_t *_allocator;
-		dn_dispose_func_t _dispose_func;
 	} _internal;
 };
 
@@ -87,50 +86,60 @@ dn_fwd_list_it_end (dn_fwd_list_it_t it)
 	} while (0)
 
 dn_fwd_list_t *
-_dn_fwd_list_alloc (
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func);
+_dn_fwd_list_alloc (dn_allocator_t *allocator);
 
 bool
 _dn_fwd_list_init (
 	dn_fwd_list_t *list,
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func);
+	dn_allocator_t *allocator);
 
 static inline dn_fwd_list_t *
-dn_fwd_list_custom_alloc (
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+dn_fwd_list_custom_alloc (dn_allocator_t *allocator)
 {
-	return _dn_fwd_list_alloc (allocator, dispose_func);
+	return _dn_fwd_list_alloc (allocator);
 }
 
 static inline dn_fwd_list_t *
 dn_fwd_list_alloc (void)
 {
-	return _dn_fwd_list_alloc (DN_DEFAULT_ALLOCATOR, NULL);
+	return _dn_fwd_list_alloc (DN_DEFAULT_ALLOCATOR);
 }
 
 void
-dn_fwd_list_free (dn_fwd_list_t *list);
+dn_fwd_list_free_for_each (
+	dn_fwd_list_t *list,
+	dn_dispose_func_t dispose_func);
+
+static inline void
+dn_fwd_list_free (dn_fwd_list_t *list)
+{
+	dn_fwd_list_free_for_each (list, NULL);
+}
 
 static inline bool
 dn_fwd_list_custom_init (
 	dn_fwd_list_t *list,
-	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func)
+	dn_allocator_t *allocator)
 {
-	return _dn_fwd_list_init (list, allocator, dispose_func);
+	return _dn_fwd_list_init (list, allocator);
 }
 
 static inline bool
 dn_fwd_list_init (dn_fwd_list_t *list)
 {
-	return _dn_fwd_list_init (list, DN_DEFAULT_ALLOCATOR, NULL);
+	return _dn_fwd_list_init (list, DN_DEFAULT_ALLOCATOR);
 }
 
 void
-dn_fwd_list_dispose (dn_fwd_list_t *list);
+dn_fwd_list_dispose_for_each (
+	dn_fwd_list_t *list,
+	dn_dispose_func_t dispose_func);
+
+static inline void
+dn_fwd_list_dispose (dn_fwd_list_t *list)
+{
+	dn_fwd_list_dispose_for_each (list, NULL);
+}
 
 static inline void **
 dn_fwd_list_front (const dn_fwd_list_t *list)
@@ -187,7 +196,15 @@ dn_fwd_list_max_size (const dn_fwd_list_t *list)
 }
 
 void
-dn_fwd_list_clear (dn_fwd_list_t *list);
+dn_fwd_list_clear_for_each (
+	dn_fwd_list_t *list,
+	dn_dispose_func_t dispose_func);
+
+static inline void
+dn_fwd_list_clear (dn_fwd_list_t *list)
+{
+	dn_fwd_list_clear_for_each (list, NULL);
+}
 
 dn_fwd_list_it_t
 dn_fwd_list_insert_after (
@@ -203,7 +220,15 @@ dn_fwd_list_insert_range_after (
 	bool *result);
 
 dn_fwd_list_it_t
-dn_fwd_list_erase_after (dn_fwd_list_it_t position);
+dn_fwd_list_erase_after_for_each (
+	dn_fwd_list_it_t position,
+	dn_dispose_func_t dispose_func);
+
+static inline dn_fwd_list_it_t
+dn_fwd_list_erase_after (dn_fwd_list_it_t position)
+{
+	return dn_fwd_list_erase_after_for_each (position, NULL);
+}
 
 bool
 dn_fwd_list_push_front (
@@ -214,20 +239,48 @@ void
 dn_fwd_list_pop_front (dn_fwd_list_t *list);
 
 bool
+dn_fwd_list_resize_for_each (
+	dn_fwd_list_t *list,
+	uint32_t count,
+	dn_dispose_func_t dispose_func);
+
+static inline bool
 dn_fwd_list_resize (
 	dn_fwd_list_t *list,
-	uint32_t count);
+	uint32_t count)
+{
+	return dn_fwd_list_resize_for_each (list, count, NULL);
+}
 
 void
+dn_fwd_list_remove_for_each (
+	dn_fwd_list_t *list,
+	const void *data,
+	dn_dispose_func_t dispose_func);
+
+static inline void
 dn_fwd_list_remove (
 	dn_fwd_list_t *list,
-	const void *data);
+	const void *data)
+{
+	dn_fwd_list_remove_for_each (list, data, NULL);
+}
 
 void
+dn_fwd_list_remove_if_for_each (
+	dn_fwd_list_t *list,
+	dn_remove_func_t remove_func,
+	void *user_data,
+	dn_dispose_func_t dispose_func);
+
+static inline void
 dn_fwd_list_remove_if (
 	dn_fwd_list_t *list,
 	dn_remove_func_t remove_func,
-	void *user_data);
+	void *user_data)
+{
+	dn_fwd_list_remove_if_for_each (list, remove_func, user_data, NULL);
+}
 
 void
 dn_fwd_list_reverse (dn_fwd_list_t *list);
