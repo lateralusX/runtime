@@ -51,77 +51,6 @@ ensure_capacity (
 	return vector->data != NULL;
 }
 
-static bool
-vector_insert_range (
-	dn_vector_it_t *position,
-	const uint8_t *elements,
-	uint32_t element_count)
-{
-	if (!elements || element_count == 0)
-		return false;
-
-	dn_vector_t *vector = position->_internal._vector;
-
-	uint64_t new_capacity = (uint64_t)vector->size + (uint64_t)element_count;
-	if (DN_UNLIKELY (new_capacity > (uint64_t)(UINT32_MAX)))
-		return false;
-
-	if (DN_UNLIKELY (!ensure_capacity (vector, (uint32_t)new_capacity)))
-		return false;
-
-	uint64_t insert_offset = (uint64_t)position->it + (uint64_t)element_count;
-	uint64_t size_to_move = (uint64_t)vector->size - (uint64_t)position->it;
-	if (DN_UNLIKELY (insert_offset > new_capacity || size_to_move > vector->size))
-		return false;
-
-	/* first move the existing elements out of the way */
-	/* element_offset won't overflow since insert_offset and position is smaller than new_capacity already checked in ensure_capacity */
-	/* element_length won't overflow since size_to_move is smaller than new_capacity already checked in ensure_capacity */
-	/* element_length won't underflow since size_to_move is already verfied to be smaller or equal to vector->size */
-	memmove (element_offset (vector, insert_offset), element_offset (vector, position->it), element_length (vector, size_to_move));
-
-	/* then copy the new elements into the array */
-	/* element_offset won't overflow since position is smaller than new_capacity already checked in encure_capacity */
-	/* element_length won't overflow since element_count is included in new_capacity already checked in encure_capacity */
-	memmove (element_offset (vector, position->it), elements, element_length (vector, element_count));
-
-	// Overflow already checked.
-	vector->size += element_count;
-
-	position->it = insert_offset;
-
-	return true;
-}
-
-static bool
-vector_append_range (
-	dn_vector_it_t *position,
-	const uint8_t *elements,
-	uint32_t element_count)
-{
-	if (!elements || element_count == 0)
-		return false;
-
-	dn_vector_t *vector = position->_internal._vector;
-
-	uint64_t new_capacity = (uint64_t)vector->size + (uint64_t)element_count;
-	if (DN_UNLIKELY (new_capacity > (uint64_t)(UINT32_MAX)))
-		return false;
-	
-	if (DN_UNLIKELY (!ensure_capacity (vector, (uint32_t)new_capacity)))
-		return false;
-
-	/* ensure_capacity already verified element_offset and element_length won't overflow. */
-	memmove (element_offset (vector, vector->size), elements, element_length (vector, element_count));
-
-	position->it = vector->size;
-
-	// Overflowed already checked.
-	vector->size += element_count;
-
-	return true;
-}
-
 dn_vector_t *
 _dn_vector_alloc (
 	dn_allocator_t *allocator,
@@ -181,22 +110,71 @@ _dn_vector_init_capacity (
 	return true;
 }
 
-void
+bool
 _dn_vector_insert_range (
 	dn_vector_it_t *position,
 	const uint8_t *elements,
-	uint32_t element_count,
-	bool *result)
+	uint32_t element_count)
 {
-	bool insert_range_result = false;
+	if (!elements || element_count == 0)
+		return false;
 
-	if (dn_vector_it_end (*position))
-		insert_range_result = vector_append_range (position, elements, element_count);
-	else
-		insert_range_result = vector_insert_range (position, elements, element_count);
+	dn_vector_t *vector = position->_internal._vector;
 
-	if (result)
-		*result = insert_range_result;
+	uint64_t new_capacity = (uint64_t)vector->size + (uint64_t)element_count;
+	if (DN_UNLIKELY (new_capacity > (uint64_t)(UINT32_MAX)))
+		return false;
+
+	if (DN_UNLIKELY (!ensure_capacity (vector, (uint32_t)new_capacity)))
+		return false;
+
+	uint64_t insert_offset = (uint64_t)position->it + (uint64_t)element_count;
+	uint64_t size_to_move = (uint64_t)vector->size - (uint64_t)position->it;
+	if (DN_UNLIKELY (insert_offset > new_capacity || size_to_move > vector->size))
+		return false;
+
+	/* first move the existing elements out of the way */
+	/* element_offset won't overflow since insert_offset and position is smaller than new_capacity already checked in ensure_capacity */
+	/* element_length won't overflow since size_to_move is smaller than new_capacity already checked in ensure_capacity */
+	/* element_length won't underflow since size_to_move is already verfied to be smaller or equal to vector->size */
+	memmove (element_offset (vector, insert_offset), element_offset (vector, position->it), element_length (vector, size_to_move));
+
+	/* then copy the new elements into the array */
+	/* element_offset won't overflow since position is smaller than new_capacity already checked in encure_capacity */
+	/* element_length won't overflow since element_count is included in new_capacity already checked in encure_capacity */
+	memmove (element_offset (vector, position->it), elements, element_length (vector, element_count));
+
+	// Overflow already checked.
+	vector->size += element_count;
+
+	position->it = insert_offset;
+
+	return true;
+}
+
+bool
+_dn_vector_append_range (
+	dn_vector_t *vector,
+	const uint8_t *elements,
+	uint32_t element_count)
+{
+	if (!vector ||!elements || element_count == 0)
+		return false;
+
+	uint64_t new_capacity = (uint64_t)vector->size + (uint64_t)element_count;
+	if (DN_UNLIKELY (new_capacity > (uint64_t)(UINT32_MAX)))
+		return false;
+
+	if (DN_UNLIKELY (!ensure_capacity (vector, (uint32_t)new_capacity)))
+		return false;
+
+	/* ensure_capacity already verified element_offset and element_length won't overflow. */
+	memmove (element_offset (vector, vector->size), elements, element_length (vector, element_count));
+
+	// Overflowed already checked.
+	vector->size += element_count;
+
+	return true;
 }
 
 bool
@@ -240,6 +218,8 @@ _dn_vector_erase_fast (dn_vector_it_t *position)
 
 	if (dn_allocator_init (vector->_internal._allocator))
 		memset (element_offset(vector, vector->size - 1), 0, element_length (vector, 1));
+
+	vector->size --;
 
 	return true;
 }
@@ -357,14 +337,17 @@ dn_vector_find (
 	dn_compare_func_t compare_func)
 {
 	dn_vector_it_t found;
-	found.it = UINT32_MAX;
 	found._internal._vector = vector;
 
-	if (DN_UNLIKELY (!vector))
+	if (DN_UNLIKELY (!vector)) {
+		found.it = 0;
 		return found;
+	}
+
+	found.it = vector->size;
 
 	for (uint32_t i = 0; i < vector->size; i++) {
-		if ((!compare_func && !compare_func (element_offset (vector, i), value))) {
+		if ((compare_func && !compare_func (element_offset (vector, i), value))) {
 			found.it = i;
 			break;
 		} else if (!memcmp (element_offset (vector, i), value, element_length (vector, 1))) {

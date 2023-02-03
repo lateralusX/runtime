@@ -72,7 +72,7 @@ dn_vector_it_prev_n (
 static inline uint8_t *
 dn_vector_it_data (dn_vector_it_t it)
 {
-	return it._internal._vector->data +  (it._internal._vector->_internal._element_size * it.it);
+	return it._internal._vector->data + (it._internal._vector->_internal._element_size * it.it);
 }
 
 #define dn_vector_it_data_t(it, type) \
@@ -134,12 +134,17 @@ _dn_vector_init_capacity (
 	uint32_t element_size,
 	uint32_t capacity);
 
-void
+bool
 _dn_vector_insert_range (
 	dn_vector_it_t *position,
 	const uint8_t *elements,
-	uint32_t element_count,
-	bool *result);
+	uint32_t element_count);
+
+bool
+_dn_vector_append_range (
+	dn_vector_t *vector,
+	const uint8_t *elements,
+	uint32_t element_count);
 
 bool
 _dn_vector_erase (dn_vector_it_t *position);
@@ -247,7 +252,14 @@ _dn_vector_insert_range_adapter (
 	uint32_t element_count,
 	bool *result)
 {
-	_dn_vector_insert_range (&position, elements, element_count, result);
+	bool insert_result;
+	if (dn_vector_it_end (position))
+		insert_result = _dn_vector_append_range (position._internal._vector, elements, element_count);
+	else
+		insert_result = _dn_vector_insert_range (&position, elements, element_count);
+
+	if (result)
+		*result = insert_result;
 	return position;
 }
 
@@ -296,24 +308,16 @@ dn_vector_clear (dn_vector_t *vector)
 	dn_vector_resize (vector, 0);
 }
 
-static inline bool
-_dn_vector_push_back_adapter (
-	dn_vector_t *vector,
-	const uint8_t *data)
-{
-	bool result;
-	_dn_vector_insert_range_adapter (dn_vector_end (vector), data, 1, &result);
-	return result;
-}
-
 #define dn_vector_push_back(vector, element) \
-	_dn_vector_push_back_adapter (dn_vector_end (vector), (const uint8_t *)&(element));
+	_dn_vector_append_range ((vector), (const uint8_t *)&(element), 1)
 
 static inline void
 dn_vector_pop_back (dn_vector_t *vector)
 {
-	dn_vector_it_t it = { vector->size != 0 ? vector->size - 1 : 0, { vector } };
-	dn_vector_erase_fast (it, NULL);
+	if (DN_UNLIKELY (!vector || vector->size == 0))
+		return;
+	//TODO: Check clear.
+	vector->size --;
 }
 
 #define dn_vector_buffer_capacity_t(buffer_byte_size, type) \
@@ -335,6 +339,16 @@ dn_vector_find (
 	dn_vector_t *vector,
 	const uint8_t *value,
 	dn_compare_func_t compare_func);
+
+static inline void
+_dn_vector_find_adapter (
+	dn_vector_t *vector,
+	const uint8_t *data,
+	dn_compare_func_t compare_func,
+	dn_vector_it_t *found)
+{
+	*found = dn_vector_find (vector, data, compare_func);
+}
 
 #define DN_DEFINE_VECTOR_T_NAME(name) \
 	dn_ ## name ## _vector_t
@@ -359,6 +373,35 @@ static inline void \
 DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, advance) (DN_DEFINE_VECTOR_IT_T_NAME(name) *it, ptrdiff_t n) \
 { \
 	dn_vector_it_advance ((dn_vector_it_t *)it, n); \
+} \
+static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
+DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, next) (DN_DEFINE_VECTOR_IT_T_NAME(name) it) \
+{ \
+	it.it++; \
+	return it; \
+} \
+static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
+DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, prev) (DN_DEFINE_VECTOR_IT_T_NAME(name) it) \
+{ \
+	it.it--; \
+	return it; \
+} \
+static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
+DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, next_n) (DN_DEFINE_VECTOR_IT_T_NAME(name) it, uint32_t n) \
+{ \
+	it.it -= n; \
+	return it; \
+} \
+static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
+DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, prev_n) (DN_DEFINE_VECTOR_IT_T_NAME(name) it, uint32_t n) \
+{ \
+	it.it += n; \
+	return it; \
+} \
+static inline type * \
+DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, data) (DN_DEFINE_VECTOR_IT_T_NAME(name) it, uint32_t n) \
+{ \
+	return (type *)(it._internal._vector->data + n);\
 } \
 static inline DN_DEFINE_VECTOR_T_NAME(name) * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_alloc) (dn_allocator_t *allocator, dn_dispose_func_t dispose_func) \
@@ -475,13 +518,17 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, capacity) (const DN_DEFINE_VECTOR_T_NAME(na
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, insert) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, type element, bool *result) \
 { \
-	_dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)&(element), 1, result); \
+	bool insert_result = _dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)&element, 1); \
+	if (result) \
+		*result = insert_result; \
 	return position; \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, insert_range) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, type *elements, uint32_t element_count, bool *result) \
 { \
-	_dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)(elements), element_count, result); \
+	bool insert_result = _dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)(elements), element_count); \
+	if (result) \
+		*result = insert_result; \
 	return position; \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
@@ -513,7 +560,7 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, clear) (DN_DEFINE_VECTOR_T_NAME(name) *vect
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, push_back) (DN_DEFINE_VECTOR_T_NAME(name) *vector, type element) \
 { \
-	return _dn_vector_push_back_adapter ((dn_vector_t *)vector, (const uint8_t *)&element); \
+	return dn_vector_push_back ((dn_vector_t *)vector, element); \
 } \
 static inline void \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, pop_back) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \
@@ -538,7 +585,9 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, sort) (DN_DEFINE_VECTOR_T_NAME(name) *vecto
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, find) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, const type value, dn_compare_func_t compare_func) \
 { \
-	return dn_vector_find ((dn_vector_t*)vector, (const uint8_t *)&(value), compare_func); \
+	DN_DEFINE_VECTOR_IT_T_NAME(name) found; \
+	_dn_vector_find_adapter ((dn_vector_t*)vector, (const uint8_t *)&value, compare_func, (dn_vector_it_t *)&found); \
+	return found; \
 }
 
 #endif /* __DN_VECTOR_H__ */

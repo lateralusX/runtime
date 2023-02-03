@@ -234,13 +234,13 @@ test_ptr_vector_erase (void)
 
 	vector = ptr_vector_alloc_and_fill (&i);
 
-	dn_ptr_vector_erase (vector, 0);
+	dn_ptr_vector_erase (dn_ptr_vector_begin (vector), NULL);
 	if (*dn_ptr_vector_index (vector, 0) != items [1]) {
 		return FAILED ("first item is not %s, it is %s", items [1],
 			*dn_ptr_vector_index (vector, 0));
 	}
 
-	dn_ptr_vector_erase (vector, vector->size - 1);
+	dn_ptr_vector_erase (dn_ptr_vector_it_prev (dn_ptr_vector_end (vector)), NULL);
 
 	if (*dn_ptr_vector_index (vector, vector->size - 1) != items [vector->size]) {
 		return FAILED ("last item is not %s, it is %s",
@@ -261,91 +261,19 @@ test_ptr_vector_erase_fast (void)
 
 	vector = ptr_vector_alloc_and_fill (&i);
 
-	dn_ptr_vector_erase_fast (vector, 0);
+	dn_ptr_vector_erase_fast (dn_ptr_vector_begin (vector), NULL);
 	if (*dn_ptr_vector_index (vector, 0) != items [vector->size]) {
 		return FAILED ("first item is not %s, it is %s", items [vector->size],
 			*dn_ptr_vector_index (vector, 0));
 	}
 
-	dn_ptr_vector_erase_fast (vector, vector->size - 1);
+	dn_ptr_vector_erase_fast (dn_ptr_vector_it_prev (dn_ptr_vector_end (vector)), NULL);
 	if (*dn_ptr_vector_index (vector, vector->size - 1) != items [vector->size - 1]) {
 		return FAILED ("last item is not %s, it is %s",
 			items [vector->size - 1], *dn_ptr_vector_index (vector, vector->size - 1));
 	}
 
 	dn_ptr_vector_free (vector);
-
-	return OK;
-}
-
-static
-RESULT
-test_ptr_vector_erase_if (void)
-{
-	dn_ptr_vector_t *vector;
-	uint32_t i;
-
-	vector = ptr_vector_alloc_and_fill (&i);
-
-	dn_ptr_vector_erase_if (vector, (void *)items [7]);
-
-	if (!dn_ptr_vector_erase_if (vector, (void *)items [4])) {
-		return FAILED ("item %s not removed", items [4]);
-	}
-
-	if (dn_ptr_vector_erase_if (vector, (void *)items [4])) {
-		return FAILED ("item %s still in vector after removal", items [4]);
-	}
-
-	if (*dn_ptr_vector_index (vector, vector->size - 1) != items [vector->size + 1]) {
-		return FAILED ("last item in vector not correct");
-	}
-
-	dn_ptr_vector_free (vector);
-
-	return OK;
-}
-
-static
-RESULT
-test_ptr_vector_erase_fast_if (void)
-{
-	dn_ptr_vector_t *vector = dn_ptr_vector_alloc ();
-
-	static char * const letters [] = { (char*)"A", (char*)"B", (char*)"C", (char*)"D", (char*)"E" };
-
-	if (dn_ptr_vector_erase_fast_if (vector, NULL))
-		return FAILED ("removing NULL succeeded");
-
-	dn_ptr_vector_push_back (vector, letters [0]);
-	if (!dn_ptr_vector_erase_fast_if (vector, letters [0]) || vector->size != 0)
-		return FAILED ("removing last element failed");
-
-	dn_ptr_vector_push_back (vector, letters [0]);
-	dn_ptr_vector_push_back (vector, letters [1]);
-	dn_ptr_vector_push_back (vector, letters [2]);
-	dn_ptr_vector_push_back (vector, letters [3]);
-	dn_ptr_vector_push_back (vector, letters [4]);
-
-	if (!dn_ptr_vector_erase_fast_if (vector, letters [0]) || vector->size != 4)
-		return FAILED ("removing first element failed");
-
-	if (*dn_ptr_vector_index (vector, 0) != letters [4])
-		return FAILED ("first element wasn't replaced with last upon removal");
-
-	if (dn_ptr_vector_erase_fast_if (vector, letters [0]))
-		return FAILED ("succeeded removing a non-existing element");
-
-	if (!dn_ptr_vector_erase_fast_if (vector, letters [3]) || vector->size != 3)
-		return FAILED ("failed removing \"D\"");
-
-	if (!dn_ptr_vector_erase_fast_if (vector, letters [1]) || vector->size != 2)
-		return FAILED ("failed removing \"B\"");
-
-	if (*dn_ptr_vector_index (vector, 0) != letters [4] || *dn_ptr_vector_index (vector, 1) != letters [2])
-		return FAILED ("last two elements are wrong");
-
-	dn_ptr_vector_free(vector);
 
 	return OK;
 }
@@ -365,14 +293,20 @@ test_ptr_vector_capacity (void)
 
 	uint32_t capacity = dn_ptr_vector_capacity (vector);
 
+	dn_ptr_vector_it_t it = dn_ptr_vector_begin (vector);
+
 	void *value0 = *dn_ptr_vector_index (vector, 0);
-	dn_ptr_vector_erase (vector, 0);
+	dn_ptr_vector_erase (it, NULL);
 
 	void *value1 = *dn_ptr_vector_index (vector, 1);
-	dn_ptr_vector_erase (vector, 1);
+
+	it = dn_ptr_vector_it_next (it);
+	dn_ptr_vector_erase (it, NULL);
 
 	void *value2 = *dn_ptr_vector_index (vector, 2);
-	dn_ptr_vector_erase (vector, 2);
+
+	it = dn_ptr_vector_it_next (it);
+	dn_ptr_vector_erase (it, NULL);
 
 	if (dn_ptr_vector_capacity (vector) != capacity)
 		return FAILED ("invalid vector capacity #3");
@@ -615,22 +549,22 @@ test_ptr_vector_find (void)
 	dn_ptr_vector_push_back (vector, letters [3]);
 	dn_ptr_vector_push_back (vector, letters [4]);
 
-	if (dn_ptr_vector_find (vector, letters [0]) == dn_ptr_vector_size (vector))
+	if (dn_ptr_vector_find (vector, letters [0], NULL).it == dn_ptr_vector_size (vector))
 		return FAILED ("failed to find value #1");
 
-	if (dn_ptr_vector_find (vector, letters [1]) == dn_ptr_vector_size (vector))
+	if (dn_ptr_vector_find (vector, letters [1], NULL).it == dn_ptr_vector_size (vector))
 		return FAILED ("failed to find value #2");
 
-	if (dn_ptr_vector_find (vector, letters [2]) == dn_ptr_vector_size (vector))
+	if (dn_ptr_vector_find (vector, letters [2], NULL).it == dn_ptr_vector_size (vector))
 		return FAILED ("failed to find value #3");
 
-	if (dn_ptr_vector_find (vector, letters [3]) == dn_ptr_vector_size (vector))
+	if (dn_ptr_vector_find (vector, letters [3], NULL).it == dn_ptr_vector_size (vector))
 		return FAILED ("failed to find value #4");
 
-	if (dn_ptr_vector_find (vector, letters [4]) == dn_ptr_vector_size (vector))
+	if (dn_ptr_vector_find (vector, letters [4], NULL).it == dn_ptr_vector_size (vector))
 		return FAILED ("failed to find value #5");
 
-	if (dn_ptr_vector_find (vector, NULL) != dn_ptr_vector_size (vector))
+	if (dn_ptr_vector_find (vector, NULL, NULL).it != dn_ptr_vector_size (vector))
 		return FAILED ("find failed #6");
 
 	dn_ptr_vector_free (vector);
@@ -781,7 +715,7 @@ test_ptr_vector_fixed_alloc_capacity (void)
 		return FAILED ("vector push_back failed to triggered OOM");
 
 	// Make room for on more item.
-	dn_ptr_vector_erase_if (vector, (void *)items [0]);
+	dn_ptr_vector_pop_back (vector);
 
 	// Adding one more should not hit OOM.
 	if (!dn_ptr_vector_push_back (vector, (void *)items [0]))
@@ -827,7 +761,7 @@ test_ptr_vector_fixed_or_malloc_alloc_capacity (void)
 	init_capacity = dn_ptr_vector_capacity (vector);
 
 	// Make room for on more item.
-	dn_ptr_vector_erase_if (vector, (void *)items [0]);
+	dn_ptr_vector_pop_back (vector);
 
 	if (dn_ptr_vector_capacity (vector) < init_capacity)
 		return FAILED ("unexpected vector capacity #2");
@@ -976,8 +910,6 @@ static Test dn_ptr_vector_tests [] = {
 	{"test_ptr_vector_resize", test_ptr_vector_resize},
 	{"test_ptr_vector_erase", test_ptr_vector_erase},
 	{"test_ptr_vector_erase_fast", test_ptr_vector_erase_fast},
-	{"test_ptr_vector_erase_if", test_ptr_vector_erase_if},
-	{"test_ptr_vector_erase_fast_if", test_ptr_vector_erase_fast_if},
 	{"test_ptr_vector_capacity", test_ptr_vector_capacity},
 	{"test_ptr_vector_foreach_free", test_ptr_vector_foreach_free},
 	{"test_ptr_vector_clear", test_ptr_vector_clear},

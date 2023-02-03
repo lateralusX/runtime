@@ -280,17 +280,17 @@ dn_list_pop_front (dn_list_t *list)
 		list->tail = NULL;
 }
 
-void
+bool
 dn_list_resize (
 	dn_list_t *list,
 	uint32_t count)
 {
 	if (DN_UNLIKELY(!list))
-		return;
+		return false;
 
 	if (count == 0) {
 		dn_list_clear (list);
-		return;
+		return true;
 	}
 
 	dn_list_node_t *current = list->head;
@@ -312,6 +312,8 @@ dn_list_resize (
 
 	while (count++ < i)
 		dn_list_insert (dn_list_end (list), NULL, NULL);
+
+	return true;
 }
 
 void
