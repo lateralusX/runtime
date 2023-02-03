@@ -54,21 +54,19 @@ ensure_capacity (
 dn_vector_t *
 _dn_vector_alloc (
 	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func,
 	uint32_t element_size)
 {
-	return _dn_vector_alloc_capacity (allocator, dispose_func, element_size, INITIAL_CAPACITY);
+	return _dn_vector_alloc_capacity (allocator, element_size, INITIAL_CAPACITY);
 }
 
 dn_vector_t *
 _dn_vector_alloc_capacity (
 	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func,
 	uint32_t element_size,
 	uint32_t capacity)
 {
 	dn_vector_t *vector = (dn_vector_t *)dn_allocator_alloc (allocator, sizeof (dn_vector_t));
-	if (!_dn_vector_init_capacity (vector, allocator, dispose_func, element_size, capacity)) {
+	if (!_dn_vector_init_capacity (vector, allocator, element_size, capacity)) {
 		dn_allocator_free (allocator, vector);
 		return NULL;
 	}
@@ -80,17 +78,15 @@ bool
 _dn_vector_init (
 	dn_vector_t *vector,
 	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func,
 	uint32_t element_size)
 {
-	return _dn_vector_init_capacity (vector, allocator, dispose_func, element_size, INITIAL_CAPACITY);
+	return _dn_vector_init_capacity (vector, allocator, element_size, INITIAL_CAPACITY);
 }
 
 bool
 _dn_vector_init_capacity (
 	dn_vector_t *vector,
 	dn_allocator_t *allocator,
-	dn_dispose_func_t dispose_func,
 	uint32_t element_size,
 	uint32_t capacity)
 {
@@ -99,7 +95,6 @@ _dn_vector_init_capacity (
 
 	memset (vector, 0, sizeof(dn_vector_t));
 	vector->_internal._allocator = allocator;
-	vector->_internal._dispose_func = dispose_func;
 	vector->_internal._element_size = element_size;
 
 	if (DN_UNLIKELY (!ensure_capacity (vector, capacity))) {
@@ -178,7 +173,9 @@ _dn_vector_append_range (
 }
 
 bool
-_dn_vector_erase (dn_vector_it_t *position)
+_dn_vector_erase (
+	dn_vector_it_t *position,
+	dn_dispose_func_t dispose_func)
 {
 	dn_vector_t *vector = position->_internal._vector;
 
@@ -189,6 +186,9 @@ _dn_vector_erase (dn_vector_it_t *position)
 	int64_t size_to_move = (int64_t)vector->size - (int64_t)position->it;
 	if (DN_UNLIKELY (insert_offset > vector->_internal._capacity || size_to_move < 0))
 		return false;
+
+	if (dispose_func)
+		dispose_func (element_offset (vector, position->it));
 
 	/* element_offset won't overflow since insert_offset and position is smaller than current capacity */
 	/* element_length won't overflow since size_to_move is smaller than current capacity */
@@ -204,12 +204,17 @@ _dn_vector_erase (dn_vector_it_t *position)
 }
 
 bool
-_dn_vector_erase_fast (dn_vector_it_t *position)
+_dn_vector_erase_fast (
+	dn_vector_it_t *position,
+	dn_dispose_func_t dispose_func)
 {
 	dn_vector_t *vector = position->_internal._vector;
 
 	if (DN_UNLIKELY (!vector || vector->size == 0 || position->it > vector->size))
 		return false;
+
+	if (dispose_func)
+		dispose_func (element_offset (vector, position->it));
 
 	/* element_offset won't overflow since position is smaller than current capacity */
 	/* element_offset won't overflow since vector->size - 1 is smaller than current capacity */
@@ -243,21 +248,25 @@ _dn_vector_buffer_capacity (
 }
 
 void
-dn_vector_free (dn_vector_t *vector)
+dn_vector_free_for_each (
+	dn_vector_t *vector,
+	dn_dispose_func_t dispose_func)
 {
-	dn_vector_dispose (vector);
+	dn_vector_dispose_for_each (vector, dispose_func);
 	dn_allocator_free (vector->_internal._allocator, vector);
 }
 
 void
-dn_vector_dispose (dn_vector_t *vector)
+dn_vector_dispose_for_each (
+	dn_vector_t *vector,
+	dn_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!vector))
 		return;
 
-	if (vector->_internal._dispose_func) {
+	if (dispose_func) {
 		for(uint32_t i = 0; i < vector->size; i++)
-			vector->_internal._dispose_func ((void *)(element_offset (vector, i)));
+			dispose_func ((void *)(element_offset (vector, i)));
 	}
 
 	dn_allocator_free (vector->_internal._allocator, vector->data);
@@ -284,10 +293,13 @@ dn_vector_capacity (const dn_vector_t *vector)
 }
 
 bool
-dn_vector_resize (
+dn_vector_resize_for_each (
 	dn_vector_t *vector,
-	uint32_t size)
+	uint32_t size,
+	dn_dispose_func_t dispose_func)
 {
+	DN_UNREFERENCED_PARAMETER (dispose_func);
+
 	if (DN_UNLIKELY (!vector))
 		return false;
 

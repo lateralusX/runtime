@@ -333,7 +333,7 @@ ep_session_suspend_write_event (EventPipeSession *session)
 
 	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size);
 
-	dn_ptr_vector_t *threads = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, NULL, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
+	dn_ptr_vector_t *threads = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size));
 
 	if (threads) {
 		ep_thread_get_threads (threads);
