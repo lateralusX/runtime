@@ -24,7 +24,6 @@ struct _dn_allocator_vtable_t {
 	void *(*_alloc)(dn_allocator_t *, size_t);
 	void *(*_realloc)(dn_allocator_t *, void *, size_t);
 	void (*_free)(dn_allocator_t *, void *);
-	bool (*_init)(dn_allocator_t *);
 };
 
 struct _dn_allocator_t {
@@ -76,14 +75,6 @@ dn_allocator_free (
 	allocator ?
 		allocator->_vtable->_free (allocator, block) :
 		dn_free (block);
-}
-
-static inline bool
-dn_allocator_init (dn_allocator_t *allocator)
-{
-	return allocator ?
-		allocator->_vtable->_init (allocator) :
-		true;
 }
 
 dn_allocator_fixed_t *

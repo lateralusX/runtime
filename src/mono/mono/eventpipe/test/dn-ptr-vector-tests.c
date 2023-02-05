@@ -579,7 +579,7 @@ test_ptr_vector_default_local_alloc (void)
 	DN_DEFAULT_LOCAL_ALLOCATOR (allocator, dn_ptr_vector_default_local_allocator_byte_size);
 
 	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
-	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc ((dn_allocator_t *)&allocator);
+	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc ((dn_allocator_t *)&allocator, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
@@ -622,7 +622,7 @@ test_ptr_vector_local_alloc (void)
 	dn_allocator_fixed_or_malloc_init (&allocator, buffer, ARRAY_SIZE (buffer));
 	memset (buffer, 0, ARRAY_SIZE (buffer));
 
-	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc ((dn_allocator_t *)&allocator);
+	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc ((dn_allocator_t *)&allocator, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
@@ -660,7 +660,7 @@ test_ptr_vector_local_alloc_capacity (void)
 	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
 	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
-	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
+	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
@@ -700,7 +700,7 @@ test_ptr_vector_fixed_alloc_capacity (void)
 	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
 	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
-	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
+	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
@@ -737,7 +737,7 @@ test_ptr_vector_fixed_or_malloc_alloc_capacity (void)
 	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
 	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
-	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator,init_capacity);
+	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator,init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc");
 
@@ -793,7 +793,7 @@ test_ptr_vector_fixed_reset_alloc_capacity (void)
 	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
 	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
-	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
+	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #1");
 
@@ -813,7 +813,7 @@ test_ptr_vector_fixed_reset_alloc_capacity (void)
 	dn_allocator_fixed_reset (&allocator);
 	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
-	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
+	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #2");
 
@@ -839,7 +839,7 @@ test_ptr_vector_fixed_or_malloc_reset_alloc_capacity (void)
 	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
 	uint32_t init_capacity = dn_ptr_vector_buffer_capacity (dn_ptr_vector_default_local_allocator_byte_size);
-	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
+	dn_ptr_vector_t *vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #1");
 
@@ -859,7 +859,7 @@ test_ptr_vector_fixed_or_malloc_reset_alloc_capacity (void)
 
 	dn_ptr_vector_free (vector);
 
-	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
+	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #2");
 
@@ -873,7 +873,7 @@ test_ptr_vector_fixed_or_malloc_reset_alloc_capacity (void)
 	dn_allocator_fixed_or_malloc_reset (&allocator);
 	memset (buffer, 0, dn_ptr_vector_default_local_allocator_byte_size);
 
-	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity);
+	vector = dn_ptr_vector_custom_alloc_capacity ((dn_allocator_t *)&allocator, init_capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 	if (!vector)
 		return FAILED ("failed vector custom alloc #2");
 

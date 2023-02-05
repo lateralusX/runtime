@@ -20,9 +20,6 @@ fixed_vtable_free (
 	dn_allocator_t *allocator,
 	void *block);
 
-static bool
-fixed_vtable_init (dn_allocator_t *allocator);
-
 static void *
 fixed_alloc (
 	dn_allocator_fixed_data_t *data,
@@ -66,9 +63,6 @@ fixed_or_malloc_vtable_free (
 	dn_allocator_t *allocator,
 	void *block);
 
-static bool
-fixed_or_malloc_vtable_init (dn_allocator_t *allocator);
-
 static void *
 fixed_or_malloc_alloc (
 	dn_allocator_fixed_or_malloc_data_t *data,
@@ -89,14 +83,12 @@ static dn_allocator_vtable_t fixed_vtable = {
 	fixed_vtable_alloc,
 	fixed_vtable_realloc,
 	fixed_vtable_free,
-	fixed_vtable_init
 };
 
 static dn_allocator_vtable_t fixed_or_malloc_vtable = {
 	fixed_or_malloc_vtable_alloc,
 	fixed_or_malloc_vtable_realloc,
 	fixed_or_malloc_vtable_free,
-	fixed_or_malloc_vtable_init
 };
 
 static void *
@@ -122,13 +114,6 @@ fixed_vtable_free (
 	void *block)
 {
 	fixed_free (&((dn_allocator_fixed_t *)allocator)->_data, block);
-}
-
-static bool
-fixed_vtable_init (dn_allocator_t *allocator)
-{
-	DN_UNREFERENCED_PARAMETER (allocator);
-	return true;
 }
 
 static void *
@@ -232,13 +217,6 @@ fixed_or_malloc_vtable_free (
 	void *block)
 {
 	fixed_or_malloc_free (&((dn_allocator_fixed_or_malloc_t *)allocator)->_data, block);
-}
-
-static bool
-fixed_or_malloc_vtable_init (dn_allocator_t *allocator)
-{
-	DN_UNREFERENCED_PARAMETER (allocator);
-	return true;
 }
 
 static void *

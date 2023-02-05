@@ -12,6 +12,8 @@
 #define element_length(p,i) \
 	((i) * (p)->_internal._element_size)
 
+#define check_attribute(vector, value) ((vector->_internal._attributes & (uint32_t)value) == value)
+
 static bool
 ensure_capacity (
 	dn_vector_t *vector,
@@ -38,7 +40,7 @@ ensure_capacity (
 
 	vector->data = data;
 
-	if (vector->data && dn_allocator_init (vector->_internal._allocator)) {
+	if (vector->data && check_attribute (vector, DN_VECTOR_ATTRIBUTE_INIT_MEMORY)) {
 		// Checks already verified that element_offset won't overflow.
 		// new_capacity > vector capacity, so new_capacity - vector capacity won't underflow.
 		// dn_safe_size_t_multiply already verified element_length won't overflow.
@@ -54,19 +56,21 @@ ensure_capacity (
 dn_vector_t *
 _dn_vector_alloc (
 	dn_allocator_t *allocator,
-	uint32_t element_size)
+	uint32_t element_size,
+	uint32_t attributes)
 {
-	return _dn_vector_alloc_capacity (allocator, element_size, INITIAL_CAPACITY);
+	return _dn_vector_alloc_capacity (allocator, element_size, INITIAL_CAPACITY, attributes);
 }
 
 dn_vector_t *
 _dn_vector_alloc_capacity (
 	dn_allocator_t *allocator,
 	uint32_t element_size,
-	uint32_t capacity)
+	uint32_t capacity,
+	uint32_t attributes)
 {
 	dn_vector_t *vector = (dn_vector_t *)dn_allocator_alloc (allocator, sizeof (dn_vector_t));
-	if (!_dn_vector_init_capacity (vector, allocator, element_size, capacity)) {
+	if (!_dn_vector_init_capacity (vector, allocator, element_size, capacity, attributes)) {
 		dn_allocator_free (allocator, vector);
 		return NULL;
 	}
@@ -78,9 +82,10 @@ bool
 _dn_vector_init (
 	dn_vector_t *vector,
 	dn_allocator_t *allocator,
-	uint32_t element_size)
+	uint32_t element_size,
+	uint32_t attributes)
 {
-	return _dn_vector_init_capacity (vector, allocator, element_size, INITIAL_CAPACITY);
+	return _dn_vector_init_capacity (vector, allocator, element_size, INITIAL_CAPACITY, attributes);
 }
 
 bool
@@ -88,7 +93,8 @@ _dn_vector_init_capacity (
 	dn_vector_t *vector,
 	dn_allocator_t *allocator,
 	uint32_t element_size,
-	uint32_t capacity)
+	uint32_t capacity,
+	uint32_t attributes)
 {
 	if (DN_UNLIKELY (!vector))
 		return false;
@@ -96,6 +102,7 @@ _dn_vector_init_capacity (
 	memset (vector, 0, sizeof(dn_vector_t));
 	vector->_internal._allocator = allocator;
 	vector->_internal._element_size = element_size;
+	vector->_internal._attributes = attributes;
 
 	if (DN_UNLIKELY (!ensure_capacity (vector, capacity))) {
 		dn_vector_dispose (vector);
@@ -195,7 +202,7 @@ _dn_vector_erase (
 	/* element_length won't underflow since size_to_move is already verfied to be 0 or larger */
 	memmove (element_offset (vector, position->it), element_offset (vector, insert_offset), element_length (vector, size_to_move));
 
-	if (dn_allocator_init (vector->_internal._allocator))
+	if (check_attribute (vector, DN_VECTOR_ATTRIBUTE_INIT_MEMORY))
 		memset (element_offset(vector, vector->size - 1), 0, element_length (vector, 1));
 
 	vector->size --;
@@ -221,7 +228,7 @@ _dn_vector_erase_fast (
 	/* vector->size - 1 won't underflow since vector->size > 0 */
 	memmove (element_offset (vector, position->it), element_offset (vector, vector->size - 1), element_length (vector, 1));
 
-	if (dn_allocator_init (vector->_internal._allocator))
+	if (check_attribute (vector, DN_VECTOR_ATTRIBUTE_INIT_MEMORY))
 		memset (element_offset(vector, vector->size - 1), 0, element_length (vector, 1));
 
 	vector->size --;

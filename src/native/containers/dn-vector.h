@@ -13,9 +13,10 @@ struct _ ## name ## _t { \
 	type* data; \
 	uint32_t size; \
 	struct { \
-		dn_allocator_t *_allocator; \
 		uint32_t _element_size; \
 		uint32_t _capacity; \
+		uint32_t _attributes; \
+		dn_allocator_t *_allocator; \
 	}_internal; \
 }; \
 typedef struct _ ## name ## _it_t name ## _it_t; \
@@ -27,6 +28,10 @@ struct _ ## name ## _it_t { \
 };
 
 DN_DEFINE_VECTOR_T_STRUCT(dn_vector, uint8_t);
+
+typedef enum {
+	DN_VECTOR_ATTRIBUTE_INIT_MEMORY = 0x1
+} dn_vector_attribute;
 
 static inline void
 dn_vector_it_advance (
@@ -108,26 +113,30 @@ dn_vector_it_end (dn_vector_it_t it)
 dn_vector_t *
 _dn_vector_alloc (
 	dn_allocator_t *allocator,
-	uint32_t element_size);
+	uint32_t element_size,
+	uint32_t attributes);
 
 dn_vector_t *
 _dn_vector_alloc_capacity (
 	dn_allocator_t *allocator,
 	uint32_t element_size,
-	uint32_t capacity);
+	uint32_t capacity,
+	uint32_t attributes);
 
 bool
 _dn_vector_init (
 	dn_vector_t *vector,
 	dn_allocator_t *allocator,
-	uint32_t element_size);
+	uint32_t element_size,
+	uint32_t attributes);
 
 bool
 _dn_vector_init_capacity (
 	dn_vector_t *vector,
 	dn_allocator_t *allocator,
 	uint32_t element_size,
-	uint32_t capacity);
+	uint32_t capacity,
+	uint32_t attributes);
 
 bool
 _dn_vector_insert_range (
@@ -156,17 +165,17 @@ _dn_vector_buffer_capacity (
 	size_t buffer_size,
 	uint32_t element_size);
 
-#define dn_vector_custom_alloc_t(allocator, element_type) \
-	_dn_vector_alloc ((allocator), sizeof (element_type));
+#define dn_vector_custom_alloc_t(allocator, element_type, attributes) \
+	_dn_vector_alloc ((allocator), sizeof (element_type), (attributes));
 
 #define dn_vector_alloc_t(element_type) \
-	dn_vector_custom_alloc_t (DN_DEFAULT_ALLOCATOR, element_type)
+	dn_vector_custom_alloc_t (DN_DEFAULT_ALLOCATOR, element_type, DN_VECTOR_ATTRIBUTE_INIT_MEMORY)
 
-#define dn_vector_custom_alloc_capacity_t(allocator, element_type, capacity) \
-	_dn_vector_alloc_capacity ((allocator), sizeof (element_type), (capacity));
+#define dn_vector_custom_alloc_capacity_t(allocator, element_type, capacity, attributes) \
+	_dn_vector_alloc_capacity ((allocator), sizeof (element_type), (capacity), (attributes));
 
 #define dn_vector_alloc_capacity_t(element_type, capacity) \
-	dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, element_type, capacity);
+	dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, element_type, capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 
 void
 dn_vector_free_for_each (
@@ -179,17 +188,17 @@ dn_vector_free (dn_vector_t *vector)
 	dn_vector_free_for_each (vector, NULL);
 }
 
-#define dn_vector_custom_init_t(vector, allocator, element_type) \
-	_dn_vector_init ((vector), (allocator), sizeof (element_type))
+#define dn_vector_custom_init_t(vector, allocator, element_type, attributes) \
+	_dn_vector_init ((vector), (allocator), sizeof (element_type), (attributes))
 
 #define dn_vector_init_t(vector, element_type) \
-	dn_vector_custom_init_t (vector, DN_DEFAULT_ALLOCATOR, element_type)
+	dn_vector_custom_init_t (vector, DN_DEFAULT_ALLOCATOR, element_type, DN_VECTOR_ATTRIBUTE_INIT_MEMORY)
 
-#define dn_vector_custom_init_capacity_t(vector, allocator, element_type, capacity) \
-	_dn_vector_init_capacity ((vector), (allocator), sizeof (element_type), (capacity))
+#define dn_vector_custom_init_capacity_t(vector, allocator, element_type, capacity, attributes) \
+	_dn_vector_init_capacity ((vector), (allocator), sizeof (element_type), (capacity), (attributes))
 
 #define dn_vector_init_capacity_t(vector, element_type, capacity) \
-	dn_vector_custom_init_capacity_t (vector, DN_DEFAULT_ALLOCATOR, element_type, capacity)
+	dn_vector_custom_init_capacity_t (vector, DN_DEFAULT_ALLOCATOR, element_type, capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY)
 
 void
 dn_vector_dispose_for_each (
@@ -444,24 +453,24 @@ DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, data) (DN_DEFINE_VECTOR_IT_T_NAME(name) 
 	return (type *)(it._internal._vector->data + n);\
 } \
 static inline DN_DEFINE_VECTOR_T_NAME(name) * \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_alloc) (dn_allocator_t *allocator) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_alloc) (dn_allocator_t *allocator, uint32_t attributes) \
 { \
-	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_t (allocator, type); \
+	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_t (allocator, type, attributes); \
 } \
 static inline DN_DEFINE_VECTOR_T_NAME(name) * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, alloc) (void) \
 { \
-	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_t (DN_DEFAULT_ALLOCATOR, type); \
+	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_t (DN_DEFAULT_ALLOCATOR, type, DN_VECTOR_ATTRIBUTE_INIT_MEMORY); \
 } \
 static inline DN_DEFINE_VECTOR_T_NAME(name) * \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_alloc_capacity) (dn_allocator_t *allocator, uint32_t capacity) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_alloc_capacity) (dn_allocator_t *allocator, uint32_t capacity, uint32_t attributes) \
 { \
-	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_capacity_t (allocator, type, capacity); \
+	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_capacity_t (allocator, type, capacity, attributes); \
 } \
 static inline DN_DEFINE_VECTOR_T_NAME(name) * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, alloc_capacity) (uint32_t capacity) \
 { \
-	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, type, capacity); \
+	return (DN_DEFINE_VECTOR_T_NAME(name) *)dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, type, capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY); \
 } \
 static inline void \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, free) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \
@@ -469,24 +478,24 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, free) (DN_DEFINE_VECTOR_T_NAME(name) *vecto
 	dn_vector_free ((dn_vector_t *)vector); \
 } \
 static inline bool \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_init) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_allocator_t *allocator) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_init) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_allocator_t *allocator, uint32_t attributes) \
 { \
-	return dn_vector_custom_init_t ((dn_vector_t *)vector, allocator, type); \
+	return dn_vector_custom_init_t ((dn_vector_t *)vector, allocator, type, attributes); \
 } \
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, init) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
-	return dn_vector_custom_init_t ((dn_vector_t *)vector, DN_DEFAULT_ALLOCATOR, type); \
+	return dn_vector_custom_init_t ((dn_vector_t *)vector, DN_DEFAULT_ALLOCATOR, type, DN_VECTOR_ATTRIBUTE_INIT_MEMORY); \
 } \
 static inline bool \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_init_capacity) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_allocator_t *allocator, uint32_t capacity) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_init_capacity) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_allocator_t *allocator, uint32_t capacity, uint32_t attributes) \
 { \
-	return dn_vector_custom_init_capacity_t ((dn_vector_t *)vector, allocator, type, capacity); \
+	return dn_vector_custom_init_capacity_t ((dn_vector_t *)vector, allocator, type, capacity, attributes); \
 } \
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, init_capacity) (DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t capacity) \
 { \
-	return dn_vector_custom_init_capacity_t ((dn_vector_t *)vector, DN_DEFAULT_ALLOCATOR, type, capacity); \
+	return dn_vector_custom_init_capacity_t ((dn_vector_t *)vector, DN_DEFAULT_ALLOCATOR, type, capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY); \
 } \
 static inline void \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, dispose_for_each) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_dispose_func_t dispose_func) \
