@@ -71,8 +71,8 @@ test_fwd_list_free (void)
 	if (!list)
 		return FAILED ("failed to custom alloc list");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count);
 
 	dn_fwd_list_custom_free (list, fwd_list_dispose_func);
 
@@ -91,8 +91,8 @@ test_fwd_list_dispose (void)
 	if (!dn_fwd_list_custom_init (&list, DN_DEFAULT_ALLOCATOR))
 		return FAILED ("failed to custom init list");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count, NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count, NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count);
+	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count);
 
 	dn_fwd_list_custom_dispose (&list, fwd_list_dispose_func);
 
@@ -112,13 +112,13 @@ test_fwd_list_front (void)
 	if (!list)
 		return FAILED ("failed to alloc list");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
 
 	if (*dn_fwd_list_front_t (list, char *) != items [0])
 		return FAILED ("failed list front #1");
 
-	dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), items [1], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_begin (list), items [0], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), items [1]);
+	dn_fwd_list_insert_after (dn_fwd_list_begin (list), items [0]);
 
 	if (*dn_fwd_list_front_t (list, char *) != items [1])
 		return FAILED ("failed list front #2");
@@ -141,12 +141,12 @@ test_fwd_list_empty (void)
 	if (!dn_fwd_list_empty (list))
 		return FAILED ("failed empty #1");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
 
 	if (dn_fwd_list_empty (list))
 		return FAILED ("failed empty #2");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
 
 	if (dn_fwd_list_empty (list))
 		return FAILED ("failed empty #3");
@@ -186,12 +186,12 @@ test_fwd_list_clear (void)
 	if (!dn_fwd_list_empty (list))
 		return FAILED ("failed empty #1");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
 
 	if (dn_fwd_list_empty (list))
 		return FAILED ("failed empty #2");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
 
 	dn_fwd_list_clear (list);
 
@@ -202,8 +202,8 @@ test_fwd_list_clear (void)
 
 	list = dn_fwd_list_custom_alloc (DN_DEFAULT_ALLOCATOR);
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count);
 
 	dn_fwd_list_custom_clear (list, fwd_list_dispose_func);
 
@@ -223,16 +223,13 @@ static
 RESULT
 test_fwd_list_insert_after (void)
 {
-	bool result = false;
 	const char *items[] = { "first", "second" };
 
 	dn_fwd_list_t *list = dn_fwd_list_alloc ();
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], &result);
-	if (!result)
+	if (!dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]).result)
 		return FAILED ("insert_after failed #1");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], &result);
-	if (!result)
+	if (!dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]).result)
 		return FAILED ("insert_after failed #2");
 
 	size_t i = 0;
@@ -245,12 +242,10 @@ test_fwd_list_insert_after (void)
 	dn_fwd_list_free (list);
 
 	list = dn_fwd_list_alloc ();
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], &result);
-	if (!result)
+	if (!dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]).result)
 		return FAILED ("insert_after failed #3");
 
-	dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), items [0], &result);
-	if (!result)
+	if (!dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), items [0]).result)
 		return FAILED ("insert_after failed #4");
 
 	i = 0;
@@ -269,17 +264,15 @@ static
 RESULT
 test_fwd_list_insert_range_after (void)
 {
-	bool result = false;
 	const char *items[] = { "first", "second", "third", "fourth"};
 
 	dn_fwd_list_t *list1 = dn_fwd_list_alloc ();
 	dn_fwd_list_t *list2 = dn_fwd_list_alloc ();
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list2), items [1], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list2), items [1]);
 
-	dn_fwd_list_insert_range_after (dn_fwd_list_end (list1), dn_fwd_list_begin (list2), dn_fwd_list_end (list2), &result);
-	if (!result)
+	if (!dn_fwd_list_insert_range_after (dn_fwd_list_end (list1), dn_fwd_list_begin (list2), dn_fwd_list_end (list2)).result)
 		return FAILED ("insert_range_after failed #1");
 
 	size_t i = 0;
@@ -295,11 +288,10 @@ test_fwd_list_insert_range_after (void)
 	list1 = dn_fwd_list_alloc ();
 	list2 = dn_fwd_list_alloc ();
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list2), items [1], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list2), items [1]);
 
-	dn_fwd_list_insert_range_after (dn_fwd_list_before_begin (list1), dn_fwd_list_begin (list2), dn_fwd_list_end (list2), &result);
-	if (!result)
+	if (!dn_fwd_list_insert_range_after (dn_fwd_list_before_begin (list1), dn_fwd_list_begin (list2), dn_fwd_list_end (list2)).result)
 		return FAILED ("insert_range_after failed #2");
 
 	i = 1;
@@ -315,16 +307,15 @@ test_fwd_list_insert_range_after (void)
 	list1 = dn_fwd_list_alloc ();
 	list2 = dn_fwd_list_alloc ();
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [1], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [3], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list2), items [2], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [1]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list1), items [3]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list2), items [2]);
 
 	dn_fwd_list_it_t it = dn_fwd_list_begin (list1);
 	it = dn_fwd_list_it_next (it);
 
-	dn_fwd_list_insert_range_after (it, dn_fwd_list_begin (list2), dn_fwd_list_end (list2), &result);
-	if (!result)
+	if (!dn_fwd_list_insert_range_after (it, dn_fwd_list_begin (list2), dn_fwd_list_end (list2)).result)
 		return FAILED ("insert_range_after failed #2");
 
 	i = 0;
@@ -348,17 +339,17 @@ test_fwd_list_erase_after (void)
 
 	dn_fwd_list_t *list = dn_fwd_list_alloc ();
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
 
 	dn_fwd_list_erase_after (dn_fwd_list_begin (list));
 
 	if (!list->head || !list->head->data || strcmp (list->head->data, "first") || list->head->next)
 		return FAILED ("erase_after failed #1");
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3]);
 
 	// Remove first.
 	dn_fwd_list_erase_after (dn_fwd_list_before_begin (list));
@@ -505,15 +496,15 @@ test_fwd_list_remove (void)
 
 	dn_fwd_list_t *list = dn_fwd_list_alloc ();
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3]);
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3]);
 
 	// Remove all "second"
 	dn_fwd_list_remove (list, items [1]);
@@ -569,15 +560,15 @@ test_fwd_list_remove_if (void)
 
 	dn_fwd_list_t *list = dn_fwd_list_alloc ();
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3]);
 
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2], NULL);
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3], NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [0]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [1]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [2]);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3]);
 
 	// Remove all "second"
 	dn_fwd_list_remove_if (list, fwd_remove_func, items [1]);
@@ -625,7 +616,7 @@ test_fwd_list_reverse (void)
 	dn_fwd_list_t *list = dn_fwd_list_alloc ();
 
 	for (uint32_t i = 0; i < N_ELEMS; ++i)
-		dn_fwd_list_insert_after (dn_fwd_list_end (list), INT32_TO_POINTER (i), NULL);
+		dn_fwd_list_insert_after (dn_fwd_list_end (list), INT32_TO_POINTER (i));
 
 	dn_fwd_list_reverse (list);
 
@@ -661,7 +652,7 @@ test_fwd_list_for_each (void)
 	dn_fwd_list_t *list = dn_fwd_list_alloc ();
 
 	for (uint32_t i = 0; i < N_ELEMS; ++i)
-		dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), INT32_TO_POINTER (i), NULL);
+		dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), INT32_TO_POINTER (i));
 
 	dn_fwd_list_for_each (list, fwd_list_foreach_func, &count);
 	if (count != N_ELEMS)
@@ -771,7 +762,7 @@ test_fwd_list_find (void)
 	dn_fwd_list_push_front (list, (char*)"one");
 
 	char *data = (char*)"four";
-	dn_fwd_list_insert_after (dn_fwd_list_end (list), data, NULL);
+	dn_fwd_list_insert_after (dn_fwd_list_end (list), data);
 
 	dn_fwd_list_it_t found = dn_fwd_list_find (list, data, NULL);
 
@@ -795,7 +786,7 @@ test_fwd_list_iterator (void)
 	dn_fwd_list_t *list = dn_fwd_list_alloc ();
 
 	for (uint32_t i = 0; i < N_ELEMS; ++i)
-		dn_fwd_list_insert_after (dn_fwd_list_end (list), INT32_TO_POINTER (i), NULL);
+		dn_fwd_list_insert_after (dn_fwd_list_end (list), INT32_TO_POINTER (i));
 
 	DN_FWD_LIST_FOREACH_BEGIN (list, void *, data) {
 		if (POINTER_TO_INT32 (data) != count)

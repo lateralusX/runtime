@@ -234,13 +234,13 @@ test_ptr_vector_erase (void)
 
 	vector = ptr_vector_alloc_and_fill (&i);
 
-	dn_ptr_vector_erase (dn_ptr_vector_begin (vector), NULL);
+	dn_ptr_vector_erase (dn_ptr_vector_begin (vector));
 	if (*dn_ptr_vector_index (vector, 0) != items [1]) {
 		return FAILED ("first item is not %s, it is %s", items [1],
 			*dn_ptr_vector_index (vector, 0));
 	}
 
-	dn_ptr_vector_erase (dn_ptr_vector_it_prev (dn_ptr_vector_end (vector)), NULL);
+	dn_ptr_vector_erase (dn_ptr_vector_it_prev (dn_ptr_vector_end (vector)));
 
 	if (*dn_ptr_vector_index (vector, vector->size - 1) != items [vector->size]) {
 		return FAILED ("last item is not %s, it is %s",
@@ -261,13 +261,13 @@ test_ptr_vector_erase_fast (void)
 
 	vector = ptr_vector_alloc_and_fill (&i);
 
-	dn_ptr_vector_erase_fast (dn_ptr_vector_begin (vector), NULL);
+	dn_ptr_vector_erase_fast (dn_ptr_vector_begin (vector));
 	if (*dn_ptr_vector_index (vector, 0) != items [vector->size]) {
 		return FAILED ("first item is not %s, it is %s", items [vector->size],
 			*dn_ptr_vector_index (vector, 0));
 	}
 
-	dn_ptr_vector_erase_fast (dn_ptr_vector_it_prev (dn_ptr_vector_end (vector)), NULL);
+	dn_ptr_vector_erase_fast (dn_ptr_vector_it_prev (dn_ptr_vector_end (vector)));
 	if (*dn_ptr_vector_index (vector, vector->size - 1) != items [vector->size - 1]) {
 		return FAILED ("last item is not %s, it is %s",
 			items [vector->size - 1], *dn_ptr_vector_index (vector, vector->size - 1));
@@ -296,17 +296,17 @@ test_ptr_vector_capacity (void)
 	dn_ptr_vector_it_t it = dn_ptr_vector_begin (vector);
 
 	void *value0 = *dn_ptr_vector_index (vector, 0);
-	dn_ptr_vector_erase (it, NULL);
+	dn_ptr_vector_erase (it);
 
 	void *value1 = *dn_ptr_vector_index (vector, 1);
 
 	it = dn_ptr_vector_it_next (it);
-	dn_ptr_vector_erase (it, NULL);
+	dn_ptr_vector_erase (it);
 
 	void *value2 = *dn_ptr_vector_index (vector, 2);
 
 	it = dn_ptr_vector_it_next (it);
-	dn_ptr_vector_erase (it, NULL);
+	dn_ptr_vector_erase (it);
 
 	if (dn_ptr_vector_capacity (vector) != capacity)
 		return FAILED ("invalid vector capacity #3");

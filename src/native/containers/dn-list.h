@@ -29,6 +29,12 @@ struct _dn_list_it_t {
 	} _internal;
 };
 
+typedef struct _dn_list_result_t dn_list_result_t;
+struct _dn_list_result_t {
+	bool result;
+	dn_list_it_t it;
+};
+
 static inline void
 dn_list_it_advance (
 	dn_list_it_t *it,
@@ -235,18 +241,16 @@ dn_list_clear (dn_list_t *list)
 	dn_list_custom_clear (list, NULL);
 }
 
-dn_list_it_t
+dn_list_result_t
 dn_list_insert (
 	dn_list_it_t position,
-	void *data,
-	bool *result);
+	void *data);
 
-dn_list_it_t
+dn_list_result_t
 dn_list_insert_range (
 	dn_list_it_t position,
 	dn_list_it_t first,
-	dn_list_it_t list,
-	bool *result);
+	dn_list_it_t list);
 
 dn_list_it_t
 dn_list_custom_erase (

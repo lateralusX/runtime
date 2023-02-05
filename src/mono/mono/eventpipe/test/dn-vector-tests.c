@@ -92,7 +92,7 @@ test_vector_alloc_capacity (void)
 
 	uint8_t *pre_alloc_data = vector->data;
 	for (int32_t i = 0; i < PREALLOC_SIZE; ++i) {
-		dn_vector_insert (dn_vector_end (vector), i, NULL);
+		dn_vector_insert (dn_vector_end (vector), i);
 		if (pre_alloc_data != vector->data)
 			return FAILED ("vector pre-alloc failed");
 	}
@@ -127,7 +127,7 @@ test_vector_init_capacity (void)
 
 	uint8_t *pre_alloc_data = vector.data;
 	for (int32_t i = 0; i < PREALLOC_SIZE; ++i) {
-		dn_vector_insert (dn_vector_end (&vector), i, NULL);
+		dn_vector_insert (dn_vector_end (&vector), i);
 		if (pre_alloc_data != vector.data)
 			return FAILED ("vector pre-alloc failed");
 	}
@@ -433,10 +433,10 @@ test_vector_insert_range (void)
 		return FAILED ("vector size didn't match");
 
 	dn_vector_it_t it = dn_vector_begin (vector);
-	dn_vector_insert_range (dn_vector_it_next_n (it, 0), (const uint8_t *)vs1, ARRAY_SIZE (vs1), NULL);
-	dn_vector_insert_range (dn_vector_it_next_n (it, 3), (const uint8_t *)vs3, ARRAY_SIZE (vs3), NULL);
-	dn_vector_insert_range (dn_vector_it_next_n (it, 6), (const uint8_t *)vs4, ARRAY_SIZE (vs4), NULL);
-	dn_vector_insert_range (dn_vector_it_next_n (it, 3), (const uint8_t *)vs2, ARRAY_SIZE (vs2), NULL);
+	dn_vector_insert_range (dn_vector_it_next_n (it, 0), (const uint8_t *)vs1, ARRAY_SIZE (vs1));
+	dn_vector_insert_range (dn_vector_it_next_n (it, 3), (const uint8_t *)vs3, ARRAY_SIZE (vs3));
+	dn_vector_insert_range (dn_vector_it_next_n (it, 6), (const uint8_t *)vs4, ARRAY_SIZE (vs4));
+	dn_vector_insert_range (dn_vector_it_next_n (it, 3), (const uint8_t *)vs2, ARRAY_SIZE (vs2));
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
 		if (i != *dn_vector_index_t (vector, int32_t, i))
@@ -461,7 +461,7 @@ test_vector_insert_range_end (void)
 		return FAILED ("vector size didn't match");
 
 	dn_vector_push_back (vector, v);
-	dn_vector_insert_range (dn_vector_end (vector), (const uint8_t *)vs, ARRAY_SIZE (vs), NULL);
+	dn_vector_insert_range (dn_vector_end (vector), (const uint8_t *)vs, ARRAY_SIZE (vs));
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
 		if (i != *dn_vector_index_t (vector, int32_t, i))
@@ -483,16 +483,16 @@ test_vector_insert (void)
 		return FAILED ("1 Vector size didn't match");
 
 	dn_vector_it_t it = dn_vector_begin (vector);
-	dn_vector_insert (it, vector, NULL);
+	dn_vector_insert (it, vector);
 
 	if (vector != *dn_vector_index_t (vector, void *, 0))
 		return FAILED ("2 The value in the vector is incorrect");
 
-	dn_vector_insert (dn_vector_it_next_n (it, 1), vector, NULL);
+	dn_vector_insert (dn_vector_it_next_n (it, 1), vector);
 	if (vector != *dn_vector_index_t (vector, void *, 1))
 		return FAILED ("3 The value in the vector is incorrect");
 
-	dn_vector_insert (dn_vector_it_next_n (it, 2), vector, NULL);
+	dn_vector_insert (dn_vector_it_next_n (it, 2), vector);
 	if (vector != *dn_vector_index_t (vector, void *, 2))
 		return FAILED ("4 The value in the vector is incorrect");
 
@@ -508,10 +508,10 @@ test_vector_insert (void)
 	ptr3 = vector + 3;
 
 	it = dn_vector_begin (vector);
-	dn_vector_insert (it, ptr0, NULL);
-	dn_vector_insert (dn_vector_it_next_n (it, 1), ptr1, NULL);
-	dn_vector_insert (dn_vector_it_next_n (it, 2), ptr2, NULL);
-	dn_vector_insert (dn_vector_it_next_n (it, 1), ptr3, NULL);
+	dn_vector_insert (it, ptr0);
+	dn_vector_insert (dn_vector_it_next_n (it, 1), ptr1);
+	dn_vector_insert (dn_vector_it_next_n (it, 2), ptr2);
+	dn_vector_insert (dn_vector_it_next_n (it, 1), ptr3);
 
 	if (ptr0 != *dn_vector_index_t (vector, void *, 0))
 		return FAILED ("6 The value in the vector is incorrect");
@@ -616,12 +616,12 @@ test_vector_erase (void)
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
-	dn_vector_insert_range (dn_vector_end (vector), (const uint8_t *)v, ARRAY_SIZE (v), NULL);
+	dn_vector_insert_range (dn_vector_end (vector), (const uint8_t *)v, ARRAY_SIZE (v));
 
 	if (ARRAY_SIZE (v) != vector->size)
 		return FAILED ("insert_range fail");
 
-	dn_vector_erase (dn_vector_it_next_n (dn_vector_begin (vector), 3), NULL);
+	dn_vector_erase (dn_vector_it_next_n (dn_vector_begin (vector), 3));
 
 	if (5 != vector->size)
 		return FAILED ("erase failed to update size");
@@ -646,8 +646,8 @@ test_vector_erase_2 (void)
 	for (int32_t i = 0; i < 10; ++i)
 		dn_vector_push_back (vector, i);
 
-	dn_vector_erase (dn_vector_it_next_n (dn_vector_begin (vector), 1), NULL);
-	dn_vector_erase (dn_vector_it_next_n (dn_vector_begin (vector), 7), NULL);
+	dn_vector_erase (dn_vector_it_next_n (dn_vector_begin (vector), 1));
+	dn_vector_erase (dn_vector_it_next_n (dn_vector_begin (vector), 7));
 
 	for (uint32_t i = 0; i < vector->size; ++i) {
 		if (vs [i] != *dn_vector_index_t (vector, int32_t, i))
@@ -668,12 +668,12 @@ test_vector_erase_fast (void)
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
-	dn_vector_insert_range (dn_vector_end (vector), (const uint8_t *)v, ARRAY_SIZE (v), NULL);
+	dn_vector_insert_range (dn_vector_end (vector), (const uint8_t *)v, ARRAY_SIZE (v));
 
 	if (ARRAY_SIZE (v) != vector->size)
 		return FAILED ("insert_range fail");
 
-	dn_vector_erase_fast (dn_vector_it_next_n (dn_vector_begin (vector), 3), NULL);
+	dn_vector_erase_fast (dn_vector_it_next_n (dn_vector_begin (vector), 3));
 
 	if (5 != vector->size)
 		return FAILED ("erase failed to update size");

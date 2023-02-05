@@ -28,6 +28,12 @@ struct _dn_fwd_list_it_t {
 	} _internal;
 };
 
+typedef struct _dn_fwd_list_result_t dn_fwd_list_result_t;
+struct _dn_fwd_list_result_t {
+	bool result;
+	dn_fwd_list_it_t it;
+};
+
 static inline void
 dn_fwd_list_it_advance (
 	dn_fwd_list_it_t *it,
@@ -206,18 +212,16 @@ dn_fwd_list_clear (dn_fwd_list_t *list)
 	dn_fwd_list_custom_clear (list, NULL);
 }
 
-dn_fwd_list_it_t
+dn_fwd_list_result_t
 dn_fwd_list_insert_after (
 	dn_fwd_list_it_t position,
-	void *data,
-	bool *result);
+	void *data);
 
-dn_fwd_list_it_t
+dn_fwd_list_result_t
 dn_fwd_list_insert_range_after (
 	dn_fwd_list_it_t position,
 	dn_fwd_list_it_t first,
-	dn_fwd_list_it_t last,
-	bool *result);
+	dn_fwd_list_it_t last);
 
 dn_fwd_list_it_t
 dn_fwd_list_custom_erase_after (

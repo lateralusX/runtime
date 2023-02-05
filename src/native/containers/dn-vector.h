@@ -25,7 +25,12 @@ struct _ ## name ## _it_t { \
 	struct { \
 		name ## _t *_vector; \
 	} _internal; \
-};
+}; \
+typedef struct _ ## name ## _result_t name ## _result_t; \
+struct _ ## name ## _result_t { \
+	bool result; \
+	name ## _it_t it; \
+}; \
 
 DN_DEFINE_VECTOR_T_STRUCT(dn_vector, uint8_t);
 
@@ -269,65 +274,62 @@ dn_vector_reserve (
 uint32_t
 dn_vector_capacity (const dn_vector_t *vector);
 
-static inline dn_vector_it_t
+static inline dn_vector_result_t
 _dn_vector_insert_range_adapter (
 	dn_vector_it_t position,
 	const uint8_t *elements,
-	uint32_t element_count,
-	bool *result)
+	uint32_t element_count)
 {
-	bool insert_result;
-	if (dn_vector_it_end (position))
-		insert_result = _dn_vector_append_range (position._internal._vector, elements, element_count);
-	else
-		insert_result = _dn_vector_insert_range (&position, elements, element_count);
+	dn_vector_result_t result;
 
-	if (result)
-		*result = insert_result;
-	return position;
+	if (dn_vector_it_end (position))
+		result.result = _dn_vector_append_range (position._internal._vector, elements, element_count);
+	else
+		result.result = _dn_vector_insert_range (&position, elements, element_count);
+
+	result.it = position;
+	return result;
 }
 
-#define dn_vector_insert(position, element, result) \
-	_dn_vector_insert_range_adapter ((position), (const uint8_t *)&(element), 1, (result))
+#define dn_vector_insert(position, element) \
+	_dn_vector_insert_range_adapter ((position), (const uint8_t *)&(element), 1)
 
-#define dn_vector_insert_range(position, elements, element_count, result) \
-	_dn_vector_insert_range_adapter ((position), (const uint8_t *)(elements), (element_count), (result))
+#define dn_vector_insert_range(position, elements, element_count) \
+	_dn_vector_insert_range_adapter ((position), (const uint8_t *)(elements), (element_count))
 
-static inline dn_vector_it_t
+static inline dn_vector_result_t
 _dn_vector_erase_adapter (
 	dn_vector_it_t position,
-	dn_func_t func,
-	bool *result)
+	dn_func_t func)
 {
-	bool erase_result = _dn_vector_erase (&position, func);
-	if (result)
-		*result = erase_result;
-	return position;
+	dn_vector_result_t result;
+	result.result = _dn_vector_erase (&position, func);
+	result.it = position;
+	return result;
 }
 
-#define dn_vector_custom_erase(position, func, result) \
-	_dn_vector_erase_adapter ((position), (func), (result))
+#define dn_vector_custom_erase(position, func) \
+	_dn_vector_erase_adapter ((position), (func))
 
-#define dn_vector_erase(position, result) \
-	_dn_vector_erase_adapter ((position), NULL, (result))
+#define dn_vector_erase(position) \
+	_dn_vector_erase_adapter ((position), NULL)
 
-static inline dn_vector_it_t
+static inline dn_vector_result_t
 _dn_vector_erase_fast_adapter (
 	dn_vector_it_t position,
-	dn_func_t func,
-	bool *result)
+	dn_func_t func)
 {
-	bool erase_result = _dn_vector_erase_fast (&position, func);
-	if (result)
-		*result = erase_result;
-	return position;
+	dn_vector_result_t result;
+	result.result = _dn_vector_erase_fast (&position, func);
+	result.it = position;
+	return result;
 }
 
-#define dn_vector_custom_erase_fast(position, func, result) \
-	_dn_vector_erase_fast_adapter ((position), (func), (result))
+#define dn_vector_custom_erase_fast(position, func) \
+	_dn_vector_erase_fast_adapter ((position), (func))
 
-#define dn_vector_erase_fast(position, result) \
-	_dn_vector_erase_fast_adapter ((position), NULL, (result))
+#define dn_vector_erase_fast(position) \
+	_dn_vector_erase_fast_adapter ((position), NULL)
 
 bool
 dn_vector_custom_resize (
@@ -401,6 +403,9 @@ _dn_vector_find_adapter (
 
 #define DN_DEFINE_VECTOR_T_NAME(name) \
 	dn_ ## name ## _vector_t
+
+#define DN_DEFINE_VECTOR_RESULT_T_NAME(name) \
+	dn_ ## name ## _vector_result_t
 
 #define DN_DEFINE_VECTOR_IT_T_NAME(name) \
 	dn_ ## name ## _vector_it_t
@@ -574,47 +579,47 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, capacity) (const DN_DEFINE_VECTOR_T_NAME(na
 { \
 	return dn_vector_capacity ((dn_vector_t *)vector); \
 } \
-static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, insert) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, type element, bool *result) \
+static inline DN_DEFINE_VECTOR_RESULT_T_NAME(name) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, insert) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, type element) \
 { \
-	bool insert_result = _dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)&element, 1); \
-	if (result) \
-		*result = insert_result; \
-	return position; \
+	DN_DEFINE_VECTOR_RESULT_T_NAME(name) result; \
+	result.result = _dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)&element, 1); \
+	result.it = position; \
+	return result; \
 } \
-static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, insert_range) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, type *elements, uint32_t element_count, bool *result) \
+static inline DN_DEFINE_VECTOR_RESULT_T_NAME(name) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, insert_range) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, type *elements, uint32_t element_count) \
 { \
-	bool insert_result = _dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)(elements), element_count); \
-	if (result) \
-		*result = insert_result; \
-	return position; \
+	DN_DEFINE_VECTOR_RESULT_T_NAME(name) result; \
+	result.result = _dn_vector_insert_range ((dn_vector_it_t *)&position, (const uint8_t *)(elements), element_count); \
+	result.it = position; \
+	return result; \
 } \
-static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_func_t func, bool *result) \
+static inline DN_DEFINE_VECTOR_RESULT_T_NAME(name) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_func_t func) \
 { \
-	bool erase_result = _dn_vector_erase ((dn_vector_it_t *)&position, func); \
-	if (result) \
-		*result = erase_result; \
-	return position; \
+	DN_DEFINE_VECTOR_RESULT_T_NAME(name) result; \
+	result.result = _dn_vector_erase ((dn_vector_it_t *)&position, func); \
+	result.it = position; \
+	return result; \
 } \
-static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, bool *result) \
+static inline DN_DEFINE_VECTOR_RESULT_T_NAME(name) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase) (DN_DEFINE_VECTOR_IT_T_NAME(name) position) \
 { \
-	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase) (position, NULL, result); \
+	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase) (position, NULL); \
 } \
-static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase_fast) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_func_t func, bool *result) \
+static inline DN_DEFINE_VECTOR_RESULT_T_NAME(name) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase_fast) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_func_t func) \
 { \
-	bool erase_result = _dn_vector_erase_fast ((dn_vector_it_t *)&position, func); \
-	if (result) \
-		*result = erase_result; \
-	return position; \
+	DN_DEFINE_VECTOR_RESULT_T_NAME(name) result; \
+	result.result = _dn_vector_erase_fast ((dn_vector_it_t *)&position, func); \
+	result.it = position; \
+	return result; \
 } \
-static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_fast) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, bool *result) \
+static inline DN_DEFINE_VECTOR_RESULT_T_NAME(name) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_fast) (DN_DEFINE_VECTOR_IT_T_NAME(name) position) \
 { \
-	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase_fast) (position, NULL, result); \
+	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase_fast) (position, NULL); \
 } \
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_resize) (DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t size, dn_func_t func) \

@@ -128,11 +128,10 @@ dn_fwd_list_custom_clear (
 	list->tail = NULL;
 }
 
-dn_fwd_list_it_t
+dn_fwd_list_result_t
 dn_fwd_list_insert_after (
 	dn_fwd_list_it_t position,
-	void *data,
-	bool *result)
+	void *data)
 {
 	dn_fwd_list_t *list = position._internal._list;
 
@@ -148,30 +147,28 @@ dn_fwd_list_insert_after (
 	if (position.it && !position.it->next)
 		list->tail = position.it;
 
-	if (result)
-		*result = position.it;
-
-	return position;
+	dn_fwd_list_result_t result = { position.it != NULL, { position.it, {position._internal._list } } };
+	return result;
 }
 
-dn_fwd_list_it_t
+dn_fwd_list_result_t
 dn_fwd_list_insert_range_after (
 	dn_fwd_list_it_t position,
 	dn_fwd_list_it_t first,
-	dn_fwd_list_it_t last,
-	bool *result)
+	dn_fwd_list_it_t last)
 {
-	if (first.it == last.it)
-		return position;
+	dn_fwd_list_result_t result = { true, { position.it, {position._internal._list } } };
 
-	dn_fwd_list_it_t inserted = { NULL, { position._internal._list } };
+	if (first.it == last.it)
+		return result;
+
 	for (; first.it && first.it != last.it; first.it = first.it->next)
-		inserted = dn_fwd_list_insert_after (position, first.it->data, result);
+		result = dn_fwd_list_insert_after (position, first.it->data);
 
 	if (last.it)
-		inserted = dn_fwd_list_insert_after (position, last.it->data, result);
+		result = dn_fwd_list_insert_after (position, last.it->data);
 
-	return inserted;
+	return result;
 }
 
 dn_fwd_list_it_t
@@ -210,9 +207,7 @@ dn_fwd_list_push_front (
 	if (DN_UNLIKELY(!list))
 		return false;
 
-	bool result;
-	dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), data, &result);
-	return result;
+	return dn_fwd_list_insert_after (dn_fwd_list_before_begin (list), data).result;
 }
 
 void
@@ -264,7 +259,7 @@ dn_fwd_list_custom_resize (
 	}
 
 	while (count++ < i)
-		dn_fwd_list_insert_after (dn_fwd_list_end (list), NULL, NULL);
+		dn_fwd_list_insert_after (dn_fwd_list_end (list), NULL);
 
 	return true;
 }
