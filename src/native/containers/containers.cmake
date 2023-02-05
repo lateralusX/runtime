@@ -13,6 +13,7 @@ list(APPEND SHARED_CONTAINER_SOURCES
 list(APPEND SHARED_CONTAINER_HEADERS
     dn-allocator.h
     dn-vector.h
+    dn-vector-t.h
     dn-malloc.h
     dn-fwd-list.h
     dn-list.h

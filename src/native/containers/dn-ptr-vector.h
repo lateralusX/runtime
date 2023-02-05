@@ -5,7 +5,7 @@
 #define __DN_PTR_VECTOR_H__
 
 #include "dn-utils.h"
-#include "dn-vector.h"
+#include "dn-vector-t.h"
 
 DN_DEFINE_VECTOR_T (ptr, void *)
 
