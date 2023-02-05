@@ -74,7 +74,7 @@ test_fwd_list_free (void)
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 
-	dn_fwd_list_free_for_each (list, fwd_list_dispose_func);
+	dn_fwd_list_custom_free (list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on free");
@@ -94,7 +94,7 @@ test_fwd_list_dispose (void)
 	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count, NULL);
 	dn_fwd_list_insert_after (dn_fwd_list_end (&list), &dispose_count, NULL);
 
-	dn_fwd_list_dispose_for_each (&list, fwd_list_dispose_func);
+	dn_fwd_list_custom_dispose (&list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on free");
@@ -205,13 +205,13 @@ test_fwd_list_clear (void)
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), &dispose_count, NULL);
 
-	dn_fwd_list_clear_for_each (list, fwd_list_dispose_func);
+	dn_fwd_list_custom_clear (list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on clear");
 
 	dispose_count = 0;
-	dn_fwd_list_free_for_each (list, fwd_list_dispose_func);
+	dn_fwd_list_custom_free (list, fwd_list_dispose_func);
 
 	if (dispose_count != 0)
 		return FAILED ("invalid dispose count on clear/free");
@@ -458,7 +458,7 @@ test_fwd_list_pop_front (void)
 	if (dispose_count != 0)
 		return FAILED ("pop_front dispose count failed #1");
 
-	dn_fwd_list_dispose_for_each (&list, fwd_list_dispose_func);
+	dn_fwd_list_custom_dispose (&list, fwd_list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("pop_front dispose count failed #2");
@@ -476,20 +476,20 @@ test_fwd_list_resize (void)
 	for (uint32_t i = 0; i < 100; i++)
 		dn_fwd_list_push_front (list, &dispose_count);
 
-	dn_fwd_list_resize_for_each (list, 90, fwd_list_dispose_func);
+	dn_fwd_list_custom_resize (list, 90, fwd_list_dispose_func);
 
 	if (dispose_count != 10)
 		return FAILED ("failed resize #1");
 
 	dispose_count = 0;
-	dn_fwd_list_resize_for_each (list, 10, fwd_list_dispose_func);
+	dn_fwd_list_custom_resize (list, 10, fwd_list_dispose_func);
 
 	if (dispose_count != 80)
 		return FAILED ("failed resize #2");
 
 	dispose_count = 0;
 
-	dn_fwd_list_free_for_each (list, fwd_list_dispose_func);
+	dn_fwd_list_custom_free (list, fwd_list_dispose_func);
 
 	if (dispose_count != 10)
 		return FAILED ("failed free");
@@ -556,7 +556,7 @@ test_fwd_list_remove (void)
 static
 bool
 DN_CALLBACK_CALLTYPE
-fwd_remove_func (const void *data, void *user_data)
+fwd_remove_func (const void *data, const void *user_data)
 {
 	return !strcmp ((const char *)data, (const char *)user_data);
 }

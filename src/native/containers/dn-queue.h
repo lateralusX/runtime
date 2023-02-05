@@ -36,14 +36,14 @@ dn_queue_alloc (void)
 }
 
 void
-dn_queue_free_for_each (
+dn_queue_custom_free (
 	dn_queue_t *queue,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline void
 dn_queue_free (dn_queue_t *queue)
 {
-	dn_queue_free_for_each (queue, NULL);
+	dn_queue_custom_free (queue, NULL);
 }
 
 static inline bool
@@ -61,14 +61,14 @@ dn_queue_init (dn_queue_t *queue)
 }
 
 void
-dn_queue_dispose_for_each (
+dn_queue_custom_dispose (
 	dn_queue_t *queue,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline void
 dn_queue_dispose (dn_queue_t *queue)
 {
-	dn_queue_dispose_for_each (queue, NULL);
+	dn_queue_custom_dispose (queue, NULL);
 }
 
 static inline void **
@@ -133,12 +133,12 @@ dn_queue_pop (dn_queue_t *queue)
 }
 
 static inline void
-dn_queue_clear_for_each (
+dn_queue_custom_clear (
 	dn_queue_t *queue,
-	dn_dispose_func_t dispose_func)
+	dn_func_t func)
 {
 	if (queue) {
-		dn_list_clear_for_each (&queue->_internal.list, dispose_func);
+		dn_list_custom_clear (&queue->_internal.list, func);
 		queue->size = 0;
 	}
 }
@@ -146,7 +146,7 @@ dn_queue_clear_for_each (
 static inline void
 dn_queue_clear (dn_queue_t *queue)
 {
-	dn_queue_clear_for_each (queue, NULL);
+	dn_queue_custom_clear (queue, NULL);
 }
 
 #endif /* __DN_QUEUE_H__ */

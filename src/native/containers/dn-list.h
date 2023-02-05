@@ -134,14 +134,14 @@ dn_list_alloc (void)
 }
 
 void
-dn_list_free_for_each (
+dn_list_custom_free (
 	dn_list_t *list,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline void
 dn_list_free (dn_list_t *list)
 {
-	dn_list_free_for_each (list, NULL);
+	dn_list_custom_free (list, NULL);
 }
 
 static inline bool
@@ -159,14 +159,14 @@ dn_list_init (dn_list_t *list)
 }
 
 void
-dn_list_dispose_for_each (
+dn_list_custom_dispose (
 	dn_list_t *list,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline void
 dn_list_dispose (dn_list_t *list)
 {
-	dn_list_dispose_for_each (list, NULL);
+	dn_list_custom_dispose (list, NULL);
 }
 
 static inline void **
@@ -224,15 +224,15 @@ dn_list_max_size (const dn_list_t *list)
 }
 
 void
-dn_list_clear_for_each (
+dn_list_custom_clear (
 	dn_list_t *list,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 
 static inline void
 dn_list_clear (dn_list_t *list)
 {
-	dn_list_clear_for_each (list, NULL);
+	dn_list_custom_clear (list, NULL);
 }
 
 dn_list_it_t
@@ -249,14 +249,14 @@ dn_list_insert_range (
 	bool *result);
 
 dn_list_it_t
-dn_list_erase_for_each (
+dn_list_custom_erase (
 	dn_list_it_t position,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline dn_list_it_t
 dn_list_erase (dn_list_it_t position)
 {
-	return dn_list_erase_for_each (position, NULL);
+	return dn_list_custom_erase (position, NULL);
 }
 
 bool
@@ -276,47 +276,47 @@ void
 dn_list_pop_front (dn_list_t *list);
 
 bool
-dn_list_resize_for_each (
+dn_list_custom_resize (
 	dn_list_t *list,
 	uint32_t count,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline bool
 dn_list_resize (
 	dn_list_t *list,
 	uint32_t count)
 {
-	return dn_list_resize_for_each (list, count, NULL);
+	return dn_list_custom_resize (list, count, NULL);
 }
 
 void
-dn_list_remove_for_each (
+dn_list_custom_remove (
 	dn_list_t *list,
 	const void *data,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline void
 dn_list_remove (
 	dn_list_t *list,
 	const void *data)
 {
-	dn_list_remove_for_each (list, data, NULL);
+	dn_list_custom_remove (list, data, NULL);
 }
 
 void
-dn_list_remove_if_for_each (
+dn_list_custom_remove_if (
 	dn_list_t *list,
-	dn_remove_func_t remove_func,
-	void *user_data,
-	dn_dispose_func_t dispose_func);
+	dn_predicate_func_t predicate,
+	void *data,
+	dn_func_t func);
 
 static inline void
 dn_list_remove_if (
 	dn_list_t *list,
-	dn_remove_func_t remove_func,
-	void *user_data)
+	dn_predicate_func_t predicate,
+	void *data)
 {
-	dn_list_remove_if_for_each (list, remove_func, user_data, NULL);
+	dn_list_custom_remove_if (list, predicate, data, NULL);
 }
 
 void
@@ -325,8 +325,8 @@ dn_list_reverse (dn_list_t *list);
 void
 dn_list_for_each (
 	dn_list_t *list,
-	dn_func_t foreach_func,
-	void *user_data);
+	dn_func_data_t foreach_func,
+	void *data);
 
 void
 dn_list_sort (

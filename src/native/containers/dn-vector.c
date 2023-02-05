@@ -182,7 +182,7 @@ _dn_vector_append_range (
 bool
 _dn_vector_erase (
 	dn_vector_it_t *position,
-	dn_dispose_func_t dispose_func)
+	dn_func_t func)
 {
 	dn_vector_t *vector = position->_internal._vector;
 
@@ -194,8 +194,8 @@ _dn_vector_erase (
 	if (DN_UNLIKELY (insert_offset > vector->_internal._capacity || size_to_move < 0))
 		return false;
 
-	if (dispose_func)
-		dispose_func (element_offset (vector, position->it));
+	if (func)
+		func (element_offset (vector, position->it));
 
 	/* element_offset won't overflow since insert_offset and position is smaller than current capacity */
 	/* element_length won't overflow since size_to_move is smaller than current capacity */
@@ -213,15 +213,15 @@ _dn_vector_erase (
 bool
 _dn_vector_erase_fast (
 	dn_vector_it_t *position,
-	dn_dispose_func_t dispose_func)
+	dn_func_t func)
 {
 	dn_vector_t *vector = position->_internal._vector;
 
 	if (DN_UNLIKELY (!vector || vector->size == 0 || position->it > vector->size))
 		return false;
 
-	if (dispose_func)
-		dispose_func (element_offset (vector, position->it));
+	if (func)
+		func (element_offset (vector, position->it));
 
 	/* element_offset won't overflow since position is smaller than current capacity */
 	/* element_offset won't overflow since vector->size - 1 is smaller than current capacity */
@@ -255,25 +255,25 @@ _dn_vector_buffer_capacity (
 }
 
 void
-dn_vector_free_for_each (
+dn_vector_custom_free (
 	dn_vector_t *vector,
-	dn_dispose_func_t dispose_func)
+	dn_func_t func)
 {
-	dn_vector_dispose_for_each (vector, dispose_func);
+	dn_vector_custom_dispose (vector, func);
 	dn_allocator_free (vector->_internal._allocator, vector);
 }
 
 void
-dn_vector_dispose_for_each (
+dn_vector_custom_dispose (
 	dn_vector_t *vector,
-	dn_dispose_func_t dispose_func)
+	dn_func_t func)
 {
 	if (DN_UNLIKELY (!vector))
 		return;
 
-	if (dispose_func) {
+	if (func) {
 		for(uint32_t i = 0; i < vector->size; i++)
-			dispose_func ((void *)(element_offset (vector, i)));
+			func ((void *)(element_offset (vector, i)));
 	}
 
 	dn_allocator_free (vector->_internal._allocator, vector->data);
@@ -300,12 +300,12 @@ dn_vector_capacity (const dn_vector_t *vector)
 }
 
 bool
-dn_vector_resize_for_each (
+dn_vector_custom_resize (
 	dn_vector_t *vector,
 	uint32_t size,
-	dn_dispose_func_t dispose_func)
+	dn_func_t func)
 {
-	DN_UNREFERENCED_PARAMETER (dispose_func);
+	DN_UNREFERENCED_PARAMETER (func);
 
 	if (DN_UNLIKELY (!vector))
 		return false;
@@ -317,9 +317,16 @@ dn_vector_resize_for_each (
 		if (DN_UNLIKELY (!ensure_capacity (vector, size)))
 			return false;
 	
-	//TODO: If new size < vector->size:
-	// * Call dispose_func if present.
-	// * Check dn_allocator_init and clear if needed.
+	if (size < vector->size) {
+		if (func) {
+			for (uint32_t i = size; i < vector->size; i++)
+				func (element_offset (vector, i));
+		}
+
+		if (check_attribute (vector, DN_VECTOR_ATTRIBUTE_INIT_MEMORY))
+			memset (element_offset(vector, size), 0, element_length (vector, vector->size - size));
+
+	}
 
 	vector->size = size;
 	return true;
@@ -328,14 +335,14 @@ dn_vector_resize_for_each (
 void
 dn_vector_for_each (
 	const dn_vector_t *vector,
-	dn_func_t foreach_func,
-	void *user_data)
+	dn_func_data_t foreach_func,
+	void *data)
 {
 	if (DN_UNLIKELY (!vector || !foreach_func))
 		return;
 
 	for(uint32_t i = 0; i < vector->size; i++)
-		foreach_func ((void *)(element_offset (vector, i)), user_data);
+		foreach_func ((void *)(element_offset (vector, i)), data);
 }
 
 void

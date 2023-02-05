@@ -209,7 +209,7 @@ ep_provider_free (EventPipeProvider * provider)
 
 	if (provider->event_list) {
 		EP_LOCK_ENTER (section1)
-			dn_list_free_for_each (provider->event_list, event_free_func);
+			dn_list_custom_free (provider->event_list, event_free_func);
 			provider->event_list = NULL;
 		EP_LOCK_EXIT (section1)
 	}
@@ -453,7 +453,7 @@ provider_free (EventPipeProvider * provider)
 
 	ep_requires_lock_held ();
 
-	dn_list_free_for_each (provider->event_list, event_free_func);
+	dn_list_custom_free (provider->event_list, event_free_func);
 
 	ep_rt_utf16_string_free (provider->provider_name_utf16);
 	ep_rt_utf8_string_free (provider->provider_name);

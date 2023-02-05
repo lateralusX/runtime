@@ -342,7 +342,7 @@ test_ptr_vector_capacity (void)
 static
 void
 DN_CALLBACK_CALLTYPE
-ptr_vector_free_func(void *data, void *user_data)
+ptr_vector_free_func(void *data)
 {
 	free (*(char **)data);
 }
@@ -350,14 +350,14 @@ ptr_vector_free_func(void *data, void *user_data)
 static
 void
 DN_CALLBACK_CALLTYPE
-ptr_vector_clear_func(void *data, void *user_data)
+ptr_vector_clear_func(void *data)
 {
 	(**((uint32_t **)data))++;
 }
 
 static
 RESULT
-test_ptr_vector_foreach_free (void)
+test_ptr_vector_custom_free (void)
 {
 	int32_t count = 0;
 	dn_ptr_vector_t *vector = dn_ptr_vector_alloc ();
@@ -367,8 +367,7 @@ test_ptr_vector_foreach_free (void)
 	dn_ptr_vector_push_back (vector, &count);
 	dn_ptr_vector_push_back (vector, &count);
 
-	dn_ptr_vector_for_each (vector, ptr_vector_clear_func, NULL);
-	dn_ptr_vector_free (vector);
+	dn_ptr_vector_custom_free (vector, ptr_vector_clear_func);
 
 	if (count != 2)
 		return FAILED ("callback called incorrect number of times");
@@ -378,8 +377,7 @@ test_ptr_vector_foreach_free (void)
 	dn_ptr_vector_push_back (vector, malloc (10));
 	dn_ptr_vector_push_back (vector, malloc (100));
 	
-	dn_ptr_vector_for_each (vector, ptr_vector_free_func, NULL);
-	dn_ptr_vector_free (vector);
+	dn_ptr_vector_custom_free (vector, ptr_vector_free_func);
 
 	return OK;
 }
@@ -410,7 +408,7 @@ test_ptr_vector_clear (void)
 
 static
 RESULT
-test_ptr_vector_foreach_clear (void)
+test_ptr_vector_custom_clear (void)
 {
 	uint32_t count = 0;
 	dn_ptr_vector_t *vector = dn_ptr_vector_alloc ();
@@ -425,8 +423,7 @@ test_ptr_vector_foreach_clear (void)
 
 	uint32_t capacity = dn_ptr_vector_capacity (vector);
 
-	dn_ptr_vector_for_each (vector, ptr_vector_clear_func, NULL);
-	dn_ptr_vector_clear (vector);
+	dn_ptr_vector_custom_clear (vector, ptr_vector_clear_func);
 
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match #2");
@@ -911,9 +908,9 @@ static Test dn_ptr_vector_tests [] = {
 	{"test_ptr_vector_erase", test_ptr_vector_erase},
 	{"test_ptr_vector_erase_fast", test_ptr_vector_erase_fast},
 	{"test_ptr_vector_capacity", test_ptr_vector_capacity},
-	{"test_ptr_vector_foreach_free", test_ptr_vector_foreach_free},
+	{"test_ptr_vector_custom_free", test_ptr_vector_custom_free},
 	{"test_ptr_vector_clear", test_ptr_vector_clear},
-	{"test_ptr_vector_foreach_clear", test_ptr_vector_foreach_clear},
+	{"test_ptr_vector_custom_clear", test_ptr_vector_custom_clear},
 	{"test_ptr_vector_foreach_it", test_ptr_vector_foreach_it},
 	{"test_ptr_vector_foreach_rev_it", test_ptr_vector_foreach_rev_it},
 	{"test_ptr_vector_sort", test_ptr_vector_sort},

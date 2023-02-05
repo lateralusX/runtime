@@ -153,12 +153,12 @@ _dn_vector_append_range (
 bool
 _dn_vector_erase (
 	dn_vector_it_t *position,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 bool
 _dn_vector_erase_fast (
 	dn_vector_it_t *position,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 uint32_t
 _dn_vector_buffer_capacity (
@@ -178,14 +178,14 @@ _dn_vector_buffer_capacity (
 	dn_vector_custom_alloc_capacity_t (DN_DEFAULT_ALLOCATOR, element_type, capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY);
 
 void
-dn_vector_free_for_each (
+dn_vector_custom_free (
 	dn_vector_t *vector,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline void
 dn_vector_free (dn_vector_t *vector)
 {
-	dn_vector_free_for_each (vector, NULL);
+	dn_vector_custom_free (vector, NULL);
 }
 
 #define dn_vector_custom_init_t(vector, allocator, element_type, attributes) \
@@ -201,14 +201,14 @@ dn_vector_free (dn_vector_t *vector)
 	dn_vector_custom_init_capacity_t (vector, DN_DEFAULT_ALLOCATOR, element_type, capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY)
 
 void
-dn_vector_dispose_for_each (
+dn_vector_custom_dispose (
 	dn_vector_t *vector,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline void
 dn_vector_dispose (dn_vector_t *vector)
 {
-	dn_vector_dispose_for_each (vector, NULL);
+	dn_vector_custom_dispose (vector, NULL);
 }
 
 #define dn_vector_index_t(vector, type, index) \
@@ -296,17 +296,17 @@ _dn_vector_insert_range_adapter (
 static inline dn_vector_it_t
 _dn_vector_erase_adapter (
 	dn_vector_it_t position,
-	dn_dispose_func_t dispose_func,
+	dn_func_t func,
 	bool *result)
 {
-	bool erase_result = _dn_vector_erase (&position, dispose_func);
+	bool erase_result = _dn_vector_erase (&position, func);
 	if (result)
 		*result = erase_result;
 	return position;
 }
 
-#define dn_vector_erase_for_each(position, dispose_func, result) \
-	_dn_vector_erase_adapter ((position), (dispose_func), (result))
+#define dn_vector_custom_erase(position, func, result) \
+	_dn_vector_erase_adapter ((position), (func), (result))
 
 #define dn_vector_erase(position, result) \
 	_dn_vector_erase_adapter ((position), NULL, (result))
@@ -314,41 +314,41 @@ _dn_vector_erase_adapter (
 static inline dn_vector_it_t
 _dn_vector_erase_fast_adapter (
 	dn_vector_it_t position,
-	dn_dispose_func_t dispose_func,
+	dn_func_t func,
 	bool *result)
 {
-	bool erase_result = _dn_vector_erase_fast (&position, dispose_func);
+	bool erase_result = _dn_vector_erase_fast (&position, func);
 	if (result)
 		*result = erase_result;
 	return position;
 }
 
-#define dn_vector_erase_fast_for_each(position, dispose_func, result) \
-	_dn_vector_erase_fast_adapter ((position), (dispose_func), (result))
+#define dn_vector_custom_erase_fast(position, func, result) \
+	_dn_vector_erase_fast_adapter ((position), (func), (result))
 
 #define dn_vector_erase_fast(position, result) \
 	_dn_vector_erase_fast_adapter ((position), NULL, (result))
 
 bool
-dn_vector_resize_for_each (
+dn_vector_custom_resize (
 	dn_vector_t *vector,
 	uint32_t size,
-	dn_dispose_func_t dispose_func);
+	dn_func_t func);
 
 static inline bool
 dn_vector_resize (
 	dn_vector_t *vector,
 	uint32_t size)
 {
-	return dn_vector_resize_for_each (vector, size, NULL);
+	return dn_vector_custom_resize (vector, size, NULL);
 }
 
 static inline void
-dn_vector_clear_for_each (
+dn_vector_custom_clear (
 	dn_vector_t *vector,
-	dn_dispose_func_t dispose_func)
+	dn_func_t func)
 {
-	dn_vector_resize_for_each (vector, 0, dispose_func);
+	dn_vector_custom_resize (vector, 0, func);
 }
 
 static inline void
@@ -375,8 +375,8 @@ dn_vector_pop_back (dn_vector_t *vector)
 void
 dn_vector_for_each (
 	const dn_vector_t *vector,
-	dn_func_t foreach_func,
-	void *user_data);
+	dn_func_data_t foreach_func,
+	void *data);
 
 void
 dn_vector_sort (
@@ -477,6 +477,11 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, free) (DN_DEFINE_VECTOR_T_NAME(name) *vecto
 { \
 	dn_vector_free ((dn_vector_t *)vector); \
 } \
+static inline void \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_free) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_func_t func) \
+{ \
+	dn_vector_custom_free ((dn_vector_t *)vector, func); \
+} \
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_init) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_allocator_t *allocator, uint32_t attributes) \
 { \
@@ -498,14 +503,14 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, init_capacity) (DN_DEFINE_VECTOR_T_NAME(nam
 	return dn_vector_custom_init_capacity_t ((dn_vector_t *)vector, DN_DEFAULT_ALLOCATOR, type, capacity, DN_VECTOR_ATTRIBUTE_INIT_MEMORY); \
 } \
 static inline void \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, dispose_for_each) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_dispose_func_t dispose_func) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_dispose) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_func_t func) \
 { \
-	dn_vector_dispose_for_each ((dn_vector_t *)vector, dispose_func); \
+	dn_vector_custom_dispose ((dn_vector_t *)vector, func); \
 } \
 static inline void \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, dispose) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
-	dn_vector_dispose_for_each ((dn_vector_t *)vector, NULL); \
+	dn_vector_custom_dispose ((dn_vector_t *)vector, NULL); \
 } \
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, index) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t index) \
@@ -586,9 +591,9 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, insert_range) (DN_DEFINE_VECTOR_IT_T_NAME(n
 	return position; \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_for_each) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_dispose_func_t dispose_func, bool *result) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_func_t func, bool *result) \
 { \
-	bool erase_result = _dn_vector_erase ((dn_vector_it_t *)&position, dispose_func); \
+	bool erase_result = _dn_vector_erase ((dn_vector_it_t *)&position, func); \
 	if (result) \
 		*result = erase_result; \
 	return position; \
@@ -596,12 +601,12 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_for_each) (DN_DEFINE_VECTOR_IT_T_NAME
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, bool *result) \
 { \
-	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_for_each) (position, NULL, result); \
+	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase) (position, NULL, result); \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_fast_for_each) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_dispose_func_t dispose_func, bool *result) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase_fast) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, dn_func_t func, bool *result) \
 { \
-	bool erase_result = _dn_vector_erase_fast ((dn_vector_it_t *)&position, dispose_func); \
+	bool erase_result = _dn_vector_erase_fast ((dn_vector_it_t *)&position, func); \
 	if (result) \
 		*result = erase_result; \
 	return position; \
@@ -609,27 +614,27 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_fast_for_each) (DN_DEFINE_VECTOR_IT_T
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_fast) (DN_DEFINE_VECTOR_IT_T_NAME(name) position, bool *result) \
 { \
-	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, erase_fast_for_each) (position, NULL, result); \
+	return DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_erase_fast) (position, NULL, result); \
 } \
 static inline bool \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, resize_for_each) (DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t size, dn_dispose_func_t dispose_func) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_resize) (DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t size, dn_func_t func) \
 { \
-	return dn_vector_resize_for_each ((dn_vector_t *)vector, size, dispose_func); \
+	return dn_vector_custom_resize ((dn_vector_t *)vector, size, func); \
 } \
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, resize) (DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t size) \
 { \
-	return dn_vector_resize_for_each ((dn_vector_t *)vector, size, NULL); \
+	return dn_vector_custom_resize ((dn_vector_t *)vector, size, NULL); \
 } \
 static inline void \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, clear_for_each) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_dispose_func_t dispose_func) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, custom_clear) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_func_t func) \
 { \
-	dn_vector_clear_for_each ((dn_vector_t *)vector, dispose_func); \
+	dn_vector_custom_clear ((dn_vector_t *)vector, func); \
 } \
 static inline void \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, clear) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
-	dn_vector_clear_for_each ((dn_vector_t *)vector, NULL); \
+	dn_vector_custom_clear ((dn_vector_t *)vector, NULL); \
 } \
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, push_back) (DN_DEFINE_VECTOR_T_NAME(name) *vector, type element) \
@@ -647,9 +652,9 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, buffer_capacity) (size_t buffer_byte_size) 
 	return dn_vector_buffer_capacity_t (buffer_byte_size, type); \
 } \
 static inline void \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, for_each) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_func_t foreach_func, void *user_data) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, for_each) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_func_data_t foreach_func, void *data) \
 { \
-	dn_vector_for_each ((dn_vector_t*)vector, foreach_func, user_data); \
+	dn_vector_for_each ((dn_vector_t*)vector, foreach_func, data); \
 } \
 static inline void \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, sort) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_compare_func_t compare_func) \

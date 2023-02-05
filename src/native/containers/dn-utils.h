@@ -36,17 +36,16 @@
 #define DN_CALLBACK_CALLTYPE
 #endif
 
-typedef void (DN_CALLBACK_CALLTYPE *dn_func_t) (void *data, void *user_data);
+typedef void (DN_CALLBACK_CALLTYPE *dn_func_t) (void *data);
+typedef void (DN_CALLBACK_CALLTYPE *dn_func_data_t) (void *data, void *user_data);
 typedef int32_t (DN_CALLBACK_CALLTYPE *dn_compare_func_t) (const void *a, const void *b);
-typedef void (DN_CALLBACK_CALLTYPE *dn_compare_data_func_t) (const void *a, const void *b, void *user_data);
+//typedef void (DN_CALLBACK_CALLTYPE *dn_compare_data_func_t) (const void *a, const void *b, void *user_data);
 typedef void (DN_CALLBACK_CALLTYPE *dn_h_func_t) (void *key, void *value, void *user_data);
 typedef bool (DN_CALLBACK_CALLTYPE *dn_hr_func_t) (void *key, void *value, void *user_data);
 typedef void (DN_CALLBACK_CALLTYPE *dn_destory_notify_func_t) (void *data);
 typedef uint32_t (DN_CALLBACK_CALLTYPE *dn_hash_func_t) (const void *key);
 typedef bool (DN_CALLBACK_CALLTYPE *dn_equal_func_t) (const void *a, const void *b);
-typedef void (DN_CALLBACK_CALLTYPE *dn_free_func_t) (void *data);
-typedef bool (DN_CALLBACK_CALLTYPE *dn_remove_func_t) (const void *data, void *user_data);
-typedef void (DN_CALLBACK_CALLTYPE *dn_dispose_func_t) (void *data);
+typedef bool (DN_CALLBACK_CALLTYPE *dn_predicate_func_t) (const void *data, const void *user_data);
 
 #if defined(__GNUC__) && (__GNUC__ > 2)
 #define DN_LIKELY(expr) (__builtin_expect ((expr) != 0, 1))

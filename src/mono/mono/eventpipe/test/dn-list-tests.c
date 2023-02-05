@@ -74,7 +74,7 @@ test_list_free (void)
 	dn_list_insert (dn_list_end (list), &dispose_count, NULL);
 	dn_list_insert (dn_list_end (list), &dispose_count, NULL);
 
-	dn_list_free_for_each (list, list_dispose_func);
+	dn_list_custom_free (list, list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on free");
@@ -94,7 +94,7 @@ test_list_dispose (void)
 	dn_list_insert (dn_list_end (&list), &dispose_count, NULL);
 	dn_list_insert (dn_list_end (&list), &dispose_count, NULL);
 
-	dn_list_dispose_for_each (&list, list_dispose_func);
+	dn_list_custom_dispose (&list, list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on free");
@@ -204,13 +204,13 @@ test_list_clear (void)
 	dn_list_insert (dn_list_end (list), &dispose_count, NULL);
 	dn_list_insert (dn_list_end (list), &dispose_count, NULL);
 
-	dn_list_clear_for_each (list, list_dispose_func);
+	dn_list_custom_clear (list, list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("invalid dispose count on clear");
 
 	dispose_count = 0;
-	dn_list_free_for_each (list, list_dispose_func);
+	dn_list_custom_free (list, list_dispose_func);
 
 	if (dispose_count != 0)
 		return FAILED ("invalid dispose count on clear/free");
@@ -454,7 +454,7 @@ test_list_pop_front (void)
 	if (dispose_count != 0)
 		return FAILED ("pop_front dispose count failed #1");
 
-	dn_list_dispose_for_each (&list, list_dispose_func);
+	dn_list_custom_dispose (&list, list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("pop_front dispose count failed #2");
@@ -537,7 +537,7 @@ test_list_pop_back (void)
 	if (dispose_count != 0)
 		return FAILED ("pop_back dispose count failed #1");
 
-	dn_list_dispose_for_each (&list, list_dispose_func);
+	dn_list_custom_dispose (&list, list_dispose_func);
 
 	if (dispose_count != 2)
 		return FAILED ("pop_back dispose count failed #2");
@@ -555,7 +555,7 @@ test_list_resize (void)
 	for (uint32_t i = 0; i < 10; i++)
 		dn_list_push_front (list, &dispose_count);
 
-	dn_list_resize_for_each (list, 0, list_dispose_func);
+	dn_list_custom_resize (list, 0, list_dispose_func);
 
 	if (dispose_count != 10)
 		return FAILED ("failed resize #1");
@@ -564,20 +564,20 @@ test_list_resize (void)
 		dn_list_push_front (list, &dispose_count);
 	
 	dispose_count = 0;
-	dn_list_resize_for_each (list, 90, list_dispose_func);
+	dn_list_custom_resize (list, 90, list_dispose_func);
 
 	if (dispose_count != 10)
 		return FAILED ("failed resize #2");
 
 	dispose_count = 0;
-	dn_list_resize_for_each (list, 10, list_dispose_func);
+	dn_list_custom_resize (list, 10, list_dispose_func);
 
 	if (dispose_count != 80)
 		return FAILED ("failed resize #3");
 
 	dispose_count = 0;
 
-	dn_list_free_for_each (list, list_dispose_func);
+	dn_list_custom_free (list, list_dispose_func);
 
 	if (dispose_count != 10)
 		return FAILED ("failed free");
@@ -644,7 +644,7 @@ test_list_remove (void)
 static
 bool
 DN_CALLBACK_CALLTYPE
-remove_func (const void *data, void *user_data)
+remove_func (const void *data, const void *user_data)
 {
 	return !strcmp ((const char *)data, (const char *)user_data);
 }
