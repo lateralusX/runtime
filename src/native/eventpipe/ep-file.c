@@ -166,16 +166,17 @@ file_get_stack_id (
 	uint32_t stack_id = 0;
 	EventPipeStackContentsInstance *stack_contents = ep_event_instance_get_stack_contents_instance_ref (event_instance);
 	EventPipeStackBlock *stack_block = file->stack_block;
-	dn_unordered_map_t *stack_hash = file->stack_hash;
+	dn_umap_t *stack_hash = file->stack_hash;
 	StackHashEntry *entry = NULL;
 	StackHashKey key;
 	ep_stack_hash_key_init (&key, stack_contents);
-	if (!dn_unordered_map_ex_find (stack_hash, &key, (void **)&entry)) {
+	dn_umap_it_t found = dn_umap_find (stack_hash, &key);
+	if (dn_umap_it_end (found)) {
 		stack_id = file->stack_id_counter + 1;
 		file->stack_id_counter = stack_id;
 		entry = ep_stack_hash_entry_alloc (stack_contents, stack_id, ep_stack_hash_key_get_hash (&key));
 		if (entry) {
-			if (!dn_unordered_map_ex_insert (stack_hash, ep_stack_hash_entry_get_key_ref (entry), entry))
+			if (!dn_umap_insert (stack_hash, ep_stack_hash_entry_get_key_ref (entry), entry).result)
 				ep_stack_hash_entry_free (entry);
 			entry = NULL;
 		}
@@ -206,7 +207,9 @@ file_get_metadata_id (
 	EP_ASSERT (ep_event != NULL);
 
 	uint32_t metadata_ids;
-	if (dn_unordered_map_ex_find_uint32_t (file->metadata_ids, ep_event, &metadata_ids)) {
+	dn_umap_it_t found = dn_umap_ptr_uint32_find (file->metadata_ids, ep_event);
+	if (!dn_umap_it_end (found)) {
+		metadata_ids = dn_umap_it_value_uint32_t (found);
 		EP_ASSERT (metadata_ids != 0);
 		return metadata_ids;
 	}
@@ -272,13 +275,8 @@ file_save_metadata_id (
 	EP_ASSERT (ep_event != NULL);
 	EP_ASSERT (metadata_id > 0);
 
-	// If a pre-existing metadata label exists, remove it.
-	uint32_t old_id;
-	if (dn_unordered_map_ex_find_uint32_t (file->metadata_ids, ep_event, &old_id))
-		dn_unordered_map_ex_erase (file->metadata_ids, ep_event);
-
-	// Add the metadata label.
-	return dn_unordered_map_ex_insert_uint32_t (file->metadata_ids, ep_event, metadata_id);
+	// Add/Replace the metadata label.
+	return dn_umap_ptr_uint32_insert_or_assign (file->metadata_ids, ep_event, metadata_id).result;
 }
 
 static
@@ -349,10 +347,10 @@ ep_file_alloc (
 
 	instance->sampling_rate_in_ns = (uint32_t)ep_sample_profiler_get_sampling_rate ();
 
-	instance->metadata_ids = dn_unordered_map_ex_alloc (NULL, NULL, NULL, NULL);
+	instance->metadata_ids = dn_umap_alloc ();
 	ep_raise_error_if_nok (instance->metadata_ids != NULL);
 
-	instance->stack_hash = dn_unordered_map_ex_alloc (stack_hash_key_hash_func, stack_hash_key_equal_func, NULL, stack_hash_value_free_func);
+	instance->stack_hash = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, stack_hash_key_hash_func, stack_hash_key_equal_func, NULL, stack_hash_value_free_func);
 	ep_raise_error_if_nok (instance->stack_hash != NULL);
 
 	// Start at 0 - The value is always incremented prior to use, so the first ID will be 1.
@@ -388,8 +386,8 @@ ep_file_free (EventPipeFile *file)
 	ep_metadata_block_free (file->metadata_block);
 	ep_stack_block_free (file->stack_block);
 	ep_fast_serializer_free (file->fast_serializer);
-	dn_unordered_map_ex_free (&file->metadata_ids);
-	dn_unordered_map_ex_free (&file->stack_hash);
+	dn_umap_free (file->metadata_ids);
+	dn_umap_free (file->stack_hash);
 
 	// If file has not been initialized, stream_writer ownership
 	// have not been passed along and needs to be freed by file.
@@ -499,7 +497,7 @@ ep_file_write_sequence_point (
 
 	// stack cache resets on sequence points
 	file->stack_id_counter = 0;
-	dn_unordered_map_ex_clear (file->stack_hash);
+	dn_umap_clear (file->stack_hash);
 
 ep_on_exit:
 	return;

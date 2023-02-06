@@ -262,20 +262,20 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, buffer_capacity) (size_t buffer_byte_size) 
 	return dn_vector_buffer_capacity_t (buffer_byte_size, type); \
 } \
 static inline void \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, for_each) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_func_data_t foreach_func, void *data) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, for_each) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_func_data_t func, void *data) \
 { \
-	dn_vector_for_each ((dn_vector_t*)vector, foreach_func, data); \
+	dn_vector_for_each ((dn_vector_t*)vector, func, data); \
 } \
 static inline void \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, sort) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_compare_func_t compare_func) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, sort) (DN_DEFINE_VECTOR_T_NAME(name) *vector, dn_compare_func_t func) \
 { \
-	dn_vector_sort ((dn_vector_t*)vector, compare_func); \
+	dn_vector_sort ((dn_vector_t*)vector, func); \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
-DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, find) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, const type value, dn_compare_func_t compare_func) \
+DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, find) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, const type value, dn_equal_func_t func) \
 { \
 	DN_DEFINE_VECTOR_IT_T_NAME(name) found; \
-	_dn_vector_find_adapter ((dn_vector_t*)vector, (const uint8_t *)&value, compare_func, (dn_vector_it_t *)&found); \
+	_dn_vector_find_adapter ((dn_vector_t*)vector, (const uint8_t *)&value, func, (dn_vector_it_t *)&found); \
 	return found; \
 }
 

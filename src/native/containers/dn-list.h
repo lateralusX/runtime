@@ -127,8 +127,7 @@ _dn_list_init (
 	dn_allocator_t *allocator);
 
 static inline dn_list_t *
-dn_list_custom_alloc (
-	dn_allocator_t *allocator)
+dn_list_custom_alloc (dn_allocator_t *allocator)
 {
 	return _dn_list_alloc (allocator);
 }
@@ -329,18 +328,18 @@ dn_list_reverse (dn_list_t *list);
 void
 dn_list_for_each (
 	dn_list_t *list,
-	dn_func_data_t foreach_func,
+	dn_func_data_t func,
 	void *data);
 
 void
 dn_list_sort (
 	dn_list_t *list,
-	dn_compare_func_t compare_func);
+	dn_compare_func_t func);
 
 dn_list_it_t
 dn_list_find (
 	dn_list_t *list,
 	const void *data,
-	dn_compare_func_t compare_func);
+	dn_equal_func_t func);
 
 #endif /* __DN_SLIST_H__ */

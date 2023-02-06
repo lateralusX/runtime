@@ -840,7 +840,7 @@ test_list_sort (void)
 }
 
 static
-int32_t
+bool
 DN_CALLBACK_CALLTYPE
 list_find_func (
 	const void *a,
@@ -849,7 +849,7 @@ list_find_func (
 	if (!a || !b)
 		return 1;
 
-	return strcmp ((const char *)a, (const char *)b);
+	return !strcmp ((const char *)a, (const char *)b);
 }
 
 static

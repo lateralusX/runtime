@@ -394,14 +394,14 @@ dn_list_reverse (dn_list_t *list)
 void
 dn_list_for_each (
 	dn_list_t *list,
-	dn_func_data_t foreach_func,
+	dn_func_data_t func,
 	void *data)
 {
-	if (DN_UNLIKELY (!list || !foreach_func))
+	if (DN_UNLIKELY (!list || !func))
 		return;
 
 	for (dn_list_node_t *it = list->head; it; it = it->next)
-		foreach_func (it->data, data);
+		func (it->data, data);
 }
 
 typedef dn_list_node_t list_node;
@@ -429,7 +429,7 @@ dn_list_it_t
 dn_list_find (
 	dn_list_t *list,
 	const void *data,
-	dn_compare_func_t compare_func)
+	dn_equal_func_t func)
 {
 	dn_list_it_t found;
 	found.it = NULL;
@@ -439,7 +439,7 @@ dn_list_find (
 		return found;
 
 	for (dn_list_node_t *it = list->head; it; it = it->next) {
-		if ((compare_func && !compare_func (it->data, data)) || it->data == data) {
+		if ((func && func (it->data, data)) || it->data == data) {
 			found.it = it;
 			break;
 		}

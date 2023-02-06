@@ -34,8 +34,8 @@ struct _EventPipeFile_Internal {
 	EventPipeMetadataBlock *metadata_block;
 	EventPipeStackBlock *stack_block;
 	// Hashtable of metadata labels.
-	dn_unordered_map_t *metadata_ids;
-	dn_unordered_map_t *stack_hash;
+	dn_umap_t *metadata_ids;
+	dn_umap_t *stack_hash;
 	// The timestamp when the file was opened.  Used for calculating file-relative timestamps.
 	ep_timestamp_t file_open_timestamp;
 #ifdef EP_CHECKED_BUILD

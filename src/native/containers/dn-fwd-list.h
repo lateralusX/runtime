@@ -292,18 +292,18 @@ dn_fwd_list_reverse (dn_fwd_list_t *list);
 void
 dn_fwd_list_for_each (
 	dn_fwd_list_t *list,
-	dn_func_data_t foreach_func,
+	dn_func_data_t func,
 	void *data);
 
 void
 dn_fwd_list_sort (
 	dn_fwd_list_t *list,
-	dn_compare_func_t compare_func);
+	dn_compare_func_t func);
 
 dn_fwd_list_it_t
 dn_fwd_list_find (
 	dn_fwd_list_t *list,
 	const void *data,
-	dn_compare_func_t compare_func);
+	dn_equal_func_t func);
 
 #endif /* __DN_FWD_LIST_H__ */

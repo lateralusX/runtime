@@ -18,7 +18,7 @@
 #include <containers/dn-ptr-vector.h>
 #include <containers/dn-list.h>
 #include <containers/dn-queue.h>
-#include <containers/dn-unordered-map-ex.h>
+#include <containers/dn-umap.h>
 
 /*
  * EventFilterDescriptor.

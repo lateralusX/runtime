@@ -230,13 +230,14 @@ sequence_point_fini (EventPipeSequencePoint *sequence_point)
 	EP_ASSERT (sequence_point != NULL);
 
 	// Each entry in the map owns a ref-count on the corresponding thread
-	if (dn_unordered_map_ex_size (sequence_point->thread_sequence_numbers) != 0) {
-		DN_UNORDERED_MAP_EX_FOREACH_KEY_BEGIN (sequence_point->thread_sequence_numbers, EventPipeThreadSessionState *, key) {
+	if (dn_umap_size (sequence_point->thread_sequence_numbers) != 0) {
+		DN_UMAP_FOREACH_KEY_BEGIN (sequence_point->thread_sequence_numbers, EventPipeThreadSessionState *, key) {
 			ep_thread_release (ep_thread_session_state_get_thread (key));
-		} DN_UNORDERED_MAP_EX_FOREACH_END;
+		} DN_UMAP_FOREACH_END;
 	}
 
-	dn_unordered_map_ex_free (&sequence_point->thread_sequence_numbers);
+	dn_umap_free (sequence_point->thread_sequence_numbers);
+	sequence_point->thread_sequence_numbers = NULL;
 }
 
 
@@ -262,7 +263,7 @@ ep_sequence_point_init (EventPipeSequencePoint *sequence_point)
 	EP_ASSERT (sequence_point != NULL);
 
 	sequence_point->timestamp = 0;
-	sequence_point->thread_sequence_numbers = dn_unordered_map_ex_alloc (NULL, NULL, NULL, NULL);
+	sequence_point->thread_sequence_numbers = dn_umap_alloc ();
 	return sequence_point->thread_sequence_numbers ? sequence_point : NULL;
 }
 

@@ -829,7 +829,7 @@ sequence_point_get_block_size (EventPipeSequencePoint *sequence_point)
 		sizeof (uint64_t) + //thread id
 		sizeof (uint32_t); //sequence number
 
-	const uint32_t thread_count = dn_unordered_map_ex_size (ep_sequence_point_get_thread_sequence_numbers (sequence_point));
+	const uint32_t thread_count = dn_umap_size (ep_sequence_point_get_thread_sequence_numbers (sequence_point));
 
 	return (int32_t)(ep_sequence_point_sizeof_timestamp (sequence_point) +
 		sizeof (uint32_t) + //thread count
@@ -898,15 +898,15 @@ ep_sequence_point_block_init (
 		sequence_point_get_block_size (sequence_point),
 		EP_SERIALIZATION_FORMAT_NETTRACE_V4) != NULL);
 
-	dn_unordered_map_t *map = ep_sequence_point_get_thread_sequence_numbers (sequence_point);
+	dn_umap_t *map = ep_sequence_point_get_thread_sequence_numbers (sequence_point);
 
 	const ep_timestamp_t timestamp = ep_sequence_point_get_timestamp (sequence_point);
 	ep_write_buffer_timestamp (&sequence_point_block->block.write_pointer, timestamp);
 
-	const uint32_t thread_count = dn_unordered_map_ex_size (map);
+	const uint32_t thread_count = dn_umap_size (map);
 	ep_write_buffer_uint32_t (&sequence_point_block->block.write_pointer, thread_count);
 
-	DN_UNORDERED_MAP_EX_FOREACH_BEGIN (map, const EventPipeThreadSessionState *, key, uint32_t, sequence_number) {
+	DN_UMAP_FOREACH_BEGIN (map, const EventPipeThreadSessionState *, key, uint32_t, sequence_number) {
 		ep_write_buffer_uint64_t (
 			&sequence_point_block->block.write_pointer,
 			ep_thread_get_os_thread_id (ep_thread_session_state_get_thread (key)));
@@ -914,7 +914,7 @@ ep_sequence_point_block_init (
 		ep_write_buffer_uint32_t (
 			&sequence_point_block->block.write_pointer,
 			sequence_number);
-	} DN_UNORDERED_MAP_EX_FOREACH_END;
+	} DN_UMAP_FOREACH_END;
 
 	return sequence_point_block;
 }

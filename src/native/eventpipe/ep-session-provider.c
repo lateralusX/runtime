@@ -17,7 +17,7 @@ DN_CALLBACK_CALLTYPE
 session_provider_free_func (void *session_provider);
 
 static
-int32_t
+bool
 DN_CALLBACK_CALLTYPE
 session_provider_compare_name_func (
 	const void *a,
@@ -36,13 +36,13 @@ session_provider_free_func (void *session_provider)
 }
 
 static
-int32_t
+bool
 DN_CALLBACK_CALLTYPE
 session_provider_compare_name_func (
 	const void *a,
 	const void *b)
 {
-	return (a) ? ep_rt_utf8_string_compare (ep_session_provider_get_provider_name ((EventPipeSessionProvider *)a), (const ep_char8_t *)b) : 1;
+	return (a) ? !ep_rt_utf8_string_compare (ep_session_provider_get_provider_name ((EventPipeSessionProvider *)a), (const ep_char8_t *)b) : false;
 }
 
 EventPipeSessionProvider *

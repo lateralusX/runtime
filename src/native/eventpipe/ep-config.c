@@ -44,7 +44,7 @@ config_unregister_provider (
 	EventPipeProvider *provider);
 
 static
-int32_t
+bool
 DN_CALLBACK_CALLTYPE
 config_compare_provider_name_func (
 	const void *a,
@@ -174,13 +174,13 @@ config_unregister_provider (
 }
 
 static
-int32_t
+bool
 DN_CALLBACK_CALLTYPE
 config_compare_provider_name_func (
 	const void *a,
 	const void *b)
 {
-	return (a) ? ep_rt_utf8_string_compare (ep_provider_get_provider_name ((EventPipeProvider *)a), (const ep_char8_t *)b) : 1;
+	return (a) ? !ep_rt_utf8_string_compare (ep_provider_get_provider_name ((EventPipeProvider *)a), (const ep_char8_t *)b) : false;
 }
 
 static

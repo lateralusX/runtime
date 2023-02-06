@@ -335,32 +335,32 @@ dn_vector_custom_resize (
 void
 dn_vector_for_each (
 	const dn_vector_t *vector,
-	dn_func_data_t foreach_func,
+	dn_func_data_t func,
 	void *data)
 {
-	if (DN_UNLIKELY (!vector || !foreach_func))
+	if (DN_UNLIKELY (!vector || !func))
 		return;
 
 	for(uint32_t i = 0; i < vector->size; i++)
-		foreach_func ((void *)(element_offset (vector, i)), data);
+		func ((void *)(element_offset (vector, i)), data);
 }
 
 void
 dn_vector_sort (
 	dn_vector_t *vector,
-	dn_compare_func_t compare_func)
+	dn_compare_func_t func)
 {
 	if (DN_UNLIKELY (!vector || vector->size < 2))
 		return;
 
-	qsort ((void *)vector->data, vector->size, element_length (vector, 1), (int (DN_CALLBACK_CALLTYPE *)(const void *, const void *))compare_func);
+	qsort ((void *)vector->data, vector->size, element_length (vector, 1), (int (DN_CALLBACK_CALLTYPE *)(const void *, const void *))func);
 }
 
 dn_vector_it_t
 dn_vector_find (
 	dn_vector_t *vector,
 	const uint8_t *value,
-	dn_compare_func_t compare_func)
+	dn_equal_func_t func)
 {
 	dn_vector_it_t found;
 	found._internal._vector = vector;
@@ -373,7 +373,7 @@ dn_vector_find (
 	found.it = vector->size;
 
 	for (uint32_t i = 0; i < vector->size; i++) {
-		if ((compare_func && !compare_func (element_offset (vector, i), value))) {
+		if ((func && func (element_offset (vector, i), value))) {
 			found.it = i;
 			break;
 		} else if (!memcmp (element_offset (vector, i), value, element_length (vector, 1))) {

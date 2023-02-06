@@ -377,28 +377,28 @@ dn_vector_pop_back (dn_vector_t *vector)
 void
 dn_vector_for_each (
 	const dn_vector_t *vector,
-	dn_func_data_t foreach_func,
+	dn_func_data_t func,
 	void *data);
 
 void
 dn_vector_sort (
 	dn_vector_t *vector,
-	dn_compare_func_t compare_func);
+	dn_compare_func_t func);
 
 dn_vector_it_t
 dn_vector_find (
 	dn_vector_t *vector,
 	const uint8_t *value,
-	dn_compare_func_t compare_func);
+	dn_equal_func_t func);
 
 static inline void
 _dn_vector_find_adapter (
 	dn_vector_t *vector,
 	const uint8_t *data,
-	dn_compare_func_t compare_func,
+	dn_equal_func_t func,
 	dn_vector_it_t *found)
 {
-	*found = dn_vector_find (vector, data, compare_func);
+	*found = dn_vector_find (vector, data, func);
 }
 
 #endif /* __DN_VECTOR_H__ */
