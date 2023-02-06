@@ -847,7 +847,7 @@ list_find_func (
 	const void *b)
 {
 	if (!a || !b)
-		return 1;
+		return false;
 
 	return !strcmp ((const char *)a, (const char *)b);
 }

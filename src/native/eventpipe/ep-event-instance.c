@@ -237,7 +237,6 @@ sequence_point_fini (EventPipeSequencePoint *sequence_point)
 	}
 
 	dn_umap_free (sequence_point->thread_sequence_numbers);
-	sequence_point->thread_sequence_numbers = NULL;
 }
 
 

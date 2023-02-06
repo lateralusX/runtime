@@ -56,7 +56,15 @@ test_umap_init (void)
 static
 void
 DN_CALLBACK_CALLTYPE
-map_value_dispose_func (void *data)
+umap_key_dispose_func (void *data)
+{
+	(*(uint32_t *)data)++;
+}
+
+static
+void
+DN_CALLBACK_CALLTYPE
+umap_value_dispose_func (void *data)
 {
 	(*(uint32_t *)data)++;
 }
@@ -66,7 +74,7 @@ RESULT
 test_umap_free (void)
 {
 	uint32_t dispose_count = 0;
-	dn_umap_t *map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, NULL, NULL, NULL, map_value_dispose_func);
+	dn_umap_t *map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, NULL, NULL, NULL, umap_value_dispose_func);
 	if (!map)
 		return FAILED ("failed to custom alloc map");
 
@@ -87,7 +95,7 @@ test_umap_dispose (void)
 {
 	uint32_t dispose_count = 0;
 	dn_umap_t map;
-	if (!dn_umap_custom_init (&map, DN_DEFAULT_ALLOCATOR, NULL, NULL, NULL, map_value_dispose_func))
+	if (!dn_umap_custom_init (&map, DN_DEFAULT_ALLOCATOR, NULL, NULL, NULL, umap_value_dispose_func))
 		return FAILED ("failed to custom init map");
 
 	dn_umap_insert (&map, INT32_TO_POINTER (1), &dispose_count);
@@ -101,832 +109,441 @@ test_umap_dispose (void)
 	return OK;
 }
 
-//static
-//RESULT
-//test_list_front (void)
-//{
-//	const char * items[] = { "first", "second" };
-//
-//	dn_list_t *list = dn_list_alloc ();
-//	if (!list)
-//		return FAILED ("failed to alloc list");
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//
-//	if (*dn_list_front_t (list, char *) != items [0])
-//		return FAILED ("failed list front #1");
-//
-//	dn_list_insert (dn_list_begin (list), items [1]);
-//
-//	if (*dn_list_front_t (list, char *) != items [1])
-//		return FAILED ("failed list front #2");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_empty (void)
-//{
-//	const char * items[] = { "first", "second" };
-//
-//	dn_list_t *list = dn_list_alloc ();
-//	if (!list)
-//		return FAILED ("failed to alloc list");
-//
-//	if (!dn_list_empty (list))
-//		return FAILED ("failed empty #1");
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//
-//	if (dn_list_empty (list))
-//		return FAILED ("failed empty #2");
-//
-//	dn_list_insert (dn_list_end (list), items [1]);
-//
-//	if (dn_list_empty (list))
-//		return FAILED ("failed empty #3");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_max_size (void)
-//{
-//	dn_list_t *list = dn_list_alloc ();
-//	if (!list)
-//		return FAILED ("failed to alloc list");
-//
-//	if (dn_list_max_size (list) != UINT32_MAX)
-//		return FAILED ("max_size failed");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_clear (void)
-//{
-//	uint32_t dispose_count = 0;
-//	const char * items[] = { "first", "second" };
-//
-//	dn_list_t *list = dn_list_alloc ();
-//	if (!list)
-//		return FAILED ("failed to alloc list");
-//
-//	if (!dn_list_empty (list))
-//		return FAILED ("failed empty #1");
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//
-//	if (dn_list_empty (list))
-//		return FAILED ("failed empty #2");
-//
-//	dn_list_insert (dn_list_end (list), items [1]);
-//
-//	dn_list_clear (list);
-//
-//	if (!dn_list_empty (list))
-//		return FAILED ("failed empty #3");
-//
-//	dn_list_free (list);
-//
-//	list = dn_list_custom_alloc (DN_DEFAULT_ALLOCATOR);
-//
-//	dn_list_insert (dn_list_end (list), &dispose_count);
-//	dn_list_insert (dn_list_end (list), &dispose_count);
-//
-//	dn_list_custom_clear (list, list_dispose_func);
-//
-//	if (dispose_count != 2)
-//		return FAILED ("invalid dispose count on clear");
-//
-//	dispose_count = 0;
-//	dn_list_custom_free (list, list_dispose_func);
-//
-//	if (dispose_count != 0)
-//		return FAILED ("invalid dispose count on clear/free");
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_insert (void)
-//{
-//	const char *items[] = { "first", "second" };
-//
-//	dn_list_t *list = dn_list_alloc ();
-//	if (!dn_list_insert (dn_list_end (list), items [0]).result)
-//		return FAILED ("insert failed #1");
-//
-//	if (!dn_list_insert (dn_list_end (list), items [1]).result)
-//		return FAILED ("insert failed #2");
-//
-//	size_t i = 0;
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (strcmp (item, items [i]))
-//			return FAILED ("insert, found %s, expected %s #1", item, items [i]);
-//		i++;
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_free (list);
-//
-//	list = dn_list_alloc ();
-//	if (!dn_list_insert (dn_list_end (list), items [1]).result)
-//		return FAILED ("insert failed #3");
-//
-//	if (!dn_list_insert (dn_list_begin (list), items [0]).result)
-//		return FAILED ("insert failed #4");
-//
-//	i = 0;
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (strcmp (item, items [i]))
-//			return FAILED ("insert, found %s, expected %s #1", item, items [i]);
-//		i++;
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_insert_range (void)
-//{
-//	const char *items[] = { "first", "second", "third", "fourth"};
-//
-//	dn_list_t *list1 = dn_list_alloc ();
-//	dn_list_t *list2 = dn_list_alloc ();
-//
-//	dn_list_insert (dn_list_end (list1), items [0]);
-//	dn_list_insert (dn_list_end (list2), items [1]);
-//
-//	if (!dn_list_insert_range (dn_list_end (list1), dn_list_begin (list2), dn_list_end (list2)).result)
-//		return FAILED ("insert_range failed #1");
-//
-//	size_t i = 0;
-//	DN_LIST_FOREACH_BEGIN (list1, char *, item) {
-//		if (strcmp (item, items [i]))
-//			return FAILED ("insert_range, found %s, expected %s #1", item, items [i]);
-//		i++;
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_free (list1);
-//	dn_list_free (list2);
-//
-//	list1 = dn_list_alloc ();
-//	list2 = dn_list_alloc ();
-//
-//	dn_list_insert (dn_list_end (list1), items [1]);
-//	dn_list_insert (dn_list_end (list2), items [0]);
-//
-//	if (!dn_list_insert_range (dn_list_begin (list1), dn_list_begin (list2), dn_list_end (list2)).result)
-//		return FAILED ("insert_range failed #2");
-//
-//	i = 0;
-//	DN_LIST_FOREACH_BEGIN (list1, char *, item) {
-//		if (strcmp (item, items [i]))
-//			return FAILED ("insert_range, found %s, expected %s #2", item, items [i]);
-//		i++;
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_free (list1);
-//	dn_list_free (list2);
-//
-//	list1 = dn_list_alloc ();
-//	list2 = dn_list_alloc ();
-//
-//	dn_list_insert (dn_list_end (list1), items [0]);
-//	dn_list_insert (dn_list_end (list1), items [1]);
-//	dn_list_insert (dn_list_end (list1), items [3]);
-//	dn_list_insert (dn_list_end (list2), items [2]);
-//
-//	dn_list_it_t it = dn_list_begin (list1);
-//	it = dn_list_it_next_n (it, 2);
-//
-//	if (!dn_list_insert_range (it, dn_list_begin (list2), dn_list_end (list2)).result)
-//		return FAILED ("insert_range failed #2");
-//
-//	i = 0;
-//	DN_LIST_FOREACH_BEGIN (list1, char *, item) {
-//		if (strcmp (item, items [i]))
-//			return FAILED ("insert_range, found %s, expected %s #2", item, items [i]);
-//		i++;
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_free (list1);
-//	dn_list_free (list2);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_erase (void)
-//{
-//	const char *items[] = { "first", "second", "third", "fourth"};
-//
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//	dn_list_insert (dn_list_end (list), items [1]);
-//
-//	// Remove first.
-//	dn_list_erase (dn_list_begin (list));
-//
-//	if (!list->head || !list->head->data || strcmp (list->head->data, "second") || list->head->next)
-//		return FAILED ("erase failed #1");
-//
-//	dn_list_insert (dn_list_end (list), items [2]);
-//	dn_list_insert (dn_list_end (list), items [3]);
-//
-//	dn_list_it_t it = dn_list_begin (list);
-//	dn_list_it_advance (&it,1);
-//
-//	// Remove third.
-//	dn_list_erase (it);
-//
-//	it = dn_list_begin (list);
-//	dn_list_it_advance (&it,1);
-//
-//	// Remove forth.
-//	dn_list_erase (it);
-//
-//	if (!list->head || !list->head->data || strcmp (list->head->data, "second") || list->head->next)
-//		return FAILED ("erase failed #2");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_push_front (void)
-//{
-//	const char *items[] = { "a", "b", "c"};
-//
-//	dn_list_t list;
-//
-//	dn_list_init (&list);
-//
-//	dn_list_push_front (&list, items [0]);
-//	if (*dn_list_front_t (&list, char *) != items [0])
-//		return FAILED ("push_front failed #1");
-//
-//	dn_list_push_front (&list, items [1]);
-//	if (*dn_list_front_t (&list, char *) != items [1])
-//		return FAILED ("push_front failed #2");
-//
-//	dn_list_push_front (&list, items [2]);
-//
-//	uint32_t i = 2;
-//	DN_LIST_FOREACH_BEGIN (&list, char *, item) {
-//		if (strcmp (item, items [i]))
-//			return FAILED ("push_front failed, found %s, expected %s #2", item, items [i]);
-//		i--;
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_dispose (&list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_pop_front (void)
-//{
-//	uint32_t dispose_count = 0;
-//	const char *items[] = { "a", "b", "c"};
-//
-//	dn_list_t list;
-//
-//	dn_list_custom_init (&list, DN_DEFAULT_ALLOCATOR);
-//
-//	dn_list_push_front (&list, items [2]);
-//	dn_list_push_front (&list, items [1]);
-//	dn_list_push_front (&list, items [0]);
-//
-//	if (*dn_list_front_t (&list, char *) != items [0])
-//		return FAILED ("push_front failed");
-//
-//	dn_list_pop_front (&list);
-//
-//	if (*dn_list_front_t (&list, char *) != items [1])
-//		return FAILED ("pop_front failed #1");
-//
-//	dn_list_pop_front (&list);
-//
-//	if (*dn_list_front_t (&list, char *) != items [2])
-//		return FAILED ("pop_front failed #2");
-//
-//	dn_list_pop_front (&list);
-//
-//	dn_list_dispose (&list);
-//
-//	dn_list_custom_init (&list, DN_DEFAULT_ALLOCATOR);
-//
-//	dn_list_push_front (&list, &dispose_count);
-//	dn_list_push_front (&list, &dispose_count);
-//	dn_list_push_front (&list, &dispose_count);
-//
-//	dn_list_pop_front (&list);
-//
-//	if (dispose_count != 0)
-//		return FAILED ("pop_front dispose count failed #1");
-//
-//	dn_list_custom_dispose (&list, list_dispose_func);
-//
-//	if (dispose_count != 2)
-//		return FAILED ("pop_front dispose count failed #2");
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_push_back (void)
-//{
-//	const char *items[] = { "a", "b", "c"};
-//
-//	dn_list_t list;
-//
-//	dn_list_init (&list);
-//
-//	dn_list_push_back (&list, items [0]);
-//	if (*dn_list_back_t (&list, char *) != items [0])
-//		return FAILED ("push_back failed #1");
-//
-//	dn_list_push_back (&list, items [1]);
-//	if (*dn_list_back_t (&list, char *) != items [1])
-//		return FAILED ("push_back failed #2");
-//
-//	dn_list_push_back (&list, items [2]);
-//
-//	uint32_t i = 0;
-//	DN_LIST_FOREACH_BEGIN (&list, char *, item) {
-//		if (strcmp (item, items [i]))
-//			return FAILED ("push_back failed, found %s, expected %s #2", item, items [i]);
-//		i++;
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_dispose (&list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_pop_back (void)
-//{
-//	uint32_t dispose_count = 0;
-//	const char *items[] = { "a", "b", "c"};
-//
-//	dn_list_t list;
-//
-//	dn_list_custom_init (&list, DN_DEFAULT_ALLOCATOR);
-//
-//	dn_list_push_back (&list, items [2]);
-//	dn_list_push_back (&list, items [1]);
-//	dn_list_push_back (&list, items [0]);
-//
-//	if (*dn_list_back_t (&list, char *) != items [0])
-//		return FAILED ("push_back failed");
-//
-//	dn_list_pop_back (&list);
-//
-//	if (*dn_list_back_t (&list, char *) != items [1])
-//		return FAILED ("pop_back failed #1");
-//
-//	dn_list_pop_back (&list);
-//
-//	if (*dn_list_front_t (&list, char *) != items [2])
-//		return FAILED ("pop_back failed #2");
-//
-//	dn_list_pop_back (&list);
-//
-//	dn_list_dispose (&list);
-//
-//	dn_list_custom_init (&list, DN_DEFAULT_ALLOCATOR);
-//
-//	dn_list_push_back (&list, &dispose_count);
-//	dn_list_push_back (&list, &dispose_count);
-//	dn_list_push_back (&list, &dispose_count);
-//
-//	dn_list_pop_back (&list);
-//
-//	if (dispose_count != 0)
-//		return FAILED ("pop_back dispose count failed #1");
-//
-//	dn_list_custom_dispose (&list, list_dispose_func);
-//
-//	if (dispose_count != 2)
-//		return FAILED ("pop_back dispose count failed #2");
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_resize (void)
-//{
-//	uint32_t dispose_count = 0;
-//	dn_list_t *list = dn_list_custom_alloc (DN_DEFAULT_ALLOCATOR);
-//
-//	for (uint32_t i = 0; i < 10; i++)
-//		dn_list_push_front (list, &dispose_count);
-//
-//	dn_list_custom_resize (list, 0, list_dispose_func);
-//
-//	if (dispose_count != 10)
-//		return FAILED ("failed resize #1");
-//
-//	for (uint32_t i = 0; i < 100; i++)
-//		dn_list_push_front (list, &dispose_count);
-//	
-//	dispose_count = 0;
-//	dn_list_custom_resize (list, 90, list_dispose_func);
-//
-//	if (dispose_count != 10)
-//		return FAILED ("failed resize #2");
-//
-//	dispose_count = 0;
-//	dn_list_custom_resize (list, 10, list_dispose_func);
-//
-//	if (dispose_count != 80)
-//		return FAILED ("failed resize #3");
-//
-//	dispose_count = 0;
-//
-//	dn_list_custom_free (list, list_dispose_func);
-//
-//	if (dispose_count != 10)
-//		return FAILED ("failed free");
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_remove (void)
-//{
-//	const char *items[] = { "first", "second", "third", "fourth"};
-//
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//	dn_list_insert (dn_list_end (list), items [1]);
-//	dn_list_insert (dn_list_end (list), items [2]);
-//	dn_list_insert (dn_list_end (list), items [3]);
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//	dn_list_insert (dn_list_end (list), items [1]);
-//	dn_list_insert (dn_list_end (list), items [2]);
-//	dn_list_insert (dn_list_end (list), items [3]);
-//
-//	// Remove all "second"
-//	dn_list_remove (list, items [1]);
-//
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (!strcmp (item, items [1]))
-//			return FAILED ("remove failed, found removed item %s #1", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	// Remove all "first"
-//	dn_list_remove (list, items [0]);
-//
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (!strcmp (item, items [0]))
-//			return FAILED ("remove failed, found removed item %s #2", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	// Remove all "fourth"
-//	dn_list_remove (list, items [3]);
-//
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (!strcmp (item, items [3]))
-//			return FAILED ("remove failed, found removed item %s #3", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	// "fourth" already removed.
-//	dn_list_remove (list, items [3]);
-//
-//	// Validate that only "third" is left.
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (strcmp (item, items [2]))
-//			return FAILED ("remove failed, unexpected item %s #4", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//bool
-//DN_CALLBACK_CALLTYPE
-//remove_func (const void *data, const void *user_data)
-//{
-//	return !strcmp ((const char *)data, (const char *)user_data);
-//}
-//
-//static
-//RESULT
-//test_list_remove_if (void)
-//{
-//	const char *items[] = { "first", "second", "third", "fourth"};
-//
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//	dn_list_insert (dn_list_end (list), items [1]);
-//	dn_list_insert (dn_list_end (list), items [2]);
-//	dn_list_insert (dn_list_end (list), items [3]);
-//
-//	dn_list_insert (dn_list_end (list), items [0]);
-//	dn_list_insert (dn_list_end (list), items [1]);
-//	dn_list_insert (dn_list_end (list), items [2]);
-//	dn_list_insert (dn_list_end (list), items [3]);
-//
-//	// Remove all "second"
-//	dn_list_remove_if (list, remove_func, items [1]);
-//
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (!strcmp (item, items [1]))
-//			return FAILED ("remove failed, found removed item %s #1", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	// Remove all "first"
-//	dn_list_remove_if (list, remove_func, items [0]);
-//
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (!strcmp (item, items [0]))
-//			return FAILED ("remove failed, found removed item %s #2", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	// Remove all "fourth"
-//	dn_list_remove_if (list, remove_func, items [3]);
-//
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (!strcmp (item, items [3]))
-//			return FAILED ("remove failed, found removed item %s #3", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	// "fourth" already removed.
-//	dn_list_remove_if (list, remove_func, items [3]);
-//
-//	// Validate that only "third" is left.
-//	DN_LIST_FOREACH_BEGIN (list, char *, item) {
-//		if (strcmp (item, items [2]))
-//			return FAILED ("remove failed, unexpected item %s #4", item);
-//	} DN_LIST_FOREACH_END;
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_reverse (void)
-//{
-//	uint32_t count = N_ELEMS;
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	for (uint32_t i = 0; i < N_ELEMS; ++i)
-//		dn_list_insert (dn_list_end (list), INT32_TO_POINTER (i));
-//
-//	dn_list_reverse (list);
-//
-//	DN_LIST_FOREACH_BEGIN (list, void *, data) {
-//		if (POINTER_TO_INT32 (data) != count - 1)
-//			return FAILED ("reverse failed #1");
-//		count--;
-//	} DN_LIST_FOREACH_END;
-//
-//	if (count != 0)
-//		return FAILED ("reverse failed #2");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//void
-//DN_CALLBACK_CALLTYPE
-//list_foreach_func (
-//	void *data,
-//	void *user_data)
-//{
-//	(*(uint32_t *)user_data)++;
-//}
-//
-//static
-//RESULT
-//test_list_for_each (void)
-//{
-//	uint32_t count = 0;
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	for (uint32_t i = 0; i < N_ELEMS; ++i)
-//		dn_list_insert (dn_list_begin (list), INT32_TO_POINTER (i));
-//
-//	dn_list_for_each (list, list_foreach_func, &count);
-//	if (count != N_ELEMS)
-//		return FAILED ("for_each failed");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//int32_t
-//DN_CALLBACK_CALLTYPE
-//list_sort_compare (
-//	const void *p1,
-//	const void *p2)
-//{
-//	return POINTER_TO_INT32 (p1) - POINTER_TO_INT32 (p2);
-//}
-//
-//static
-//bool
-//list_verify_sort (
-//	dn_list_t *list,
-//	int32_t len)
-//{
-//	int32_t prev = POINTER_TO_INT32 (*dn_list_front (list));
-//	dn_list_pop_front (list);
-//	len--;
-//
-//	DN_LIST_FOREACH_BEGIN (list, void *, item) {
-//		int32_t curr = POINTER_TO_INT32 (item);
-//		if (prev > curr)
-//			return false;
-//		prev = curr;
-//
-//		if (len == 0)
-//			return false;
-//		len--;
-//	} DN_LIST_FOREACH_END;
-//
-//	return len == 0;
-//}
-//
-//static
-//RESULT
-//test_list_sort (void)
-//{
-//	int32_t i, j, mul;
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	for (i = 0; i < N_ELEMS; ++i)
-//		dn_list_push_front (list, INT32_TO_POINTER (i));
-//
-//	dn_list_sort (list, list_sort_compare);
-//	if (!list_verify_sort (list, N_ELEMS))
-//		return FAILED ("decreasing list");
-//
-//	dn_list_free (list);
-//
-//	list = dn_list_alloc ();
-//	for (i = 0; i < N_ELEMS; ++i)
-//		dn_list_push_front (list, INT32_TO_POINTER (-i));
-//	dn_list_sort (list, list_sort_compare);
-//	if (!list_verify_sort (list, N_ELEMS))
-//		return FAILED ("increasing list");
-//
-//	dn_list_free (list);
-//
-//	list = dn_list_alloc ();
-//	dn_list_push_front (list, INT32_TO_POINTER (0));
-//	for (i = 1; i < N_ELEMS; ++i) {
-//		dn_list_push_front (list, INT32_TO_POINTER (-i));
-//		dn_list_push_front (list, INT32_TO_POINTER (i));
-//	}
-//
-//	dn_list_sort (list, list_sort_compare);
-//	if (!list_verify_sort (list, 2*N_ELEMS-1))
-//		return FAILED ("alternating list");
-//
-//	dn_list_free (list);
-//
-//	list = dn_list_alloc ();
-//	mul = 1;
-//	for (i = 1; i < N_ELEMS; ++i) {
-//		mul = -mul;
-//		for (j = 0; j < i; ++j)
-//			dn_list_push_front (list, INT32_TO_POINTER (mul * j));
-//	}
-//	dn_list_sort (list, list_sort_compare);
-//	if (!list_verify_sort (list, (N_ELEMS*N_ELEMS - N_ELEMS)/2))
-//		return FAILED ("wavering list");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//bool
-//DN_CALLBACK_CALLTYPE
-//list_find_func (
-//	const void *a,
-//	const void *b)
-//{
-//	if (!a || !b)
-//		return 1;
-//
-//	return !strcmp ((const char *)a, (const char *)b);
-//}
-//
-//static
-//RESULT
-//test_list_find (void)
-//{
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	dn_list_push_front (list, (char*)"three");
-//	dn_list_push_front (list, (char*)"two");
-//	dn_list_push_front (list, (char*)"one");
-//
-//	char *data = (char*)"four";
-//	dn_list_insert (dn_list_end (list), data);
-//
-//	dn_list_it_t found1 = dn_list_find (list, data, NULL);
-//	dn_list_it_t found2 = dn_list_find (list, data, list_find_func);
-//
-//	if (*dn_list_it_data_t (found1, char *) != data || *dn_list_it_data_t (found2, char *) != data)
-//		return FAILED ("find failed #1");
-//
-//	found1 = dn_list_find (list, NULL, NULL);
-//	found2 = dn_list_find (list, NULL, list_find_func);
-//	if (found1.it != dn_list_end (list).it || found2.it != dn_list_end (list).it)
-//		return FAILED ("find failed #2");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_iterator (void)
-//{
-//	uint32_t count = 0;
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	for (uint32_t i = 0; i < N_ELEMS; ++i)
-//		dn_list_insert (dn_list_end (list), INT32_TO_POINTER (i));
-//
-//	DN_LIST_FOREACH_BEGIN (list, void *, data) {
-//		if (POINTER_TO_INT32 (data) != count)
-//			return FAILED ("foreach iterator failed #1");
-//		count++;
-//	} DN_LIST_FOREACH_END;
-//
-//	if (count != N_ELEMS)
-//		return FAILED ("foreach iterator failed #2");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
-//
-//static
-//RESULT
-//test_list_rev_iterator (void)
-//{
-//	uint32_t count = N_ELEMS;
-//	dn_list_t *list = dn_list_alloc ();
-//
-//	for (uint32_t i = 0; i < N_ELEMS; ++i)
-//		dn_list_insert (dn_list_end (list), INT32_TO_POINTER (i));
-//
-//	DN_LIST_FOREACH_RBEGIN (list, void *, data) {
-//		if (POINTER_TO_INT32 (data) != count - 1)
-//			return FAILED ("foreach rev iterator failed #1");
-//		count--;
-//	} DN_LIST_FOREACH_END;
-//
-//	if (count != 0)
-//		return FAILED ("foreach rev iterator failed #2");
-//
-//	dn_list_free (list);
-//
-//	return OK;
-//}
+static
+RESULT
+test_umap_empty (void)
+{
+	const char * items[] = { "first", "second" };
+
+	dn_umap_t *map = dn_umap_alloc ();
+	if (!map)
+		return FAILED ("failed to alloc map");
+
+	if (!dn_umap_empty (map))
+		return FAILED ("failed empty #1");
+
+	dn_umap_insert (map, items [0], items [0]);
+
+	if (dn_umap_empty (map))
+		return FAILED ("failed empty #2");
+
+	dn_umap_insert (map, items [1], items [1]);
+
+	if (dn_umap_empty (map))
+		return FAILED ("failed empty #3");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_size (void)
+{
+	dn_umap_t *map = dn_umap_alloc ();
+
+	if (dn_umap_size (map) != 0)
+		return FAILED ("map size didn't match");
+
+	for (int32_t i = 0; i < 10; ++i)
+		dn_umap_insert (map, INT32_TO_POINTER (i), NULL);
+
+	if (dn_umap_size (map) != 10)
+		return FAILED ("size failed #1");
+
+	dn_umap_clear (map);
+
+	if (dn_umap_size (map) != 0)
+		return FAILED ("size failed #2");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_max_size (void)
+{
+	dn_umap_t *map = dn_umap_alloc ();
+	if (!map)
+		return FAILED ("failed to alloc map");
+
+	if (dn_umap_max_size (map) != UINT32_MAX)
+		return FAILED ("max_size failed");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_clear (void)
+{
+	uint32_t dispose_count = 0;
+	const char * items[] = { "first", "second" };
+
+	dn_umap_t *map = dn_umap_alloc ();
+	if (!map)
+		return FAILED ("failed to alloc map");
+
+	if (!dn_umap_empty (map))
+		return FAILED ("failed empty #1");
+
+	dn_umap_insert (map, items [0], items [0]);
+
+	if (dn_umap_empty (map))
+		return FAILED ("failed empty #2");
+
+	dn_umap_insert (map, items [1], items [1]);
+
+	dn_umap_clear (map);
+
+	if (!dn_umap_empty (map))
+		return FAILED ("failed empty #3");
+
+	dn_umap_free (map);
+
+	map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, NULL, NULL, NULL, umap_value_dispose_func);
+
+	dn_umap_insert (map, INT32_TO_POINTER (1), &dispose_count);
+	dn_umap_insert (map, INT32_TO_POINTER (2), &dispose_count);
+
+	dn_umap_clear (map);
+
+	if (dispose_count != 2)
+		return FAILED ("invalid dispose count on clear");
+
+	dispose_count = 0;
+	dn_umap_free (map);
+
+	if (dispose_count != 0)
+		return FAILED ("invalid dispose count on clear/free");
+
+	return OK;
+}
+
+static
+void
+DN_CALLBACK_CALLTYPE
+umap_str_key_dispose_func (void *data)
+{
+	free (data);
+}
+
+static
+RESULT
+test_umap_insert (void)
+{
+	dn_umap_result_t result;
+	const char *items[] = { "first", "second" };
+
+	dn_umap_t *map = dn_umap_alloc ();
+	result = dn_umap_insert (map, items [0], items [0]);
+	if (!result.result || dn_umap_it_key (result.it) != items [0] || dn_umap_it_value (result.it) != items [0])
+		return FAILED ("insert failed #1");
+
+	result = dn_umap_insert (map, items [1], items [1]);
+	if (!result.result || dn_umap_it_key (result.it) != items [1] || dn_umap_it_value (result.it) != items [1])
+		return FAILED ("insert failed #2");
+
+	result = dn_umap_insert (map, items [1], NULL);
+	if (result.result || dn_umap_it_key (result.it) != items [1] || dn_umap_it_value (result.it) != items [1])
+		return FAILED ("insert failed #3");
+
+	dn_umap_free (map);
+
+	map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, dn_str_hash, dn_str_equal, umap_str_key_dispose_func, NULL);
+	dn_umap_insert (map, strdup ("first"), items [0]);
+
+	char *exists = strdup ("first");
+	result = dn_umap_insert (map, exists, items [0]);
+	if (result.result)
+		return FAILED ("insert failed #4");
+	free (exists);
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_insert_or_assign (void)
+{
+	dn_umap_result_t result;
+	const char *items[] = { "first", "second" };
+
+	dn_umap_t *map = dn_umap_alloc ();
+	result = dn_umap_insert_or_assign (map, items [0], items [0]);
+	if (!result.result || dn_umap_it_key (result.it) != items [0] || dn_umap_it_value (result.it) != items [0])
+		return FAILED ("insert_or_assign failed #1");
+
+	result = dn_umap_insert_or_assign (map, items [1], items [1]);
+	if (!result.result || dn_umap_it_key (result.it) != items [1] || dn_umap_it_value (result.it) != items [1])
+		return FAILED ("insert_or_assign failed #2");
+
+	result = dn_umap_insert_or_assign (map, items [1], NULL);
+	if (!result.result || dn_umap_it_key (result.it) != items [1] || dn_umap_it_value (result.it) != NULL)
+		return FAILED ("insert_or_assign failed #3");
+
+	dn_umap_free (map);
+
+	map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, dn_str_hash, dn_str_equal, umap_str_key_dispose_func, NULL);
+	dn_umap_insert_or_assign (map, strdup ("first"), items [0]);
+
+	result = dn_umap_insert_or_assign (map, strdup ("first"), items [1]);
+	if (!result.result || strcmp (dn_umap_it_key (result.it), items [0]) || dn_umap_it_value (result.it) != items [1])
+		return FAILED ("insert_or_assign failed #4");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_erase (void)
+{
+	const char *items[] = { "first", "second", "third", "fourth"};
+
+	dn_umap_t *map = dn_umap_alloc ();
+
+	dn_umap_insert (map, items [0], items [0]);
+	dn_umap_insert (map, items [1], items [1]);
+
+	dn_umap_it_t it = dn_umap_begin (map);
+	char *key = dn_umap_it_key (it);
+	char *value = dn_umap_it_value (it);
+
+	dn_umap_it_t result = dn_umap_erase (it);
+	if (dn_umap_size (map) != 1 || dn_umap_it_key (result) == key || dn_umap_it_value (result) == value)
+		return FAILED ("erase failed #1");
+
+	if (dn_umap_erase_key (map, NULL) != 0)
+		return FAILED ("erase failed #2");
+
+	dn_umap_insert (map, items [2], items [2]);
+	dn_umap_insert (map, items [3], items [3]);
+
+	if (dn_umap_erase_key (map, items [2]) == 0)
+		return FAILED ("erase failed #3");
+
+	result = dn_umap_erase (dn_umap_begin (map));
+	result = dn_umap_erase (dn_umap_begin (map));
+
+	if (!dn_umap_it_end (result))
+		return FAILED ("erase failed #4");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_extract (void)
+{
+	const char *items[] = { "first", "second", "third", "fourth"};
+
+	dn_umap_t *map = dn_umap_alloc ();
+
+	dn_umap_insert (map, items [0], items [1]);
+	dn_umap_insert (map, items [2], items [3]);
+
+	char *key;
+	char *value;
+
+	if (!dn_umap_extract_key (map, items [0], &key, &value) || key != items [0] || value != items [1])
+		return FAILED ("extract failed #1");
+
+	if (dn_umap_size (map) != 1)
+		return FAILED ("extract failed #2");
+
+	dn_umap_free (map);
+
+	uint32_t key_dispose_count = 0;
+	uint32_t value_dispose_count = 0;
+	map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, NULL, NULL, umap_key_dispose_func, umap_value_dispose_func);
+
+	dn_umap_insert (map, &key_dispose_count, &value_dispose_count);
+	if (!dn_umap_extract_key (map, &key_dispose_count, NULL, NULL))
+		return FAILED ("extract failed #3");
+
+	if (key_dispose_count != 0 || value_dispose_count != 0 || dn_umap_size (map) != 0)
+		return FAILED ("extract failed #4");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+bool
+DN_CALLBACK_CALLTYPE
+umap_find_func (
+	const void *a,
+	const void *b)
+{
+	if (!a || !b)
+		return false;
+
+	return !strcmp ((const char *)a, (const char *)b);
+}
+
+static
+RESULT
+test_umap_find (void)
+{
+	const char *items[] = { "first", "second", "third", "fourth"};
+
+	dn_umap_t *map = dn_umap_alloc ();
+
+	dn_umap_insert (map, items [2], items [2]);
+	dn_umap_insert (map, items [1], items [1]);
+	dn_umap_insert (map, items [0], items [0]);
+
+	char *data = items[3];
+	dn_umap_insert (map, data, data);
+
+	dn_umap_it_t found1 = dn_umap_find (map, data);
+	dn_umap_it_t found2 = dn_umap_custom_find (map, data, umap_find_func);
+
+	if (dn_umap_it_key_t (found1, char *) != data || dn_umap_it_key_t (found2, char *) != data)
+		return FAILED ("find failed #1");
+
+	found1 = dn_umap_find (map, NULL);
+	found2 = dn_umap_custom_find (map, NULL, umap_find_func);
+	if (!dn_umap_it_end (found1) || !dn_umap_it_end (found2))
+		return FAILED ("find failed #2");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_contains (void)
+{
+	const char *items[] = { "first", "second", "third", "fourth"};
+
+	dn_umap_t *map = dn_umap_alloc ();
+
+	dn_umap_insert (map, items [2], items [2]);
+	dn_umap_insert (map, items [1], items [1]);
+	dn_umap_insert (map, items [0], items [0]);
+
+	if (!dn_umap_contains (map, items [0]))
+		return FAILED ("contains failed #1");
+
+	if (dn_umap_contains (map, "unkown"))
+		return FAILED ("contains failed #2");
+
+	dn_umap_erase_key (map, items [1]);
+
+	if (dn_umap_contains (map, items [1]))
+		return FAILED ("contains failed #3");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_rehash (void)
+{
+	dn_umap_t *map = dn_umap_alloc ();
+
+	for (uint32_t i = 0; i < 1000; i++)
+		dn_umap_insert (map, INT32_TO_POINTER (i), INT32_TO_POINTER (i));
+
+	dn_umap_rehash (map, dn_umap_size (map) * 2);
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_reserve (void)
+{
+	dn_umap_t *map = dn_umap_alloc ();
+
+	dn_umap_reserve (map, 1000);
+
+	for (uint32_t i = 0; i < 1000; i++)
+		dn_umap_insert (map, INT32_TO_POINTER (i), INT32_TO_POINTER (i));
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+void
+DN_CALLBACK_CALLTYPE
+umap_foreach_func (
+	void *key,
+	void *value,
+	void *user_data)
+{
+	(*(uint32_t *)user_data)++;
+}
+
+static
+RESULT
+test_umap_for_each (void)
+{
+	uint32_t count = 0;
+	dn_umap_t *map = dn_umap_alloc ();
+
+	for (uint32_t i = 0; i < 100; ++i)
+		dn_umap_insert (map, INT32_TO_POINTER (i), INT32_TO_POINTER (i));
+
+	dn_umap_for_each (map, umap_foreach_func, &count);
+	if (count != 100)
+		return FAILED ("for_each failed");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static
+RESULT
+test_umap_iterator (void)
+{
+	uint32_t count = 0;
+	dn_umap_t *map = dn_umap_alloc ();
+
+	for (uint32_t i = 0; i < 100; ++i)
+		dn_umap_insert (map, INT32_TO_POINTER (i), INT32_TO_POINTER (i));
+
+	DN_UMAP_FOREACH_BEGIN (map, uint32_t, key, uint32_t, value) {
+		if (key == value)
+			count++;
+	} DN_UMAP_FOREACH_END;
+
+	if (count != 100)
+		return FAILED ("foreach iterator failed #2");
+
+	count = 0;
+	DN_UMAP_FOREACH_KEY_BEGIN (map, uint32_t, key) {
+		count += key;
+	} DN_UMAP_FOREACH_END;
+
+	if (count != 4950)
+		return FAILED ("foreach iterator failed #4");
+
+	dn_umap_free (map);
+
+	return OK;
+}
 
 static
 RESULT
@@ -948,26 +565,20 @@ static Test dn_umap_tests [] = {
 	{"test_umap_init", test_umap_init},
 	{"test_umap_free", test_umap_free},
 	{"test_umap_dispose", test_umap_dispose},
-	/*{"test_list_front", test_list_front},
-	{"test_list_empty", test_list_empty},
-	{"test_list_max_size", test_list_max_size},
-	{"test_list_clear", test_list_clear},
-	{"test_list_insert", test_list_insert},
-	{"test_list_insert_range", test_list_insert_range},
-	{"test_list_erase", test_list_erase},
-	{"test_list_push_front", test_list_push_front},
-	{"test_list_pop_front", test_list_pop_front},
-	{"test_list_push_back", test_list_push_back},
-	{"test_list_pop_back", test_list_pop_back},
-	{"test_list_resize", test_list_resize},
-	{"test_list_remove", test_list_remove},
-	{"test_list_remove_if", test_list_remove_if},
-	{"test_list_reverse", test_list_reverse},
-	{"test_list_for_each", test_list_for_each},
-	{"test_list_sort", test_list_sort},
-	{"test_list_find", test_list_find},
-	{"test_list_iterator", test_list_iterator},
-	{"test_list_rev_iterator", test_list_rev_iterator},*/
+	{"test_umap_empty", test_umap_empty},
+	{"test_umap_size", test_umap_size},
+	{"test_umap_max_size", test_umap_max_size},
+	{"test_umap_clear", test_umap_clear},
+	{"test_umap_insert", test_umap_insert},
+	{"test_umap_insert_or_assign", test_umap_insert_or_assign},
+	{"test_umap_erase", test_umap_erase},
+	{"test_umap_extract", test_umap_extract},
+	{"test_umap_find", test_umap_find},
+	{"test_umap_contains", test_umap_contains},
+	{"test_umap_rehash", test_umap_rehash},
+	{"test_umap_reserve", test_umap_reserve},
+	{"test_umap_for_each", test_umap_for_each},
+	{"test_umap_iterator", test_umap_iterator},
 	{"test_umap_teardown", test_umap_teardown},
 	{NULL, NULL}
 };

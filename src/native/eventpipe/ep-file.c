@@ -167,14 +167,13 @@ file_get_stack_id (
 	EventPipeStackContentsInstance *stack_contents = ep_event_instance_get_stack_contents_instance_ref (event_instance);
 	EventPipeStackBlock *stack_block = file->stack_block;
 	dn_umap_t *stack_hash = file->stack_hash;
-	StackHashEntry *entry = NULL;
 	StackHashKey key;
 	ep_stack_hash_key_init (&key, stack_contents);
 	dn_umap_it_t found = dn_umap_find (stack_hash, &key);
 	if (dn_umap_it_end (found)) {
 		stack_id = file->stack_id_counter + 1;
 		file->stack_id_counter = stack_id;
-		entry = ep_stack_hash_entry_alloc (stack_contents, stack_id, ep_stack_hash_key_get_hash (&key));
+		StackHashEntry *entry = ep_stack_hash_entry_alloc (stack_contents, stack_id, ep_stack_hash_key_get_hash (&key));
 		if (entry) {
 			if (!dn_umap_insert (stack_hash, ep_stack_hash_entry_get_key_ref (entry), entry).result)
 				ep_stack_hash_entry_free (entry);
@@ -190,7 +189,7 @@ file_get_stack_id (
 				EP_UNREACHABLE ("Should never fail to add event to a clear block. If we do the max size is too small.");
 		}
 	} else {
-		stack_id = ep_stack_hash_entry_get_id (entry);
+		stack_id = ep_stack_hash_entry_get_id (dn_umap_it_value_t (found, StackHashEntry *));
 	}
 
 	ep_stack_hash_key_fini (&key);

@@ -44,6 +44,9 @@ struct _dn_umap_result_t {
 	dn_umap_it_t it;
 };
 
+dn_umap_it_t
+_dn_umap_begin (dn_umap_t *map);
+
 bool
 _dn_umap_it_next (dn_umap_it_t *it);
 
@@ -70,7 +73,7 @@ dn_umap_it_key (dn_umap_it_t it)
 }
 
 #define dn_umap_it_key_t(it, type) \
-	((type)(uintptr_t))dn_umap_it_key (it)
+	(type)(uintptr_t)(dn_umap_it_key (it))
 
 static inline void *
 dn_umap_it_value (dn_umap_it_t it)
@@ -79,12 +82,13 @@ dn_umap_it_value (dn_umap_it_t it)
 }
 
 #define dn_umap_it_value_t(it, type) \
-	((type)(uintptr_t))dn_umap_it_value (it)
+	(type)(uintptr_t)(dn_umap_it_value ((it)))
 
 static inline bool
 dn_umap_it_begin (dn_umap_it_t it)
 {
-	return !(it._internal._node == *(it._internal._map->_internal._buckets));
+	dn_umap_it_t begin = _dn_umap_begin (it._internal._map);
+	return (begin._internal._node == it._internal._node && begin._internal._index == it._internal._index);
 }
 
 static inline bool
@@ -170,8 +174,7 @@ dn_umap_dispose (dn_umap_t *map);
 static inline dn_umap_it_t
 dn_umap_begin (dn_umap_t *map)
 {
-	dn_umap_it_t it = { { map, *(map->_internal._buckets), 0 } };
-	return it;
+	return _dn_umap_begin (map);
 }
 
 static inline dn_umap_it_t
@@ -211,12 +214,6 @@ dn_umap_insert (
 	void *key,
 	void *value);
 
-void
-dn_umap_insert_range (
-	dn_umap_t *map,
-	dn_umap_it_t first,
-	dn_umap_it_t last);
-
 dn_umap_result_t
 dn_umap_insert_or_assign (
 	dn_umap_t *map,
@@ -224,9 +221,7 @@ dn_umap_insert_or_assign (
 	void *value);
 
 dn_umap_it_t
-dn_umap_erase (
-	dn_umap_t *map,
-	dn_umap_it_t position);
+dn_umap_erase (dn_umap_it_t position);
 
 uint32_t
 dn_umap_erase_key (
@@ -234,7 +229,7 @@ dn_umap_erase_key (
 	const void *key);
 
 bool
-dn_umap_extract (
+dn_umap_extract_key (
 	dn_umap_t *map,
 	const void *key,
 	void **out_key,
@@ -251,7 +246,7 @@ dn_umap_find (
 	dn_umap_t *map,
 	const void *key)
 {
-	return dn_umap_custom_find (map, key, map->_internal._key_equal_func);
+	return dn_umap_custom_find (map, key, NULL);
 }
 
 static inline bool
@@ -265,6 +260,12 @@ dn_umap_contains (
 	dn_umap_it_t it = dn_umap_find (map, key);
 	return !dn_umap_it_end (it);
 }
+
+void
+dn_umap_for_each (
+	dn_umap_t *map,
+	dn_key_value_func_t func,
+	void *data);
 
 void
 dn_umap_rehash (

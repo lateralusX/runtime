@@ -1305,7 +1305,7 @@ ep_buffer_manager_write_all_buffers_to_file_v4 (
 					DN_PTR_VECTOR_FOREACH_BEGIN (session_states_to_delete, EventPipeThreadSessionState *, thread_session_state) {
 						dn_umap_it_t found = dn_umap_ptr_uint32_find (ep_sequence_point_get_thread_sequence_numbers (current_sequence_point), thread_session_state);
 						if (!dn_umap_it_end (found)) {
-							dn_umap_erase (ep_sequence_point_get_thread_sequence_numbers (current_sequence_point), found);
+							dn_umap_erase (found);
 							// every entry of this map was holding an extra ref to the thread (see: ep-event-instance.{h|c})
 							ep_thread_release (ep_thread_session_state_get_thread (thread_session_state));
 						}
