@@ -485,17 +485,17 @@ dn_umap_custom_find (
 	if (DN_UNLIKELY (!map))
 		return found;
 
+	dn_equal_func_t equal_func = func ? func : (map->_internal._key_equal_func ? map->_internal._key_equal_func : NULL);
 	for (uint32_t i = 0; i < map->_internal._bucket_count; i++) {
 		for (dn_umap_node_t *s = map->_internal._buckets [i]; s != NULL; s = s->next)
-			if (func && func (s->key, data)) {
+			if (equal_func && equal_func (s->key, data)) {
 				found._internal._index = i;
 				found._internal._node = s;
-				break;
-			}
-			else if (s->key == data) {
+				return found;
+			} else if (s->key == data) {
 				found._internal._index = i;
 				found._internal._node = s;
-				break;
+				return found;
 			}
 
 	}

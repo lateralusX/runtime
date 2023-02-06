@@ -421,6 +421,53 @@ test_umap_find (void)
 
 	dn_umap_free (map);
 
+	map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, dn_str_hash, dn_str_equal, NULL, NULL);
+
+	dn_umap_insert (map, items [2], items [2]);
+	dn_umap_insert (map, items [1], items [1]);
+	dn_umap_insert (map, items [0], items [0]);
+
+	found1 = dn_umap_find (map, "second");
+	found2 = dn_umap_custom_find (map, "second", umap_find_func);
+
+	if (dn_umap_it_key (found1) != dn_umap_it_key (found2))
+		return FAILED ("find failed #3");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static RESULT
+test_umap_find_2 (void)
+{
+	dn_umap_t *map = dn_umap_alloc ();
+
+	dn_umap_insert (map, NULL, INT32_TO_POINTER (1));
+	dn_umap_insert (map, INT32_TO_POINTER (1), INT32_TO_POINTER (2));
+
+	dn_umap_it_t found = dn_umap_find (map, NULL);
+	if (dn_umap_it_end (found))
+		return FAILED ("Did not find the NULL");
+
+	if (dn_umap_it_key (found) != NULL)
+		return FAILED ("Incorrect key found");
+
+	if (dn_umap_it_value (found) != INT32_TO_POINTER (1))
+		return FAILED ("Got wrong value %p\n", dn_umap_it_value (found));
+
+	found = dn_umap_find (map, INT32_TO_POINTER (1));
+	if (dn_umap_it_end (found))
+		return FAILED ("Did not find the 1");
+
+	if (dn_umap_it_key (found) != INT32_TO_POINTER(1))
+		return FAILED ("Incorrect key found");
+
+	if (dn_umap_it_value (found) != INT32_TO_POINTER (2))
+		return FAILED ("Got wrong value %p\n", dn_umap_it_value (found));
+
+	dn_umap_free (map);
+
 	return OK;
 }
 
@@ -487,7 +534,7 @@ test_umap_reserve (void)
 static
 void
 DN_CALLBACK_CALLTYPE
-umap_foreach_func (
+umap_for_each_func (
 	void *key,
 	void *value,
 	void *user_data)
@@ -505,7 +552,7 @@ test_umap_for_each (void)
 	for (uint32_t i = 0; i < 100; ++i)
 		dn_umap_insert (map, INT32_TO_POINTER (i), INT32_TO_POINTER (i));
 
-	dn_umap_for_each (map, umap_foreach_func, &count);
+	dn_umap_for_each (map, umap_for_each_func, &count);
 	if (count != 100)
 		return FAILED ("for_each failed");
 
@@ -545,6 +592,123 @@ test_umap_iterator (void)
 	return OK;
 }
 
+static RESULT
+test_umap_iterator_2 (void)
+{
+	dn_umap_t *map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, dn_direct_hash, dn_direct_equal, NULL, NULL);
+
+	uint32_t sum = 0;
+	for (uint32_t i = 0; i < 1000; i++) {
+		sum += i;
+		dn_umap_insert (map, INT32_TO_POINTER (i), INT32_TO_POINTER (i));
+	}
+
+	uint32_t keys_sum = 0;
+	uint32_t values_sum = 0;
+
+	DN_UMAP_FOREACH_BEGIN (map, uint32_t, key, uint32_t, value) {
+		if (key != value)
+			return FAILED ("key != value");
+		keys_sum += key;
+		values_sum += value;
+	} DN_UMAP_FOREACH_END;
+
+	if (keys_sum != sum || values_sum != sum)
+		return FAILED ("Did not find all key-value pairs");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+uint32_t foreach_count = 0;
+uint32_t foreach_fail = 0;
+
+static void
+umap_for_each_str_str_func (void *key, void *value, void *user_data)
+{
+	foreach_count++;
+	if (POINTER_TO_INT32 (user_data) != 'a')
+		foreach_fail = 1;
+}
+
+static RESULT
+test_umap_str_str_map (void)
+{
+	dn_umap_t *map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, dn_str_hash, dn_str_equal, NULL, NULL);
+
+	foreach_count = 0;
+	foreach_fail = 0;
+
+	dn_umap_insert (map, "hello", "world");
+	dn_umap_insert (map, (char*)"my", (char*)"god");
+
+	dn_umap_for_each (map, umap_for_each_str_str_func, INT32_TO_POINTER ('a'));
+
+	if (foreach_count != 2)
+		return FAILED ("did not find all keys, got %d expected 2", foreach_count);
+
+	if (foreach_fail)
+		return FAILED("failed to pass the user-data to foreach");
+
+	if (dn_umap_erase_key (map, "my") == 0)
+		return FAILED ("did not find known key");
+
+	if (dn_umap_size (map) != 1)
+		return FAILED ("unexpected size");
+
+	dn_umap_insert_or_assign (map, "hello", "moon");
+	dn_umap_it_t found = dn_umap_find (map, "hello");
+	if (dn_umap_it_end (found) || strcmp (dn_umap_it_value_t (found, char *), "moon") != 0)
+		return FAILED ("did not replace world with moon");
+
+	if (dn_umap_erase_key (map, "hello") == 0)
+		return FAILED ("did not find known key");
+
+	if (dn_umap_size (map) != 0)
+		return FAILED ("unexpected size");
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
+static RESULT
+test_umap_grow (void)
+{
+	dn_umap_t *map = dn_umap_custom_alloc (DN_DEFAULT_ALLOCATOR, dn_str_hash, dn_str_equal, free, free);
+
+	char buffer1 [30];
+	char buffer2 [30];
+	uint32_t count = 0;
+
+	for (uint32_t i = 0; i < 1000; i++) {
+		sprintf (buffer1, "%d", i);
+		sprintf (buffer2, "x-%d", i);
+		dn_umap_insert (map, strdup (buffer1), strdup (buffer2));
+	}
+
+	for (uint32_t i = 0; i < 1000; i++){
+		sprintf (buffer1, "%d", i);
+		dn_umap_it_t found = dn_umap_find (map, buffer1);
+		sprintf (buffer1, "x-%d", i);
+		if (strcmp (dn_umap_it_value_t (found, char *), buffer1) != 0)
+			return FAILED ("Failed to lookup the key %d, the value was %s\n", i, dn_umap_it_value_t (found, char *));
+	}
+
+	if (dn_umap_size (map) != 1000)
+		return FAILED ("Did not find 1000 elements on the hash, found %d\n", dn_umap_size (map));
+
+	dn_umap_for_each (map, umap_for_each_func, &count);
+	if (count != 1000){
+		return FAILED ("for each count is not 1000");
+	}
+
+	dn_umap_free (map);
+
+	return OK;
+}
+
 static
 RESULT
 test_umap_teardown (void)
@@ -574,11 +738,15 @@ static Test dn_umap_tests [] = {
 	{"test_umap_erase", test_umap_erase},
 	{"test_umap_extract", test_umap_extract},
 	{"test_umap_find", test_umap_find},
+	{"test_umap_find_2", test_umap_find_2},
 	{"test_umap_contains", test_umap_contains},
 	{"test_umap_rehash", test_umap_rehash},
 	{"test_umap_reserve", test_umap_reserve},
 	{"test_umap_for_each", test_umap_for_each},
 	{"test_umap_iterator", test_umap_iterator},
+	{"test_umap_iterator_2", test_umap_iterator_2},
+	{"test_umap_str_str_map", test_umap_str_str_map},
+	{"test_umap_grow", test_umap_grow},
 	{"test_umap_teardown", test_umap_teardown},
 	{NULL, NULL}
 };
