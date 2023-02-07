@@ -49,12 +49,14 @@ dn_vector_it_advance (
 	dn_vector_it_t *it,
 	ptrdiff_t n)
 {
+	DN_ASSERT (it && ((it->it + n) < UINT32_MAX));
 	it->it = it->it + n;
 }
 
 static inline dn_vector_it_t
 dn_vector_it_next (dn_vector_it_t it)
 {
+	DN_ASSERT ((it.it + 1) < UINT32_MAX);
 	it.it++;
 	return it;
 }
@@ -62,6 +64,7 @@ dn_vector_it_next (dn_vector_it_t it)
 static inline dn_vector_it_t
 dn_vector_it_prev (dn_vector_it_t it)
 {
+	DN_ASSERT (it.it > 0);
 	it.it--;
 	return it;
 }
@@ -71,6 +74,7 @@ dn_vector_it_next_n (
 	dn_vector_it_t it,
 	uint32_t n)
 {
+	DN_ASSERT ((it.it + n) < UINT32_MAX);
 	it.it += n;
 	return it;
 }
@@ -80,6 +84,7 @@ dn_vector_it_prev_n (
 	dn_vector_it_t it,
 	uint32_t n)
 {
+	DN_ASSERT (it.it >= n);
 	it.it -= n;
 	return it;
 }
@@ -87,6 +92,7 @@ dn_vector_it_prev_n (
 static inline uint8_t *
 dn_vector_it_data (dn_vector_it_t it)
 {
+	DN_ASSERT (it._internal._vector && it._internal._vector->data);
 	return it._internal._vector->data + (it._internal._vector->_internal._element_size * it.it);
 }
 
@@ -96,12 +102,14 @@ dn_vector_it_data (dn_vector_it_t it)
 static inline bool
 dn_vector_it_begin (dn_vector_it_t it)
 {
+	DN_ASSERT (it._internal._vector);
 	return it.it == 0;
 }
 
 static inline bool
 dn_vector_it_end (dn_vector_it_t it)
 {
+	DN_ASSERT (it._internal._vector);
 	return it.it == it._internal._vector->size;
 }
 
@@ -240,6 +248,7 @@ dn_vector_dispose (dn_vector_t *vector)
 static inline dn_vector_it_t
 dn_vector_begin (dn_vector_t *vector)
 {
+	DN_ASSERT (vector);
 	dn_vector_it_t it = { 0, { vector } };
 	return it;
 }
@@ -247,6 +256,7 @@ dn_vector_begin (dn_vector_t *vector)
 static inline dn_vector_it_t
 dn_vector_end (dn_vector_t *vector)
 {
+	DN_ASSERT (vector);
 	dn_vector_it_t it = { vector->size, { vector } };
 	return it;
 }
@@ -254,14 +264,14 @@ dn_vector_end (dn_vector_t *vector)
 static inline bool
 dn_vector_empty (const dn_vector_t *vector)
 {
-	if (!vector || vector->size == 0)
-		return true;
-	return false;
+	DN_ASSERT (vector);
+	return vector->size == 0;
 }
 
 static inline uint32_t
 dn_vector_size (const dn_vector_t *vector)
 {
+	DN_ASSERT (vector);
 	return vector->size;
 }
 
@@ -371,9 +381,11 @@ dn_vector_clear (dn_vector_t *vector)
 static inline void
 dn_vector_pop_back (dn_vector_t *vector)
 {
-	if (DN_UNLIKELY (!vector || vector->size == 0))
-		return;
-	//TODO: Check clear.
+	DN_ASSERT (vector && vector->size != 0);
+
+	if ((vector->_internal._attributes & (uint32_t)DN_VECTOR_ATTRIBUTE_INIT_MEMORY) == DN_VECTOR_ATTRIBUTE_INIT_MEMORY)
+		memset (dn_vector_back_t (vector, uint8_t), 0, vector->_internal._element_size);
+
 	vector->size --;
 }
 
@@ -404,6 +416,7 @@ _dn_vector_find_adapter (
 	dn_vector_equal_func_t equal_func,
 	dn_vector_it_t *found)
 {
+	DN_ASSERT (found);
 	*found = dn_vector_find (vector, data, equal_func);
 }
 

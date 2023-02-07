@@ -56,11 +56,12 @@ dn_queue_custom_free (
 	dn_queue_t *queue,
 	dn_queue_dispose_func_t dispose_func)
 {
-	if (queue) {
-		dn_allocator_t *allocator = queue->_internal.list._internal._allocator;
-		dn_list_custom_dispose (&queue->_internal.list, dispose_func);
-		dn_allocator_free (allocator, queue);
-	}
+	if (DN_UNLIKELY (!queue))
+		return;
+
+	dn_allocator_t *allocator = queue->_internal.list._internal._allocator;
+	dn_list_custom_dispose (&queue->_internal.list, dispose_func);
+	dn_allocator_free (allocator, queue);
 }
 
 void

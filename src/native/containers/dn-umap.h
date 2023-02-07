@@ -94,6 +94,7 @@ dn_umap_it_next (dn_umap_it_t it)
 static inline void *
 dn_umap_it_key (dn_umap_it_t it)
 {
+	DN_ASSERT (it._internal._node);
 	return it._internal._node->key;
 }
 
@@ -103,6 +104,7 @@ dn_umap_it_key (dn_umap_it_t it)
 static inline void *
 dn_umap_it_value (dn_umap_it_t it)
 {
+	DN_ASSERT (it._internal._node);
 	return it._internal._node->value;
 }
 
@@ -195,14 +197,14 @@ dn_umap_end (dn_umap_t *map)
 static inline bool
 dn_umap_empty (const dn_umap_t *map)
 {
-	return !map || map->_internal._node_count == 0;
+	DN_ASSERT (map);
+	return map->_internal._node_count == 0;
 }
 
 static inline uint32_t
 dn_umap_size (const dn_umap_t *map)
 {
-	if (!map)
-		return 0;
+	DN_ASSERT (map);
 	return map->_internal._node_count;
 }
 
@@ -262,9 +264,6 @@ dn_umap_contains (
 	dn_umap_t *map,
 	const void *key)
 {
-	if (DN_UNLIKELY (!map))
-		return false;
-
 	dn_umap_it_t it = dn_umap_find (map, key);
 	return !dn_umap_it_end (it);
 }

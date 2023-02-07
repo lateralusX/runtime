@@ -325,10 +325,6 @@ test_vector_empty (void)
 		return FAILED ("empty failed #2");
 
 	dn_vector_free (vector);
-	vector = NULL;
-
-	if (!dn_vector_empty (vector))
-		return FAILED ("empty failed #3");
 
 	return OK;
 }

@@ -153,8 +153,7 @@ dn_list_custom_dispose (
 uint32_t
 dn_list_size (const dn_list_t *list)
 {
-	if (DN_UNLIKELY(!list))
-		return 0;
+	DN_ASSERT (list);
 
 	uint32_t size = 0;
 	dn_list_node_t *nodes = list->head;
@@ -172,8 +171,7 @@ dn_list_custom_clear (
 	dn_list_t *list,
 	dn_list_dispose_func_t dispose_func)
 {
-	if (DN_UNLIKELY(!list))
-		return;
+	DN_ASSERT (list);
 
 	dn_list_custom_dispose (list, dispose_func);
 
@@ -187,6 +185,8 @@ dn_list_insert (
 	void *data)
 {
 	dn_list_t *list = position._internal._list;
+
+	DN_ASSERT (list);
 
 	if (!list->head)
 		position.it = list_insert_node_before (list->_internal._allocator, list->head, data);
@@ -217,6 +217,8 @@ dn_list_insert_range (
 	if (first.it == last.it)
 		return first_inserted;
 
+	DN_ASSERT (first.it);
+
 	first_inserted = dn_list_insert (position, first.it->data);
 
 	for (first.it = first.it->next; first.it && first.it != last.it; first.it = first.it->next)
@@ -237,6 +239,8 @@ dn_list_custom_erase (
 		return position;
 
 	dn_list_t *list = position._internal._list;
+
+	DN_ASSERT (list && !dn_list_it_end (position));
 
 	if (position.it == list->head) {
 		if (dispose_func)
@@ -262,17 +266,14 @@ dn_list_push_back (
 	dn_list_t *list,
 	void *data)
 {
-	if (DN_UNLIKELY(!list))
-		return false;
-
+	DN_ASSERT (list);
 	return dn_list_insert (dn_list_end (list), data).result;
 }
 
 void
 dn_list_pop_back (dn_list_t *list)
 {
-	if (DN_UNLIKELY(!list || !list->tail))
-		return;
+	DN_ASSERT (list && list->tail);
 
 	dn_list_node_t *prev = list->tail->prev;
 	list_free_node (list->_internal._allocator, list_unlink_node (list->tail));
@@ -287,17 +288,14 @@ dn_list_push_front (
 	dn_list_t *list,
 	void *data)
 {
-	if (DN_UNLIKELY(!list))
-		return false;
-
+	DN_ASSERT (list);
 	return dn_list_insert (dn_list_begin (list), data).result;
 }
 
 void
 dn_list_pop_front (dn_list_t *list)
 {
-	if (DN_UNLIKELY(!list || !list->head))
-		return;
+	DN_ASSERT (list && list->head);
 
 	dn_list_node_t *next = list->head->next;
 	list_free_node (list->_internal._allocator, list_unlink_node (list->head));
@@ -313,8 +311,7 @@ dn_list_custom_resize (
 	uint32_t count,
 	dn_list_dispose_func_t dispose_func)
 {
-	if (DN_UNLIKELY(!list))
-		return false;
+	DN_ASSERT (list);
 
 	if (count == 0) {
 		dn_list_custom_clear (list, dispose_func);
@@ -350,8 +347,7 @@ dn_list_custom_remove (
 	const void *data,
 	dn_list_dispose_func_t dispose_func)
 {
-	if (DN_UNLIKELY (!list))
-		return;
+	DN_ASSERT (list);
 
 	dn_list_node_t *current = list->head;
 	dn_list_node_t *next;
@@ -376,15 +372,14 @@ dn_list_custom_remove_if (
 	dn_list_equal_func_t equal_func,
 	dn_list_dispose_func_t dispose_func)
 {
-	if (DN_UNLIKELY (!list))
-		return;
+	DN_ASSERT (list && equal_func);
 
 	dn_list_node_t *current = list->head;
 	dn_list_node_t *next;
 
 	while (current) {
 		next = current->next;
-		if (!equal_func || equal_func (current->data, data)) {
+		if (equal_func (current->data, data)) {
 			if (current == list->head)
 				list->head = next;
 			if (current == list->tail)
@@ -398,8 +393,7 @@ dn_list_custom_remove_if (
 void
 dn_list_reverse (dn_list_t *list)
 {
-	if (DN_UNLIKELY (!list))
-		return;
+	DN_ASSERT (list);
 
 	dn_list_node_t *node = list->head;
 	dn_list_node_t *reverse;
@@ -422,8 +416,7 @@ dn_list_for_each (
 	dn_list_for_each_func_t for_each_func,
 	void *user_data)
 {
-	if (DN_UNLIKELY (!list || !for_each_func))
-		return;
+	DN_ASSERT (list && for_each_func);
 
 	for (dn_list_node_t *it = list->head; it; it = it->next)
 		for_each_func (it->data, user_data);
@@ -438,7 +431,9 @@ dn_list_sort (
 	dn_list_t *list,
 	dn_list_compare_func_t compare_func)
 {
-	if (DN_UNLIKELY (!list || !list->head || !list->head->next || !compare_func))
+	DN_ASSERT (list && compare_func);
+
+	if (DN_UNLIKELY (!list->head || !list->head->next))
 		return;
 
 	list->head = do_sort (list->head, compare_func);
@@ -457,13 +452,9 @@ dn_list_find (
 	const void *data,
 	dn_list_equal_func_t equal_func)
 {
-	dn_list_it_t found;
-	found.it = NULL;
-	found._internal._list = list;
+	DN_ASSERT (list);
 
-	if (DN_UNLIKELY (!list))
-		return found;
-
+	dn_list_it_t found = { NULL, { list } };
 	for (dn_list_node_t *it = list->head; it; it = it->next) {
 		if ((equal_func && equal_func (it->data, data)) || it->data == data) {
 			found.it = it;

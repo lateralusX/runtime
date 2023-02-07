@@ -75,9 +75,7 @@ dn_queue_dispose (dn_queue_t *queue)
 static inline void **
 dn_queue_front (dn_queue_t *queue)
 {
-	if (!queue || queue->size == 0)
-		return NULL;
-
+	DN_ASSERT (queue && queue->size != 0);
 	return dn_list_front (&queue->_internal.list);
 }
 
@@ -87,9 +85,7 @@ dn_queue_front (dn_queue_t *queue)
 static inline void **
 dn_queue_back (dn_queue_t *queue)
 {
-	if (!queue || queue->size == 0)
-		return NULL;
-
+	DN_ASSERT (queue && queue->size != 0);
 	return dn_list_back (&queue->_internal.list);
 }
 
@@ -99,13 +95,15 @@ dn_queue_back (dn_queue_t *queue)
 static inline bool
 dn_queue_empty (dn_queue_t *queue)
 {
-	return queue == NULL || queue->size == 0;
+	DN_ASSERT (queue);
+	return queue->size == 0;
 }
 
 static inline uint32_t
 dn_queue_size (dn_queue_t *queue)
 {
-	return queue ? queue->size : 0;
+	DN_ASSERT (queue);
+	return queue->size;
 }
 
 static inline bool
@@ -113,11 +111,9 @@ dn_queue_push (
 	dn_queue_t *queue,
 	void *data)
 {
-	bool result = false;
-	if (!queue)
-		return result;
+	DN_ASSERT (queue);
 
-	result = dn_list_push_back (&queue->_internal.list, data);
+	bool result = dn_list_push_back (&queue->_internal.list, data);
 	if (result)
 		queue->size ++;
 
@@ -127,10 +123,10 @@ dn_queue_push (
 static inline void
 dn_queue_pop (dn_queue_t *queue)
 {
-	if (queue) {
-		dn_list_pop_front (&queue->_internal.list);
-		queue->size --;
-	}
+	DN_ASSERT (queue);
+
+	dn_list_pop_front (&queue->_internal.list);
+	queue->size --;
 }
 
 static inline void
@@ -138,10 +134,10 @@ dn_queue_custom_clear (
 	dn_queue_t *queue,
 	dn_queue_dispose_func_t dispose_func)
 {
-	if (queue) {
-		dn_list_custom_clear (&queue->_internal.list, dispose_func);
-		queue->size = 0;
-	}
+	DN_ASSERT (queue);
+
+	dn_list_custom_clear (&queue->_internal.list, dispose_func);
+	queue->size = 0;
 }
 
 static inline void

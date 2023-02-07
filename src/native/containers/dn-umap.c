@@ -267,6 +267,8 @@ umap_insert (
 dn_umap_it_t
 _dn_umap_begin (dn_umap_t *map)
 {
+	DN_ASSERT (map);
+
 	dn_umap_it_t it = dn_umap_end (map);
 	uint32_t index = 0;
 
@@ -293,6 +295,8 @@ _dn_umap_it_next (dn_umap_it_t *it)
 		return false;
 
 	dn_umap_t *map = it->_internal._map;
+
+	DN_ASSERT (map);
 
 	if (!it->_internal._node->next) {
 		while (true) {
@@ -396,6 +400,8 @@ dn_umap_dispose (dn_umap_t *map)
 void
 dn_umap_clear (dn_umap_t *map)
 {
+	DN_ASSERT (map);
+
 	for (uint32_t i = 0; i < map->_internal._bucket_count; i++) {
 		dn_umap_node_t *node, *next_node;
 		for (node = map->_internal._buckets [i]; node; node = next_node){
@@ -414,6 +420,7 @@ dn_umap_insert (
 	void *key,
 	void *value)
 {
+	DN_ASSERT (map);
 	return umap_insert (map, key, value, false);
 }
 
@@ -423,6 +430,7 @@ dn_umap_insert_or_assign (
 	void *key,
 	void *value)
 {
+	DN_ASSERT (map);
 	return umap_insert (map, key, value, true);
 }
 
@@ -431,6 +439,8 @@ dn_umap_erase (dn_umap_it_t position)
 {
 	if (dn_umap_it_end (position))
 		return position;
+
+	DN_ASSERT (position._internal._map);
 
 	dn_umap_it_t result = dn_umap_it_next (position);
 	dn_umap_erase_key (position._internal._map, position._internal._node->key);
@@ -443,6 +453,8 @@ dn_umap_erase_key (
 	dn_umap_t *map,
 	const void *key)
 {
+	DN_ASSERT (map);
+
 	umap_sanity_check (map);
 
 	dn_umap_equal_func_t equal_func = map->_internal._key_equal_func;
@@ -468,6 +480,8 @@ dn_umap_extract_key (
 	void **out_key,
 	void **out_value)
 {
+	DN_ASSERT (map);
+
 	dn_umap_equal_func_t equal_func = map->_internal._key_equal_func;
 	uint32_t hashcode = map->_internal._hash_func (key) % map->_internal._bucket_count;
 
@@ -503,6 +517,8 @@ dn_umap_custom_find (
 	const void *data,
 	dn_umap_equal_func_t equal_func)
 {
+	DN_ASSERT (map);
+
 	dn_umap_it_t found = dn_umap_end (map);
 	equal_func = equal_func ? equal_func : map->_internal._key_equal_func;
 
@@ -524,6 +540,8 @@ dn_umap_for_each (
 	dn_umap_key_value_func_t for_each_func,
 	void *data)
 {
+	DN_ASSERT (map && for_each_func);
+
 	DN_UMAP_FOREACH_BEGIN (map, void *, key, void *, value) {
 		for_each_func (key, value, data);
 	} DN_UMAP_FOREACH_END;
@@ -534,6 +552,8 @@ dn_umap_rehash (
 	dn_umap_t *map,
 	uint32_t count)
 {
+	DN_ASSERT (map);
+
 	if (count < map->_internal._node_count)
 		count = map->_internal._node_count;
 
@@ -545,6 +565,8 @@ dn_umap_reserve (
 	dn_umap_t *map,
 	uint32_t count)
 {
+	DN_ASSERT (map);
+
 	umap_do_rehash (map, count);
 }
 

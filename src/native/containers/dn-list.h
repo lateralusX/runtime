@@ -47,6 +47,8 @@ dn_list_it_advance (
 	dn_list_it_t *it,
 	ptrdiff_t n)
 {
+	DN_ASSERT (it);
+
 	while (n > 0 && it->it) {
 		it->it = it->it->next;
 		n--;
@@ -93,6 +95,7 @@ dn_list_it_prev_n (
 static inline void **
 dn_list_it_data (dn_list_it_t it)
 {
+	DN_ASSERT (it.it);
 	return &(it.it->data);
 }
 
@@ -102,6 +105,7 @@ dn_list_it_data (dn_list_it_t it)
 static inline bool
 dn_list_it_begin (dn_list_it_t it)
 {
+	DN_ASSERT (it._internal._list);
 	return !(it.it == it._internal._list->head);
 }
 
@@ -184,9 +188,7 @@ dn_list_dispose (dn_list_t *list)
 static inline void **
 dn_list_front (const dn_list_t *list)
 {
-	if (DN_UNLIKELY (!list || !list->head))
-		return NULL;
-
+	DN_ASSERT (list && list->head);
 	return &(list->head->data);
 }
 
@@ -196,9 +198,7 @@ dn_list_front (const dn_list_t *list)
 static inline void **
 dn_list_back (const dn_list_t *list)
 {
-	if (DN_UNLIKELY (!list || !list->tail))
-		return NULL;
-
+	DN_ASSERT (list && list->tail);
 	return &(list->tail->data);
 }
 
@@ -208,6 +208,7 @@ dn_list_back (const dn_list_t *list)
 static inline dn_list_it_t
 dn_list_begin (dn_list_t *list)
 {
+	DN_ASSERT (list);
 	dn_list_it_t it = { list->head, { list } };
 	return it;
 }
@@ -215,6 +216,7 @@ dn_list_begin (dn_list_t *list)
 static inline dn_list_it_t
 dn_list_end (dn_list_t *list)
 {
+	DN_ASSERT (list);
 	dn_list_it_t it = { NULL, { list } };
 	return it;
 }
@@ -222,7 +224,8 @@ dn_list_end (dn_list_t *list)
 static inline bool
 dn_list_empty (const dn_list_t *list)
 {
-	return !list || list->head == NULL;
+	DN_ASSERT (list);
+	return !list->head;
 }
 
 uint32_t

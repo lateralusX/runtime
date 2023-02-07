@@ -46,6 +46,8 @@ dn_fwd_list_it_advance (
 	dn_fwd_list_it_t *it,
 	uint32_t n)
 {
+	DN_ASSERT (it);
+
 	while (n > 0 && it->it) {
 		it->it = it->it->next;
 		n--;
@@ -69,9 +71,10 @@ dn_fwd_list_it_next_n (
 }
 
 static inline void **
-dn_fwd_list_it_data (dn_fwd_list_it_t *it)
+dn_fwd_list_it_data (dn_fwd_list_it_t it)
 {
-	return &(it->it->data);
+	DN_ASSERT (it.it);
+	return &(it.it->data);
 }
 
 #define dn_fwd_list_it_data_t(it, type) \
@@ -80,6 +83,7 @@ dn_fwd_list_it_data (dn_fwd_list_it_t *it)
 static inline bool
 dn_fwd_list_it_begin (dn_fwd_list_it_t it)
 {
+	DN_ASSERT (it._internal._list);
 	return !(it.it == it._internal._list->head);
 }
 
@@ -157,9 +161,7 @@ dn_fwd_list_dispose (dn_fwd_list_t *list)
 static inline void **
 dn_fwd_list_front (const dn_fwd_list_t *list)
 {
-	if (DN_UNLIKELY (!list || !list->head))
-		return NULL;
-	
+	DN_ASSERT (list && list->head);
 	return &(list->head->data);
 }
 
@@ -169,36 +171,35 @@ dn_fwd_list_front (const dn_fwd_list_t *list)
 static inline dn_fwd_list_it_t
 dn_fwd_list_before_begin (dn_fwd_list_t *list)
 {
-	extern dn_fwd_list_node_t _fwd_list_before_begin_it_node;
+	DN_ASSERT (list);
 
-	dn_fwd_list_it_t it;
-	it._internal._list = list;
-	it.it = &_fwd_list_before_begin_it_node;
+	extern dn_fwd_list_node_t _fwd_list_before_begin_it_node;
+	dn_fwd_list_it_t it = { &_fwd_list_before_begin_it_node, { list } };
+
 	return it;
 }
 
 static inline dn_fwd_list_it_t
 dn_fwd_list_begin (dn_fwd_list_t *list)
 {
-	dn_fwd_list_it_t it;
-	it._internal._list = list;
-	it.it = list->head;
+	DN_ASSERT (list);
+	dn_fwd_list_it_t it = { list->head, { list } };
 	return it;
 }
 
 static inline dn_fwd_list_it_t
 dn_fwd_list_end (dn_fwd_list_t *list)
 {
-	dn_fwd_list_it_t it;
-	it._internal._list = list;
-	it.it = NULL;
+	DN_ASSERT (list);
+	dn_fwd_list_it_t it = { NULL, { list } };
 	return it;
 }
 
 static inline bool
 dn_fwd_list_empty (const dn_fwd_list_t *list)
 {
-	return !list || list->head == NULL;
+	DN_ASSERT (list);
+	return !list->head;
 }
 
 static inline uint32_t

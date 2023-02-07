@@ -140,8 +140,7 @@ _dn_vector_insert_range (
 	const uint8_t *elements,
 	uint32_t element_count)
 {
-	if (!elements || element_count == 0)
-		return false;
+	DN_ASSERT (elements && element_count != 0);
 
 	dn_vector_t *vector = position->_internal._vector;
 
@@ -182,8 +181,7 @@ _dn_vector_append_range (
 	const uint8_t *elements,
 	uint32_t element_count)
 {
-	if (!vector ||!elements || element_count == 0)
-		return false;
+	DN_ASSERT (vector && elements && element_count != 0);
 
 	uint64_t new_capacity = (uint64_t)vector->size + (uint64_t)element_count;
 	if (DN_UNLIKELY (new_capacity > (uint64_t)(UINT32_MAX)))
@@ -206,10 +204,11 @@ _dn_vector_erase (
 	dn_vector_it_t *position,
 	dn_vector_dispose_func_t dispose_func)
 {
+	DN_ASSERT (position && !dn_vector_it_end (*position));
+
 	dn_vector_t *vector = position->_internal._vector;
 
-	if (DN_UNLIKELY (!vector))
-		return false;
+	DN_ASSERT (vector && vector->size != 0);
 
 	uint64_t insert_offset = (uint64_t)position->it + 1;
 	int64_t size_to_move = (int64_t)vector->size - (int64_t)position->it;
@@ -237,10 +236,11 @@ _dn_vector_erase_fast (
 	dn_vector_it_t *position,
 	dn_vector_dispose_func_t dispose_func)
 {
+	DN_ASSERT (position && !dn_vector_it_end (*position));
+
 	dn_vector_t *vector = position->_internal._vector;
 
-	if (DN_UNLIKELY (!vector || vector->size == 0 || position->it > vector->size))
-		return false;
+	DN_ASSERT (vector && vector->size != 0);
 
 	if (dispose_func)
 		dispose_func (element_offset (vector, position->it));
@@ -306,18 +306,14 @@ dn_vector_reserve (
 	dn_vector_t *vector,
 	uint32_t capacity)
 {
-	if (DN_UNLIKELY (!vector))
-		return false;
-
+	DN_ASSERT (vector);
 	return ensure_capacity (vector, capacity);
 }
 
 uint32_t
 dn_vector_capacity (const dn_vector_t *vector)
 {
-	if (DN_UNLIKELY (!vector))
-		return 0;
-
+	DN_ASSERT (vector);
 	return vector->_internal._capacity;
 }
 
@@ -327,8 +323,7 @@ dn_vector_custom_resize (
 	uint32_t size,
 	dn_vector_dispose_func_t dispose_func)
 {
-	if (DN_UNLIKELY (!vector))
-		return false;
+	DN_ASSERT (vector);
 
 	if (size == vector->_internal._capacity)
 		return true;
@@ -358,8 +353,7 @@ dn_vector_for_each (
 	dn_vector_for_each_func_t for_each_func,
 	void *user_data)
 {
-	if (DN_UNLIKELY (!vector || !for_each_func))
-		return;
+	DN_ASSERT (vector && for_each_func);
 
 	for(uint32_t i = 0; i < vector->size; i++)
 		for_each_func ((void *)(element_offset (vector, i)), user_data);
@@ -370,7 +364,9 @@ dn_vector_sort (
 	dn_vector_t *vector,
 	dn_vector_compare_func_t compare_func)
 {
-	if (DN_UNLIKELY (!vector || vector->size < 2))
+	DN_ASSERT (vector);
+
+	if (DN_UNLIKELY (vector->size < 2))
 		return;
 
 	qsort ((void *)vector->data, vector->size, element_length (vector, 1), (int (DN_CALLBACK_CALLTYPE *)(const void *, const void *))compare_func);
@@ -382,16 +378,9 @@ dn_vector_find (
 	const uint8_t *value,
 	dn_vector_equal_func_t equal_func)
 {
-	dn_vector_it_t found;
-	found._internal._vector = vector;
+	DN_ASSERT (vector);
 
-	if (DN_UNLIKELY (!vector)) {
-		found.it = 0;
-		return found;
-	}
-
-	found.it = vector->size;
-
+	dn_vector_it_t found = dn_vector_end (vector);
 	for (uint32_t i = 0; i < vector->size; i++) {
 		if ((equal_func && equal_func (element_offset (vector, i), value))) {
 			found.it = i;

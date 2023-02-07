@@ -36,30 +36,35 @@ DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, advance) (DN_DEFINE_VECTOR_IT_T_NAME(nam
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, next) (DN_DEFINE_VECTOR_IT_T_NAME(name) it) \
 { \
+	DN_ASSERT ((it.it + 1) < UINT32_MAX); \
 	it.it++; \
 	return it; \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, prev) (DN_DEFINE_VECTOR_IT_T_NAME(name) it) \
 { \
+	DN_ASSERT (it.it > 0); \
 	it.it--; \
 	return it; \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, next_n) (DN_DEFINE_VECTOR_IT_T_NAME(name) it, uint32_t n) \
 { \
-	it.it -= n; \
+	DN_ASSERT ((it.it + n) < UINT32_MAX); \
+	it.it += n; \
 	return it; \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, prev_n) (DN_DEFINE_VECTOR_IT_T_NAME(name) it, uint32_t n) \
 { \
-	it.it += n; \
+	DN_ASSERT (it.it >= n); \
+	it.it -= n; \
 	return it; \
 } \
 static inline type * \
 DN_DEFINE_VECTOR_IT_T_SYMBOL_NAME(name, data) (DN_DEFINE_VECTOR_IT_T_NAME(name) it, uint32_t n) \
 { \
+	DN_ASSERT (it._internal._vector && it._internal._vector->data); \
 	return (type *)(it._internal._vector->data + n);\
 } \
 static inline DN_DEFINE_VECTOR_T_NAME(name) * \
@@ -125,37 +130,44 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, dispose) (DN_DEFINE_VECTOR_T_NAME(name) *ve
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, index) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t index) \
 { \
+	DN_ASSERT (vector); \
 	return (type*)(((vector)->data) + (index)); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, at) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t index) \
 { \
+	DN_ASSERT (vector); \
 	return (type*)(((vector)->data) + (index)); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, front) (const DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
+	DN_ASSERT (vector); \
 	return dn_vector_front_t ((dn_vector_t *)vector, type); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, back) (const DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
+	DN_ASSERT (vector); \
 	return dn_vector_back_t ((dn_vector_t *)vector, type); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, data) (const DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
+	DN_ASSERT (vector); \
 	return ((type *)(vector->data)); \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, begin) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
+	DN_ASSERT (vector); \
 	DN_DEFINE_VECTOR_IT_T_NAME(name) it = { 0, { vector } }; \
 	return it; \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, end) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
+	DN_ASSERT (vector); \
 	DN_DEFINE_VECTOR_IT_T_NAME(name) it = { vector->size, { vector } }; \
 	return it; \
 } \
@@ -249,6 +261,7 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, clear) (DN_DEFINE_VECTOR_T_NAME(name) *vect
 static inline bool \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, push_back) (DN_DEFINE_VECTOR_T_NAME(name) *vector, type element) \
 { \
+	DN_ASSERT (vector); \
 	return dn_vector_push_back ((dn_vector_t *)vector, element); \
 } \
 static inline void \

@@ -363,9 +363,6 @@ test_fwd_list_erase_after (void)
 	// Remove third.
 	dn_fwd_list_erase_after (dn_fwd_list_begin (list));
 
-	// NOP.
-	dn_fwd_list_erase_after (dn_fwd_list_end (list));
-
 	if (!list->head || !list->head->data || strcmp (list->head->data, "second") || list->head->next)
 		return FAILED ("erase_after failed #2");
 
@@ -766,7 +763,7 @@ test_fwd_list_find (void)
 
 	dn_fwd_list_it_t found = dn_fwd_list_find (list, data, NULL);
 
-	if (*dn_fwd_list_it_data_t (&found, char *) != data)
+	if (*dn_fwd_list_it_data_t (found, char *) != data)
 		return FAILED ("find failed #1");
 
 	found = dn_fwd_list_find (list, NULL, NULL);
