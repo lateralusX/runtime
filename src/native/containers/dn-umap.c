@@ -117,7 +117,7 @@ umap_do_rehash (
 	dn_umap_node_t **buckets = map->_internal._buckets;
 	uint32_t current_bucket_count = map->_internal._bucket_count;
 
-	map->_internal._buckets = dn_allocator_alloc (map->_internal._allocator, sizeof (dn_umap_node_t *) * new_bucket_count);
+	map->_internal._buckets = (dn_umap_node_t **)dn_allocator_alloc (map->_internal._allocator, sizeof (dn_umap_node_t *) * new_bucket_count);
 	if (!map->_internal._buckets)
 		return;
 
@@ -206,7 +206,7 @@ umap_insert (
 	dn_umap_t *map,
 	void *key,
 	void *value,
-	bool replace_existing)
+	bool assign)
 {
 	umap_sanity_check (map);
 
@@ -222,15 +222,15 @@ umap_insert (
 	uint32_t hashcode = map->_internal._hash_func (key) % map->_internal._bucket_count;
 	for (dn_umap_node_t *node = map->_internal._buckets [hashcode]; node; node = node->next) {
 		if (equal_func (node->key, key)) {
-			if (!replace_existing) {
+			if (!assign) {
 				result.it._internal._node = node;
 				result.it._internal._index = hashcode;
 				return result;
 			}
 
-			umap_dispose_node (map, node);
+			if (map->_internal._value_dispose_func)
+				map->_internal._value_dispose_func (node->value);
 
-			node->key = key;
 			node->value = value;
 
 			umap_sanity_check (map);
@@ -243,7 +243,7 @@ umap_insert (
 		}
 	}
 
-	dn_umap_node_t *node = dn_allocator_alloc (map->_internal._allocator, sizeof (dn_umap_node_t));
+	dn_umap_node_t *node = (dn_umap_node_t *)dn_allocator_alloc (map->_internal._allocator, sizeof (dn_umap_node_t));
 	if (node) {
 		node->key = key;
 		node->value = value;
@@ -321,7 +321,7 @@ _dn_umap_alloc (
 	dn_umap_key_dispose_func_t key_dispose_func,
 	dn_umap_value_dispose_func_t value_dispose_func)
 {
-	dn_umap_t *map = dn_allocator_alloc (allocator, sizeof (dn_umap_t));
+	dn_umap_t *map = (dn_umap_t *)dn_allocator_alloc (allocator, sizeof (dn_umap_t));
 	if (!_dn_umap_init (map, allocator, hash_func, equal_func, key_dispose_func, value_dispose_func)) {
 		dn_allocator_free (allocator, map);
 		return NULL;
@@ -362,7 +362,7 @@ _dn_umap_init (
 	map->_internal._key_dispose_func = key_dispose_func;
 	map->_internal._value_dispose_func = value_dispose_func;
 
-	map->_internal._buckets = dn_allocator_alloc (allocator, sizeof (dn_umap_node_t *) * map->_internal._bucket_count);
+	map->_internal._buckets = (dn_umap_node_t **)dn_allocator_alloc (allocator, sizeof (dn_umap_node_t *) * map->_internal._bucket_count);
 	if (map->_internal._buckets)
 		memset (map->_internal._buckets, 0, sizeof (dn_umap_node_t *) * map->_internal._bucket_count);
 

@@ -112,12 +112,12 @@ test_queue_front (void)
 	if (!queue)
 		return FAILED ("failed to alloc queue");
 
-	dn_queue_push (queue, items [0]);
+	dn_queue_push (queue, (char *)items [0]);
 
 	if (*dn_queue_front_t (queue, char *) != items [0])
 		return FAILED ("failed queue front #1");
 
-	dn_queue_push (queue, items [1]);
+	dn_queue_push (queue, (char *)items [1]);
 
 	if (*dn_queue_front_t (queue, char *) != items [0])
 		return FAILED ("failed queue front #2");
@@ -137,12 +137,12 @@ test_queue_back (void)
 	if (!queue)
 		return FAILED ("failed to alloc queue");
 
-	dn_queue_push (queue, items [0]);
+	dn_queue_push (queue, (char *)items [0]);
 
 	if (*dn_queue_back_t (queue, char *) != items [0])
 		return FAILED ("failed queue front #1");
 
-	dn_queue_push (queue, items [1]);
+	dn_queue_push (queue, (char *)items [1]);
 
 	if (*dn_queue_back_t (queue, char *) != items [1])
 		return FAILED ("failed queue front #2");
@@ -165,12 +165,12 @@ test_queue_empty (void)
 	if (!dn_queue_empty (queue))
 		return FAILED ("failed empty #1");
 
-	dn_queue_push (queue, items [0]);
+	dn_queue_push (queue, (char *)items [0]);
 
 	if (dn_queue_empty (queue))
 		return FAILED ("failed empty #2");
 
-	dn_queue_push (queue, items [1]);
+	dn_queue_push (queue, (char *)items [1]);
 
 	if (dn_queue_empty (queue))
 		return FAILED ("failed empty #3");
@@ -256,12 +256,12 @@ test_queue_clear (void)
 	if (!dn_queue_empty (queue))
 		return FAILED ("failed empty #1");
 
-	dn_queue_push (queue, items [0]);
+	dn_queue_push (queue, (char *)items [0]);
 
 	if (dn_queue_empty (queue))
 		return FAILED ("failed empty #2");
 
-	dn_queue_push (queue, items [1]);
+	dn_queue_push (queue, (char *)items [1]);
 
 	dn_queue_clear (queue);
 

@@ -318,7 +318,7 @@ dn_fwd_list_custom_remove (
 void
 dn_fwd_list_custom_remove_if (
 	dn_fwd_list_t *list,
-	void *data,
+	const void *data,
 	dn_fwd_list_equal_func_t equal_func,
 	dn_fwd_list_dispose_func_t dispose_func)
 {

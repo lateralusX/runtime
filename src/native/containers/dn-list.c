@@ -368,7 +368,7 @@ dn_list_custom_remove (
 void
 dn_list_custom_remove_if (
 	dn_list_t *list,
-	void * data,
+	const void * data,
 	dn_list_equal_func_t equal_func,
 	dn_list_dispose_func_t dispose_func)
 {

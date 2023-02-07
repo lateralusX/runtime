@@ -45,7 +45,7 @@ ptr_vector_alloc_and_fill (uint32_t *item_count)
 	int32_t i;
 
 	for(i = 0; items [i] != NULL; i++) {
-		dn_ptr_vector_push_back (vector, (void *)items [i]);
+		dn_ptr_vector_push_back (vector, (char *)items [i]);
 	}
 
 	if (item_count != NULL) {
@@ -124,7 +124,7 @@ test_ptr_vector_alloc_capacity (void)
 
 	void **data = dn_ptr_vector_data (vector);
 	for (int32_t i = 0; i < ARRAY_SIZE (items); ++i) {
-		dn_ptr_vector_push_back (vector, (void *)items [i]);
+		dn_ptr_vector_push_back (vector, (char *)items [i]);
 		if (dn_ptr_vector_data (vector) != data)
 			return FAILED ("vector pre-alloc failed");
 	}
@@ -202,8 +202,8 @@ test_ptr_vector_resize (void)
 	dn_ptr_vector_t *vector= dn_ptr_vector_alloc ();
 	uint32_t i, grow_length = 50;
 
-	dn_ptr_vector_push_back (vector, (void *)items [0]);
-	dn_ptr_vector_push_back (vector, (void *)items [1]);
+	dn_ptr_vector_push_back (vector, (char *)items [0]);
+	dn_ptr_vector_push_back (vector, (char *)items [1]);
 	dn_ptr_vector_resize (vector, grow_length);
 
 	if (vector->size != grow_length) {
@@ -329,7 +329,7 @@ test_ptr_vector_capacity (void)
 
 	capacity = dn_ptr_vector_capacity (vector);
 	for (int32_t i = 0; i < ARRAY_SIZE (items); ++i)
-		dn_ptr_vector_push_back (vector, (void *)items [i]);
+		dn_ptr_vector_push_back (vector, (char *)items [i]);
 
 	if (dn_ptr_vector_capacity (vector) != capacity)
 		return FAILED ("invalid vector capacity #6");
@@ -582,7 +582,7 @@ test_ptr_vector_default_local_alloc (void)
 
 	for (uint32_t i = 0; i < init_capacity; ++i) {
 		for (uint32_t j = 0; j < ARRAY_SIZE (items); ++j) {
-			if (!dn_ptr_vector_push_back (vector, (void *)items [j]))
+			if (!dn_ptr_vector_push_back (vector, (char *)items [j]))
 				return FAILED ("failed vector push_back using custom alloc");
 		}
 	}
@@ -625,7 +625,7 @@ test_ptr_vector_local_alloc (void)
 
 	// All should fit in fixed allocator.
 	for (uint32_t i = 0; i < ARRAY_SIZE (items); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i]))
 			return FAILED ("failed vector push_back using custom alloc #1");
 	}
 
@@ -634,7 +634,7 @@ test_ptr_vector_local_alloc (void)
 
 	// Make sure we run out of fixed allocator memory, should switch to dynamic allocator.
 	for (uint32_t i = 0; i < ARRAY_SIZE (buffer); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc #2");
 	}
 
@@ -670,7 +670,7 @@ test_ptr_vector_local_alloc_capacity (void)
 
 	// Add pre-allocated amount of items, should fit into fixed buffer.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
 	}
 
@@ -703,19 +703,19 @@ test_ptr_vector_fixed_alloc_capacity (void)
 
 	// Add pre-allocated amount of items, should fit into fixed buffer.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
 	}
 
 	// Adding one more should hit OOM.
-	if (dn_ptr_vector_push_back (vector, (void *)items [0]))
+	if (dn_ptr_vector_push_back (vector, (char *)items [0]))
 		return FAILED ("vector push_back failed to triggered OOM");
 
 	// Make room for on more item.
 	dn_ptr_vector_pop_back (vector);
 
 	// Adding one more should not hit OOM.
-	if (!dn_ptr_vector_push_back (vector, (void *)items [0]))
+	if (!dn_ptr_vector_push_back (vector, (char *)items [0]))
 		return FAILED ("vector push_back triggered OOM");
 
 	dn_ptr_vector_free (vector);
@@ -740,7 +740,7 @@ test_ptr_vector_fixed_or_malloc_alloc_capacity (void)
 
 	// Add pre-allocated amount of items, should fit into fixed allocator.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc #1");
 	}
 
@@ -749,7 +749,7 @@ test_ptr_vector_fixed_or_malloc_alloc_capacity (void)
 		return FAILED ("custom alloc using fixed allocator failed");
 
 	// Adding one more should not hit OOM.
-	if (!dn_ptr_vector_push_back (vector, (void *)items [0]))
+	if (!dn_ptr_vector_push_back (vector, (char *)items [0]))
 		return FAILED ("failed vector push_back using custom alloc #2");
 
 	if (dn_ptr_vector_capacity (vector) <= init_capacity)
@@ -768,7 +768,7 @@ test_ptr_vector_fixed_or_malloc_alloc_capacity (void)
 		return FAILED ("unexpected switch to fixed allocator");
 
 	// Adding one more should not hit OOM.
-	if (!dn_ptr_vector_push_back (vector, (void *)items [0]))
+	if (!dn_ptr_vector_push_back (vector, (char *)items [0]))
 		return FAILED ("failed vector push_back using custom alloc #3");
 
 	if (dn_ptr_vector_capacity (vector) < init_capacity)
@@ -796,12 +796,12 @@ test_ptr_vector_fixed_reset_alloc_capacity (void)
 
 	// Add pre-allocated amount of items, should fit into fixed allocator.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
 	}
 
 	// Adding one more should hit OOM.
-	if (dn_ptr_vector_push_back (vector, (void *)items [0]))
+	if (dn_ptr_vector_push_back (vector, (char *)items [0]))
 		return FAILED ("vector push_back failed to triggered OOM");
 
 	dn_ptr_vector_free (vector);
@@ -816,7 +816,7 @@ test_ptr_vector_fixed_reset_alloc_capacity (void)
 
 	// Add pre-allocated amount of items, should fit into fixed buffer.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc");
 	}
 
@@ -842,12 +842,12 @@ test_ptr_vector_fixed_or_malloc_reset_alloc_capacity (void)
 
 	// Add pre-allocated amount of items, should fit into fixed allocator.
 	for (uint32_t i = 0; i < dn_ptr_vector_capacity (vector); ++i) {
-		if (!dn_ptr_vector_push_back (vector, (void *)items [i % ARRAY_SIZE (items)]))
+		if (!dn_ptr_vector_push_back (vector, (char *)items [i % ARRAY_SIZE (items)]))
 			return FAILED ("failed vector push_back using custom alloc #1");
 	}
 
 	// Adding one more should not hit OOM but switch to dynamic allocator.
-	if (!dn_ptr_vector_push_back (vector, (void *)items [0]))
+	if (!dn_ptr_vector_push_back (vector, (char *)items [0]))
 		return FAILED ("failed vector push_back using custom alloc #2");
 
 	// Validate use of dynamic allocator.

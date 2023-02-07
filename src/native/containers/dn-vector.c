@@ -170,7 +170,7 @@ _dn_vector_insert_range (
 	// Overflow already checked.
 	vector->size += element_count;
 
-	position->it = insert_offset;
+	position->it = (uint32_t)insert_offset;
 
 	return true;
 }

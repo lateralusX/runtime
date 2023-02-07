@@ -50,7 +50,7 @@ dn_vector_it_advance (
 	ptrdiff_t n)
 {
 	DN_ASSERT (it && ((it->it + n) < UINT32_MAX));
-	it->it = it->it + n;
+	it->it = it->it + (int32_t)n;
 }
 
 static inline dn_vector_it_t
