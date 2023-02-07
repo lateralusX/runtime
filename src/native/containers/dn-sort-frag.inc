@@ -1,8 +1,4 @@
-/*
- * dn-sort-frag.inc: Common implementation of linked-list sorting
- *
- * Author:
- *   Raja R Harinath (rharinath@novell.com)
+/* (C) 2006 Novell, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,8 +18,6 @@
  * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * (C) 2006 Novell, Inc.
  */
 
 /*
@@ -50,14 +44,14 @@ typedef list_node *digit;
 struct sort_info
 {
 	int32_t min_rank, n_ranks;
-	dn_compare_func_t func;
+	compare_func_t func;
 
 	/* Invariant: ranks[i] == NULL || length(ranks[i]) >= 2**(i+1) */
 	list_node *ranks [MAX_RANKS]; /* ~ 128 bytes on 32bit, ~ 512 bytes on 64bit */
 };
 
 static inline void
-init_sort_info (struct sort_info *si, dn_compare_func_t func)
+init_sort_info (struct sort_info *si, compare_func_t func)
 {
 	si->min_rank = si->n_ranks = 0;
 	si->func = func;
@@ -65,7 +59,7 @@ init_sort_info (struct sort_info *si, dn_compare_func_t func)
 }
 
 static inline list_node *
-merge_lists (list_node *first, list_node *second, dn_compare_func_t func)
+merge_lists (list_node *first, list_node *second, compare_func_t func)
 {
 	/* merge the two lists */
 	list_node *list = NULL;
@@ -181,7 +175,7 @@ insert_list (struct sort_info *si, list_node* list, int32_t rank)
 
 /* A non-recursive mergesort */
 static inline digit
-do_sort (list_node* list, dn_compare_func_t func)
+do_sort (list_node* list, compare_func_t func)
 {
 	struct sort_info si;
 

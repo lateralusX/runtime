@@ -547,7 +547,7 @@ test_fwd_list_remove (void)
 static
 bool
 DN_CALLBACK_CALLTYPE
-fwd_remove_func (const void *data, const void *user_data)
+fwd_remove_if_func (const void *data, const void *user_data)
 {
 	return !strcmp ((const char *)data, (const char *)user_data);
 }
@@ -571,7 +571,7 @@ test_fwd_list_remove_if (void)
 	dn_fwd_list_insert_after (dn_fwd_list_end (list), items [3]);
 
 	// Remove all "second"
-	dn_fwd_list_remove_if (list, fwd_remove_func, items [1]);
+	dn_fwd_list_remove_if (list, items [1], fwd_remove_if_func);
 
 	DN_FWD_LIST_FOREACH_BEGIN (list, char *, item) {
 		if (!strcmp (item, items [1]))
@@ -579,7 +579,7 @@ test_fwd_list_remove_if (void)
 	} DN_FWD_LIST_FOREACH_END;
 
 	// Remove all "first"
-	dn_fwd_list_remove_if (list, fwd_remove_func, items [0]);
+	dn_fwd_list_remove_if (list, items [0], fwd_remove_if_func);
 
 	DN_FWD_LIST_FOREACH_BEGIN (list, char *, item) {
 		if (!strcmp (item, items [0]))
@@ -587,7 +587,7 @@ test_fwd_list_remove_if (void)
 	} DN_FWD_LIST_FOREACH_END;
 
 	// Remove all "fourth"
-	dn_fwd_list_remove_if (list, fwd_remove_func, items [3]);
+	dn_fwd_list_remove_if (list, items [3], fwd_remove_if_func);
 
 	DN_FWD_LIST_FOREACH_BEGIN (list, char *, item) {
 		if (!strcmp (item, items [3]))
@@ -595,7 +595,7 @@ test_fwd_list_remove_if (void)
 	} DN_FWD_LIST_FOREACH_END;
 
 	// "fourth" already removed.
-	dn_fwd_list_remove_if (list, fwd_remove_func, items [3]);
+	dn_fwd_list_remove_if (list, items [3], fwd_remove_if_func);
 
 	// Validate that only "third" is left.
 	DN_FWD_LIST_FOREACH_BEGIN (list, char *, item) {

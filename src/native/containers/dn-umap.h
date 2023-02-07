@@ -1,9 +1,17 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-#ifndef __DN_UMAP_EX_H__
-#define __DN_UMAP_EX_H__
+#ifndef __DN_UMAP_H__
+#define __DN_UMAP_H__
 
 #include "dn-utils.h"
 #include "dn-allocator.h"
+
+typedef uint32_t (DN_CALLBACK_CALLTYPE *dn_umap_hash_func_t) (const void *key);
+typedef bool (DN_CALLBACK_CALLTYPE *dn_umap_equal_func_t) (const void *a, const void *b);
+typedef void (DN_CALLBACK_CALLTYPE *dn_umap_key_dispose_func_t) (void *key);
+typedef void (DN_CALLBACK_CALLTYPE *dn_umap_value_dispose_func_t) (void *value);
+typedef void (DN_CALLBACK_CALLTYPE *dn_umap_key_value_func_t) (void *key, void *value, void *user_data);
 
 typedef struct _dn_umap_node_t dn_umap_node_t;
 struct _dn_umap_node_t {
@@ -16,10 +24,10 @@ typedef struct _dn_umap_t dn_umap_t;
 struct _dn_umap_t {
 	struct {
 		dn_umap_node_t **_buckets;
-		dn_hash_func_t _hash_func;
-		dn_equal_func_t _key_equal_func;
-		dn_func_t _value_dispose_func;
-		dn_func_t _key_dispose_func;
+		dn_umap_hash_func_t _hash_func;
+		dn_umap_equal_func_t _key_equal_func;
+		dn_umap_key_dispose_func_t _key_dispose_func;
+		dn_umap_value_dispose_func_t _value_dispose_func;
 		dn_allocator_t *_allocator;
 		uint32_t _bucket_count;
 		uint32_t _node_count;
@@ -43,6 +51,23 @@ struct _dn_umap_result_t {
 	bool result;
 	dn_umap_it_t it;
 };
+
+dn_umap_t *
+_dn_umap_alloc (
+	dn_allocator_t *allocator,
+	dn_umap_hash_func_t hash_func,
+	dn_umap_equal_func_t equal_func,
+	dn_umap_key_dispose_func_t key_dispose_func,
+	dn_umap_value_dispose_func_t value_dispose_func);
+
+bool
+_dn_umap_init (
+	dn_umap_t *map,
+	dn_allocator_t *allocator,
+	dn_umap_hash_func_t hash_func,
+	dn_umap_equal_func_t equal_func,
+	dn_umap_key_dispose_func_t key_dispose_func,
+	dn_umap_value_dispose_func_t value_dispose_func);
 
 dn_umap_it_t
 _dn_umap_begin (dn_umap_t *map);
@@ -113,30 +138,13 @@ dn_umap_it_end (dn_umap_it_t it)
 		} \
 	} while (0)
 
-dn_umap_t *
-_dn_umap_alloc (
-	dn_allocator_t *allocator,
-	dn_hash_func_t hash_func,
-	dn_equal_func_t equal_func,
-	dn_func_t key_dispose_func,
-	dn_func_t value_dispose_func);
-
-bool
-_dn_umap_init (
-	dn_umap_t *map,
-	dn_allocator_t *allocator,
-	dn_hash_func_t hash_func,
-	dn_equal_func_t equal_func,
-	dn_func_t key_dispose_func,
-	dn_func_t value_dispose_func);
-
 static inline dn_umap_t *
 dn_umap_custom_alloc (
 	dn_allocator_t *allocator,
-	dn_hash_func_t hash_func,
-	dn_equal_func_t equal_func,
-	dn_func_t key_dispose_func,
-	dn_func_t value_dispose_func)
+	dn_umap_hash_func_t hash_func,
+	dn_umap_equal_func_t equal_func,
+	dn_umap_key_dispose_func_t key_dispose_func,
+	dn_umap_value_dispose_func_t value_dispose_func)
 {
 	return _dn_umap_alloc (allocator, hash_func, equal_func, key_dispose_func, value_dispose_func);
 }
@@ -154,10 +162,10 @@ static inline bool
 dn_umap_custom_init (
 	dn_umap_t *map,
 	dn_allocator_t *allocator,
-	dn_hash_func_t hash_func,
-	dn_equal_func_t equal_func,
-	dn_func_t key_dispose_func,
-	dn_func_t value_dispose_func)
+	dn_umap_hash_func_t hash_func,
+	dn_umap_equal_func_t equal_func,
+	dn_umap_key_dispose_func_t key_dispose_func,
+	dn_umap_value_dispose_func_t value_dispose_func)
 {
 	return _dn_umap_init (map, allocator, hash_func, equal_func, key_dispose_func, value_dispose_func);
 }
@@ -239,7 +247,7 @@ dn_umap_it_t
 dn_umap_custom_find (
 	dn_umap_t *map,
 	const void *key,
-	dn_equal_func_t func);
+	dn_umap_equal_func_t equal_func);
 
 static inline dn_umap_it_t
 dn_umap_find (
@@ -264,7 +272,7 @@ dn_umap_contains (
 void
 dn_umap_for_each (
 	dn_umap_t *map,
-	dn_key_value_func_t func,
+	dn_umap_key_value_func_t for_each_func,
 	void *data);
 
 void
@@ -295,56 +303,4 @@ dn_str_equal (const void *v1, const void *v2);
 uint32_t
 dn_str_hash (const void *v1);
 
-#define DN_UMAP_IT_KEY_T(key_type_name, key_type) \
-_DN_STATIC_ASSERT(sizeof(key_type) <= sizeof(uintptr_t)); \
-static inline key_type \
-dn_umap_it_key_ ## key_type_name (dn_umap_it_t it) \
-{ \
-	return (key_type)(uintptr_t)(it._internal._node->key); \
-}
-
-#define DN_UMAP_IT_VALUE_T(value_type_name, value_type) \
-_DN_STATIC_ASSERT(sizeof(value_type) <= sizeof(uintptr_t)); \
-static inline value_type \
-dn_umap_it_value_ ## value_type_name (dn_umap_it_t it) \
-{ \
-	return (value_type)(uintptr_t)(it._internal._node->value); \
-}
-
-#define DN_UMAP_T(key_type_name, key_type, value_type_name, value_type) \
-_DN_STATIC_ASSERT(sizeof(key_type) <= sizeof(uintptr_t) && sizeof(value_type) <= sizeof(uintptr_t)); \
-static inline dn_umap_result_t \
-dn_umap_ ## key_type_name ## _ ## value_type_name ## _insert (dn_umap_t *map, key_type key, value_type value) \
-{ \
-	return dn_umap_insert (map, ((void *)(uintptr_t)key), ((void *)(uintptr_t)value)); \
-} \
-static inline dn_umap_result_t \
-dn_umap_ ## key_type_name ## _ ## value_type_name ## _insert_or_assign (dn_umap_t *map, key_type key, value_type value) \
-{ \
-	return dn_umap_insert_or_assign (map, ((void *)(uintptr_t)key), ((void *)(uintptr_t)value)); \
-} \
-static inline dn_umap_it_t \
-dn_umap_ ## key_type_name ## _ ## value_type_name ## _find (dn_umap_t *map, key_type key) \
-{ \
-	return dn_umap_find (map, ((const void *)(uintptr_t)key)); \
-}
-
-DN_UMAP_IT_KEY_T (ptr, void *)
-
-DN_UMAP_IT_VALUE_T (bool, bool)
-DN_UMAP_IT_VALUE_T (int8_t, int8_t)
-DN_UMAP_IT_VALUE_T (uint8_t, uint8_t)
-DN_UMAP_IT_VALUE_T (int16_t, int16_t)
-DN_UMAP_IT_VALUE_T (uint16_t, uint16_t)
-DN_UMAP_IT_VALUE_T (int32_t, int32_t)
-DN_UMAP_IT_VALUE_T (uint32_t, uint32_t)
-
-DN_UMAP_T (ptr, void *, bool, bool)
-DN_UMAP_T (ptr, void *, int8, int8_t)
-DN_UMAP_T (ptr, void *, uint8, uint8_t)
-DN_UMAP_T (ptr, void *, int16, int16_t)
-DN_UMAP_T (ptr, void *, uint16, uint16_t)
-DN_UMAP_T (ptr, void *, int32, int32_t)
-DN_UMAP_T (ptr, void *, uint32, uint32_t)
-
-#endif /* __DN_UMAP_EX_H__ */
+#endif /* __DN_UMAP_H__ */

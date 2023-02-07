@@ -1,6 +1,28 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+/* (C) 2006 Novell, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #include "dn-vector.h"
 
 #define INITIAL_CAPACITY 16
@@ -182,7 +204,7 @@ _dn_vector_append_range (
 bool
 _dn_vector_erase (
 	dn_vector_it_t *position,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
 	dn_vector_t *vector = position->_internal._vector;
 
@@ -194,8 +216,8 @@ _dn_vector_erase (
 	if (DN_UNLIKELY (insert_offset > vector->_internal._capacity || size_to_move < 0))
 		return false;
 
-	if (func)
-		func (element_offset (vector, position->it));
+	if (dispose_func)
+		dispose_func (element_offset (vector, position->it));
 
 	/* element_offset won't overflow since insert_offset and position is smaller than current capacity */
 	/* element_length won't overflow since size_to_move is smaller than current capacity */
@@ -213,15 +235,15 @@ _dn_vector_erase (
 bool
 _dn_vector_erase_fast (
 	dn_vector_it_t *position,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
 	dn_vector_t *vector = position->_internal._vector;
 
 	if (DN_UNLIKELY (!vector || vector->size == 0 || position->it > vector->size))
 		return false;
 
-	if (func)
-		func (element_offset (vector, position->it));
+	if (dispose_func)
+		dispose_func (element_offset (vector, position->it));
 
 	/* element_offset won't overflow since position is smaller than current capacity */
 	/* element_offset won't overflow since vector->size - 1 is smaller than current capacity */
@@ -257,23 +279,23 @@ _dn_vector_buffer_capacity (
 void
 dn_vector_custom_free (
 	dn_vector_t *vector,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
-	dn_vector_custom_dispose (vector, func);
+	dn_vector_custom_dispose (vector, dispose_func);
 	dn_allocator_free (vector->_internal._allocator, vector);
 }
 
 void
 dn_vector_custom_dispose (
 	dn_vector_t *vector,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!vector))
 		return;
 
-	if (func) {
+	if (dispose_func) {
 		for(uint32_t i = 0; i < vector->size; i++)
-			func ((void *)(element_offset (vector, i)));
+			dispose_func ((void *)(element_offset (vector, i)));
 	}
 
 	dn_allocator_free (vector->_internal._allocator, vector->data);
@@ -303,10 +325,8 @@ bool
 dn_vector_custom_resize (
 	dn_vector_t *vector,
 	uint32_t size,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
-	DN_UNREFERENCED_PARAMETER (func);
-
 	if (DN_UNLIKELY (!vector))
 		return false;
 
@@ -318,9 +338,9 @@ dn_vector_custom_resize (
 			return false;
 	
 	if (size < vector->size) {
-		if (func) {
+		if (dispose_func) {
 			for (uint32_t i = size; i < vector->size; i++)
-				func (element_offset (vector, i));
+				dispose_func (element_offset (vector, i));
 		}
 
 		if (check_attribute (vector, DN_VECTOR_ATTRIBUTE_INIT_MEMORY))
@@ -335,32 +355,32 @@ dn_vector_custom_resize (
 void
 dn_vector_for_each (
 	const dn_vector_t *vector,
-	dn_func_data_t func,
-	void *data)
+	dn_vector_for_each_func_t for_each_func,
+	void *user_data)
 {
-	if (DN_UNLIKELY (!vector || !func))
+	if (DN_UNLIKELY (!vector || !for_each_func))
 		return;
 
 	for(uint32_t i = 0; i < vector->size; i++)
-		func ((void *)(element_offset (vector, i)), data);
+		for_each_func ((void *)(element_offset (vector, i)), user_data);
 }
 
 void
 dn_vector_sort (
 	dn_vector_t *vector,
-	dn_compare_func_t func)
+	dn_vector_compare_func_t compare_func)
 {
 	if (DN_UNLIKELY (!vector || vector->size < 2))
 		return;
 
-	qsort ((void *)vector->data, vector->size, element_length (vector, 1), (int (DN_CALLBACK_CALLTYPE *)(const void *, const void *))func);
+	qsort ((void *)vector->data, vector->size, element_length (vector, 1), (int (DN_CALLBACK_CALLTYPE *)(const void *, const void *))compare_func);
 }
 
 dn_vector_it_t
 dn_vector_find (
 	dn_vector_t *vector,
 	const uint8_t *value,
-	dn_equal_func_t func)
+	dn_vector_equal_func_t equal_func)
 {
 	dn_vector_it_t found;
 	found._internal._vector = vector;
@@ -373,7 +393,7 @@ dn_vector_find (
 	found.it = vector->size;
 
 	for (uint32_t i = 0; i < vector->size; i++) {
-		if ((func && func (element_offset (vector, i), value))) {
+		if ((equal_func && equal_func (element_offset (vector, i), value))) {
 			found.it = i;
 			break;
 		} else if (!memcmp (element_offset (vector, i), value, element_length (vector, 1))) {

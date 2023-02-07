@@ -1,13 +1,14 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 #ifndef __DN_QUEUE_H__
 #define __DN_QUEUE_H__
 
-#include "dn-utils.h"
-#include "dn-allocator.h"
 #include "dn-list.h"
 
-typedef struct _dn_queue_t dn_queue_t;
+typedef void (DN_CALLBACK_CALLTYPE *dn_queue_dispose_func_t) (void *data);
 
+typedef struct _dn_queue_t dn_queue_t;
 struct _dn_queue_t {
 	uint32_t size;
 	struct {
@@ -38,7 +39,7 @@ dn_queue_alloc (void)
 void
 dn_queue_custom_free (
 	dn_queue_t *queue,
-	dn_func_t func);
+	dn_queue_dispose_func_t dispose_func);
 
 static inline void
 dn_queue_free (dn_queue_t *queue)
@@ -63,7 +64,7 @@ dn_queue_init (dn_queue_t *queue)
 void
 dn_queue_custom_dispose (
 	dn_queue_t *queue,
-	dn_func_t func);
+	dn_queue_dispose_func_t dispose_func);
 
 static inline void
 dn_queue_dispose (dn_queue_t *queue)
@@ -135,10 +136,10 @@ dn_queue_pop (dn_queue_t *queue)
 static inline void
 dn_queue_custom_clear (
 	dn_queue_t *queue,
-	dn_func_t func)
+	dn_queue_dispose_func_t dispose_func)
 {
 	if (queue) {
-		dn_list_custom_clear (&queue->_internal.list, func);
+		dn_list_custom_clear (&queue->_internal.list, dispose_func);
 		queue->size = 0;
 	}
 }

@@ -1,9 +1,16 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 #ifndef __DN_FWD_LIST_H__
 #define __DN_FWD_LIST_H__
 
 #include "dn-utils.h"
 #include "dn-allocator.h"
+
+typedef int32_t (DN_CALLBACK_CALLTYPE *dn_fwd_list_compare_func_t) (const void *a, const void *b);
+typedef bool (DN_CALLBACK_CALLTYPE *dn_fwd_list_equal_func_t) (const void *a, const void *b);
+typedef void (DN_CALLBACK_CALLTYPE *dn_fwd_list_for_each_func_t) (void *data, void *user_data);
+typedef void (DN_CALLBACK_CALLTYPE *dn_fwd_list_dispose_func_t) (void *data);
 
 typedef struct _dn_fwd_list_node_t dn_fwd_list_node_t;
 struct _dn_fwd_list_node_t {
@@ -114,7 +121,7 @@ dn_fwd_list_alloc (void)
 void
 dn_fwd_list_custom_free (
 	dn_fwd_list_t *list,
-	dn_func_t func);
+	dn_fwd_list_dispose_func_t dispose_func);
 
 static inline void
 dn_fwd_list_free (dn_fwd_list_t *list)
@@ -139,7 +146,7 @@ dn_fwd_list_init (dn_fwd_list_t *list)
 void
 dn_fwd_list_custom_dispose (
 	dn_fwd_list_t *list,
-	dn_func_t func);
+	dn_fwd_list_dispose_func_t dispose_func);
 
 static inline void
 dn_fwd_list_dispose (dn_fwd_list_t *list)
@@ -204,7 +211,7 @@ dn_fwd_list_max_size (const dn_fwd_list_t *list)
 void
 dn_fwd_list_custom_clear (
 	dn_fwd_list_t *list,
-	dn_func_t func);
+	dn_fwd_list_dispose_func_t dispose_func);
 
 static inline void
 dn_fwd_list_clear (dn_fwd_list_t *list)
@@ -226,7 +233,7 @@ dn_fwd_list_insert_range_after (
 dn_fwd_list_it_t
 dn_fwd_list_custom_erase_after (
 	dn_fwd_list_it_t position,
-	dn_func_t func);
+	dn_fwd_list_dispose_func_t dispose_func);
 
 static inline dn_fwd_list_it_t
 dn_fwd_list_erase_after (dn_fwd_list_it_t position)
@@ -246,7 +253,7 @@ bool
 dn_fwd_list_custom_resize (
 	dn_fwd_list_t *list,
 	uint32_t count,
-	dn_func_t func);
+	dn_fwd_list_dispose_func_t dispose_func);
 
 static inline bool
 dn_fwd_list_resize (
@@ -260,7 +267,7 @@ void
 dn_fwd_list_custom_remove (
 	dn_fwd_list_t *list,
 	const void *data,
-	dn_func_t func);
+	dn_fwd_list_dispose_func_t disopse_func);
 
 static inline void
 dn_fwd_list_remove (
@@ -273,17 +280,17 @@ dn_fwd_list_remove (
 void
 dn_fwd_list_custom_remove_if (
 	dn_fwd_list_t *list,
-	dn_predicate_func_t predicate,
 	void *data,
-	dn_func_t func);
+	dn_fwd_list_equal_func_t equal_func,
+	dn_fwd_list_dispose_func_t dispose_func);
 
 static inline void
 dn_fwd_list_remove_if (
 	dn_fwd_list_t *list,
-	dn_predicate_func_t predicate,
-	void *data)
+	void *data,
+	dn_fwd_list_equal_func_t equal_func)
 {
-	dn_fwd_list_custom_remove_if (list, predicate, data, NULL);
+	dn_fwd_list_custom_remove_if (list, data, equal_func, NULL);
 }
 
 void
@@ -292,18 +299,18 @@ dn_fwd_list_reverse (dn_fwd_list_t *list);
 void
 dn_fwd_list_for_each (
 	dn_fwd_list_t *list,
-	dn_func_data_t func,
-	void *data);
+	dn_fwd_list_for_each_func_t for_each_func,
+	void *user_data);
 
 void
 dn_fwd_list_sort (
 	dn_fwd_list_t *list,
-	dn_compare_func_t func);
+	dn_fwd_list_compare_func_t compare_func);
 
 dn_fwd_list_it_t
 dn_fwd_list_find (
 	dn_fwd_list_t *list,
 	const void *data,
-	dn_equal_func_t func);
+	dn_fwd_list_equal_func_t equal_func);
 
 #endif /* __DN_FWD_LIST_H__ */

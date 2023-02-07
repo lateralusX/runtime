@@ -1,3 +1,28 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+/* (C) 2006 Novell, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #include "dn-list.h"
 
 static dn_list_node_t *
@@ -64,11 +89,11 @@ list_free_node (
 static void
 list_dispose_node (
 	dn_allocator_t *allocator,
-	dn_func_t func,
+	dn_list_dispose_func_t dispose_func,
 	dn_list_node_t *node)
 {
-	if (node && func)
-		func (node->data);
+	if (node && dispose_func)
+		dispose_func (node->data);
 	list_free_node (allocator, node);
 }
 
@@ -101,10 +126,10 @@ _dn_list_init (
 void
 dn_list_custom_free (
 	dn_list_t *list,
-	dn_func_t func)
+	dn_list_dispose_func_t dispose_func)
 {
 	if (list) {
-		dn_list_custom_dispose (list, func);
+		dn_list_custom_dispose (list, dispose_func);
 		dn_allocator_free (list->_internal._allocator, list);
 	}
 }
@@ -112,7 +137,7 @@ dn_list_custom_free (
 void
 dn_list_custom_dispose (
 	dn_list_t *list,
-	dn_func_t func)
+	dn_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return;
@@ -120,7 +145,7 @@ dn_list_custom_dispose (
 	dn_list_node_t *current = list->head;
 	while (current) {
 		dn_list_node_t *next = current->next;
-		list_dispose_node (list->_internal._allocator, func, current);
+		list_dispose_node (list->_internal._allocator, dispose_func, current);
 		current = next;
 	}
 }
@@ -145,12 +170,12 @@ dn_list_size (const dn_list_t *list)
 void
 dn_list_custom_clear (
 	dn_list_t *list,
-	dn_func_t func)
+	dn_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return;
 
-	dn_list_custom_dispose (list, func);
+	dn_list_custom_dispose (list, dispose_func);
 
 	list->head = NULL;
 	list->tail = NULL;
@@ -206,7 +231,7 @@ dn_list_insert_range (
 dn_list_it_t
 dn_list_custom_erase (
 	dn_list_it_t position,
-	dn_func_t func)
+	dn_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!position.it))
 		return position;
@@ -214,19 +239,19 @@ dn_list_custom_erase (
 	dn_list_t *list = position._internal._list;
 
 	if (position.it == list->head) {
-		if (func)
-			func (*dn_list_front (list));
+		if (dispose_func)
+			dispose_func (*dn_list_front (list));
 		dn_list_pop_front (list);
 		position.it = list->head;
 	} else if (position.it == list->tail) {
-		if (func)
-			func (*dn_list_back (list));
+		if (dispose_func)
+			dispose_func (*dn_list_back (list));
 		dn_list_pop_back (list);
 		position.it = NULL;
 	} else if (position.it) {
 		dn_list_node_t *to_remove = position.it;
 		position.it = position.it->next;
-		list_dispose_node (list->_internal._allocator, func, list_unlink_node (to_remove));
+		list_dispose_node (list->_internal._allocator, dispose_func, list_unlink_node (to_remove));
 	}
 
 	return position;
@@ -286,13 +311,13 @@ bool
 dn_list_custom_resize (
 	dn_list_t *list,
 	uint32_t count,
-	dn_func_t func)
+	dn_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return false;
 
 	if (count == 0) {
-		dn_list_custom_clear (list, func);
+		dn_list_custom_clear (list, dispose_func);
 		return true;
 	}
 
@@ -304,7 +329,7 @@ dn_list_custom_resize (
 			dn_list_node_t *to_dispose = current->next;
 			while (to_dispose) {
 				dn_list_node_t *next = to_dispose->next;
-				list_dispose_node (list->_internal._allocator, func, list_unlink_node (to_dispose));
+				list_dispose_node (list->_internal._allocator, dispose_func, list_unlink_node (to_dispose));
 				to_dispose = next;
 			}
 			list->tail = current;
@@ -323,7 +348,7 @@ void
 dn_list_custom_remove (
 	dn_list_t *list,
 	const void *data,
-	dn_func_t func)
+	dn_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!list))
 		return;
@@ -338,7 +363,7 @@ dn_list_custom_remove (
 				list->head = next;
 			if (current == list->tail)
 				list->tail = current->prev;
-			list_dispose_node (list->_internal._allocator, func, list_unlink_node (current));
+			list_dispose_node (list->_internal._allocator, dispose_func, list_unlink_node (current));
 		}
 		current = next;
 	}
@@ -347,9 +372,9 @@ dn_list_custom_remove (
 void
 dn_list_custom_remove_if (
 	dn_list_t *list,
-	dn_predicate_func_t predicate,
 	void * data,
-	dn_func_t func)
+	dn_list_equal_func_t equal_func,
+	dn_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!list))
 		return;
@@ -359,12 +384,12 @@ dn_list_custom_remove_if (
 
 	while (current) {
 		next = current->next;
-		if (!predicate || predicate (current->data, data)) {
+		if (!equal_func || equal_func (current->data, data)) {
 			if (current == list->head)
 				list->head = next;
 			if (current == list->tail)
 				list->tail = current->prev;
-			list_dispose_node (list->_internal._allocator, func, list_unlink_node (current));
+			list_dispose_node (list->_internal._allocator, dispose_func, list_unlink_node (current));
 		}
 		current = next;
 	}
@@ -394,23 +419,24 @@ dn_list_reverse (dn_list_t *list)
 void
 dn_list_for_each (
 	dn_list_t *list,
-	dn_func_data_t func,
-	void *data)
+	dn_list_for_each_func_t for_each_func,
+	void *user_data)
 {
-	if (DN_UNLIKELY (!list || !func))
+	if (DN_UNLIKELY (!list || !for_each_func))
 		return;
 
 	for (dn_list_node_t *it = list->head; it; it = it->next)
-		func (it->data, data);
+		for_each_func (it->data, user_data);
 }
 
 typedef dn_list_node_t list_node;
+typedef dn_list_compare_func_t compare_func_t;
 #include "dn-sort-frag.inc"
 
 void
 dn_list_sort (
 	dn_list_t *list,
-	dn_compare_func_t compare_func)
+	dn_list_compare_func_t compare_func)
 {
 	if (DN_UNLIKELY (!list || !list->head || !list->head->next || !compare_func))
 		return;
@@ -429,7 +455,7 @@ dn_list_it_t
 dn_list_find (
 	dn_list_t *list,
 	const void *data,
-	dn_equal_func_t func)
+	dn_list_equal_func_t equal_func)
 {
 	dn_list_it_t found;
 	found.it = NULL;
@@ -439,7 +465,7 @@ dn_list_find (
 		return found;
 
 	for (dn_list_node_t *it = list->head; it; it = it->next) {
-		if ((func && func (it->data, data)) || it->data == data) {
+		if ((equal_func && equal_func (it->data, data)) || it->data == data) {
 			found.it = it;
 			break;
 		}

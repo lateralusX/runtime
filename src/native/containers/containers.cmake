@@ -19,6 +19,7 @@ list(APPEND SHARED_CONTAINER_HEADERS
     dn-list.h
     dn-queue.h
     dn-umap.h
+    dn-umap-t.h
     dn-sort-frag.inc
     dn-utils.h
 )

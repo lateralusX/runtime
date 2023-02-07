@@ -1,6 +1,28 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+/* (C) 2006 Novell, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #include "dn-fwd-list.h"
 
 dn_fwd_list_node_t _fwd_list_before_begin_it_node = { 0 };
@@ -51,11 +73,11 @@ fwd_list_free_node (
 static void
 fwd_list_dispose_node (
 	dn_allocator_t *allocator,
-	dn_func_t func,
+	dn_fwd_list_dispose_func_t dispose_func,
 	dn_fwd_list_node_t *node)
 {
-	if (node && func)
-		func (node->data);
+	if (node && dispose_func)
+		dispose_func (node->data);
 	dn_allocator_free (allocator, node);
 }
 
@@ -88,10 +110,10 @@ _dn_fwd_list_init (
 void
 dn_fwd_list_custom_free (
 	dn_fwd_list_t *list,
-	dn_func_t func)
+	dn_fwd_list_dispose_func_t dispose_func)
 {
 	if (list) {
-		dn_fwd_list_custom_dispose (list, func);
+		dn_fwd_list_custom_dispose (list, dispose_func);
 		dn_allocator_free (list->_internal._allocator, list);
 	}
 }
@@ -99,7 +121,7 @@ dn_fwd_list_custom_free (
 void
 dn_fwd_list_custom_dispose (
 	dn_fwd_list_t *list,
-	dn_func_t func)
+	dn_fwd_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return;
@@ -107,8 +129,8 @@ dn_fwd_list_custom_dispose (
 	dn_fwd_list_node_t *current = list->head;
 	while (current) {
 		dn_fwd_list_node_t *next = current->next;
-		if (func)
-			func (current->data);
+		if (dispose_func)
+			dispose_func (current->data);
 		dn_allocator_free (list->_internal._allocator, current);
 		current = next;
 	}
@@ -117,12 +139,12 @@ dn_fwd_list_custom_dispose (
 void
 dn_fwd_list_custom_clear (
 	dn_fwd_list_t *list,
-	dn_func_t func)
+	dn_fwd_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return;
 
-	dn_fwd_list_custom_dispose (list, func);
+	dn_fwd_list_custom_dispose (list, dispose_func);
 
 	list->head = NULL;
 	list->tail = NULL;
@@ -174,20 +196,20 @@ dn_fwd_list_insert_range_after (
 dn_fwd_list_it_t
 dn_fwd_list_custom_erase_after (
 	dn_fwd_list_it_t position,
-	dn_func_t func)
+	dn_fwd_list_dispose_func_t dispose_func)
 {
 	dn_fwd_list_t *list = position._internal._list;
 
 	if (position.it) {
 		if (position.it == &_fwd_list_before_begin_it_node) {
-			if (func)
-				func (*dn_fwd_list_front (list));
+			if (dispose_func)
+				dispose_func (*dn_fwd_list_front (list));
 			dn_fwd_list_pop_front (list);
 			position.it = list->head;
 		} else if (position.it->next) {
 			dn_fwd_list_node_t *to_erase = position.it->next;
 			position.it->next = position.it->next->next;
-			fwd_list_dispose_node (position._internal._list->_internal._allocator, func, to_erase);
+			fwd_list_dispose_node (position._internal._list->_internal._allocator, dispose_func, to_erase);
 		}
 
 		if (!position.it->next) {
@@ -228,7 +250,7 @@ bool
 dn_fwd_list_custom_resize (
 	dn_fwd_list_t *list,
 	uint32_t count,
-	dn_func_t func)
+	dn_fwd_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY(!list))
 		return false;
@@ -247,7 +269,7 @@ dn_fwd_list_custom_resize (
 
 			while (to_dispose) {
 				dn_fwd_list_node_t *next = to_dispose->next;
-				fwd_list_dispose_node (list->_internal._allocator, func, to_dispose);
+				fwd_list_dispose_node (list->_internal._allocator, dispose_func, to_dispose);
 				to_dispose = next;
 			}
 
@@ -268,7 +290,7 @@ void
 dn_fwd_list_custom_remove (
 	dn_fwd_list_t *list,
 	const void *data,
-	dn_func_t func)
+	dn_fwd_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!list))
 		return;
@@ -288,7 +310,7 @@ dn_fwd_list_custom_remove (
 			} else {
 				prev->next = next;
 			}
-			fwd_list_dispose_node (list->_internal._allocator, func, current);
+			fwd_list_dispose_node (list->_internal._allocator, dispose_func, current);
 		} else {
 			prev = current;
 		}
@@ -300,9 +322,9 @@ dn_fwd_list_custom_remove (
 void
 dn_fwd_list_custom_remove_if (
 	dn_fwd_list_t *list,
-	dn_predicate_func_t predicate,
 	void *data,
-	dn_func_t func)
+	dn_fwd_list_equal_func_t equal_func,
+	dn_fwd_list_dispose_func_t dispose_func)
 {
 	if (DN_UNLIKELY (!list))
 		return;
@@ -313,7 +335,7 @@ dn_fwd_list_custom_remove_if (
 
 	while (current) {
 		next = current->next;
-		if (!predicate || predicate (current->data, data)) {
+		if (!equal_func || equal_func (current->data, data)) {
 			if (current == list->head) {
 				list->head = next;
 			} else if (current == list->tail) {
@@ -322,7 +344,7 @@ dn_fwd_list_custom_remove_if (
 			} else {
 				prev->next = next;
 			}
-			fwd_list_dispose_node (list->_internal._allocator, func, current);
+			fwd_list_dispose_node (list->_internal._allocator, dispose_func, current);
 		} else {
 			prev = current;
 		}
@@ -357,23 +379,24 @@ dn_fwd_list_reverse (dn_fwd_list_t *list)
 void
 dn_fwd_list_for_each (
 	dn_fwd_list_t *list,
-	dn_func_data_t func,
-	void *data)
+	dn_fwd_list_for_each_func_t equal_func,
+	void *user_data)
 {
-	if (DN_UNLIKELY (!list || !func))
+	if (DN_UNLIKELY (!list || !equal_func))
 		return;
 
 	for (dn_fwd_list_node_t *it = list->head; it; it = it->next)
-		func (it->data, data);
+		equal_func (it->data, user_data);
 }
 
 typedef dn_fwd_list_node_t list_node;
+typedef dn_fwd_list_compare_func_t compare_func_t;
 #include "dn-sort-frag.inc"
 
 void
 dn_fwd_list_sort (
 	dn_fwd_list_t *list,
-	dn_compare_func_t compare_func)
+	dn_fwd_list_compare_func_t compare_func)
 {
 	if (DN_UNLIKELY (!list || !compare_func))
 		return;
@@ -392,7 +415,7 @@ dn_fwd_list_it_t
 dn_fwd_list_find (
 	dn_fwd_list_t *list,
 	const void *data,
-	dn_equal_func_t func)
+	dn_fwd_list_equal_func_t equal_func)
 {
 	dn_fwd_list_it_t found;
 	found.it = NULL;
@@ -402,7 +425,7 @@ dn_fwd_list_find (
 		return found;
 
 	for (dn_fwd_list_node_t *it = list->head; it; it = it->next) {
-		if ((func && func (it->data, data)) || it->data == data) {
+		if ((equal_func && equal_func (it->data, data)) || it->data == data) {
 			found.it = it;
 			break;
 		}

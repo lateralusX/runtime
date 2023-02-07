@@ -7,6 +7,12 @@
 #include "dn-utils.h"
 #include "dn-allocator.h"
 
+typedef int32_t (DN_CALLBACK_CALLTYPE *dn_vector_compare_func_t) (const void *a, const void *b);
+typedef bool (DN_CALLBACK_CALLTYPE *dn_vector_equal_func_t) (const void *a, const void *b);
+typedef void (DN_CALLBACK_CALLTYPE *dn_vector_for_each_func_t) (void *data, void *user_data);
+typedef void (DN_CALLBACK_CALLTYPE *dn_vector_dispose_func_t) (void *data);
+
+
 #define DN_DEFINE_VECTOR_T_STRUCT(name, type) \
 typedef struct _ ## name ## _t name ## _t; \
 struct _ ## name ## _t { \
@@ -158,12 +164,12 @@ _dn_vector_append_range (
 bool
 _dn_vector_erase (
 	dn_vector_it_t *position,
-	dn_func_t func);
+	dn_vector_dispose_func_t dispose_func);
 
 bool
 _dn_vector_erase_fast (
 	dn_vector_it_t *position,
-	dn_func_t func);
+	dn_vector_dispose_func_t dispose_func);
 
 uint32_t
 _dn_vector_buffer_capacity (
@@ -185,7 +191,7 @@ _dn_vector_buffer_capacity (
 void
 dn_vector_custom_free (
 	dn_vector_t *vector,
-	dn_func_t func);
+	dn_vector_dispose_func_t dispose_func);
 
 static inline void
 dn_vector_free (dn_vector_t *vector)
@@ -208,7 +214,7 @@ dn_vector_free (dn_vector_t *vector)
 void
 dn_vector_custom_dispose (
 	dn_vector_t *vector,
-	dn_func_t func);
+	dn_vector_dispose_func_t dispose_func);
 
 static inline void
 dn_vector_dispose (dn_vector_t *vector)
@@ -300,16 +306,16 @@ _dn_vector_insert_range_adapter (
 static inline dn_vector_result_t
 _dn_vector_erase_adapter (
 	dn_vector_it_t position,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
 	dn_vector_result_t result;
-	result.result = _dn_vector_erase (&position, func);
+	result.result = _dn_vector_erase (&position, dispose_func);
 	result.it = position;
 	return result;
 }
 
-#define dn_vector_custom_erase(position, func) \
-	_dn_vector_erase_adapter ((position), (func))
+#define dn_vector_custom_erase(position, dispose_func) \
+	_dn_vector_erase_adapter ((position), (dispose_func))
 
 #define dn_vector_erase(position) \
 	_dn_vector_erase_adapter ((position), NULL)
@@ -317,16 +323,16 @@ _dn_vector_erase_adapter (
 static inline dn_vector_result_t
 _dn_vector_erase_fast_adapter (
 	dn_vector_it_t position,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
 	dn_vector_result_t result;
-	result.result = _dn_vector_erase_fast (&position, func);
+	result.result = _dn_vector_erase_fast (&position, dispose_func);
 	result.it = position;
 	return result;
 }
 
-#define dn_vector_custom_erase_fast(position, func) \
-	_dn_vector_erase_fast_adapter ((position), (func))
+#define dn_vector_custom_erase_fast(position, dispose_func) \
+	_dn_vector_erase_fast_adapter ((position), (dispose_func))
 
 #define dn_vector_erase_fast(position) \
 	_dn_vector_erase_fast_adapter ((position), NULL)
@@ -335,7 +341,7 @@ bool
 dn_vector_custom_resize (
 	dn_vector_t *vector,
 	uint32_t size,
-	dn_func_t func);
+	dn_vector_dispose_func_t dispose_func);
 
 static inline bool
 dn_vector_resize (
@@ -348,9 +354,9 @@ dn_vector_resize (
 static inline void
 dn_vector_custom_clear (
 	dn_vector_t *vector,
-	dn_func_t func)
+	dn_vector_dispose_func_t dispose_func)
 {
-	dn_vector_custom_resize (vector, 0, func);
+	dn_vector_custom_resize (vector, 0, dispose_func);
 }
 
 static inline void
@@ -377,28 +383,28 @@ dn_vector_pop_back (dn_vector_t *vector)
 void
 dn_vector_for_each (
 	const dn_vector_t *vector,
-	dn_func_data_t func,
-	void *data);
+	dn_vector_for_each_func_t for_each_func,
+	void *user_data);
 
 void
 dn_vector_sort (
 	dn_vector_t *vector,
-	dn_compare_func_t func);
+	dn_vector_compare_func_t compare_func);
 
 dn_vector_it_t
 dn_vector_find (
 	dn_vector_t *vector,
 	const uint8_t *value,
-	dn_equal_func_t func);
+	dn_vector_equal_func_t equal_func);
 
 static inline void
 _dn_vector_find_adapter (
 	dn_vector_t *vector,
 	const uint8_t *data,
-	dn_equal_func_t func,
+	dn_vector_equal_func_t equal_func,
 	dn_vector_it_t *found)
 {
-	*found = dn_vector_find (vector, data, func);
+	*found = dn_vector_find (vector, data, equal_func);
 }
 
 #endif /* __DN_VECTOR_H__ */

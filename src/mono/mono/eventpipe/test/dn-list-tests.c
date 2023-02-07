@@ -635,7 +635,7 @@ test_list_remove (void)
 static
 bool
 DN_CALLBACK_CALLTYPE
-remove_func (const void *data, const void *user_data)
+remove_if_func (const void *data, const void *user_data)
 {
 	return !strcmp ((const char *)data, (const char *)user_data);
 }
@@ -659,7 +659,7 @@ test_list_remove_if (void)
 	dn_list_insert (dn_list_end (list), items [3]);
 
 	// Remove all "second"
-	dn_list_remove_if (list, remove_func, items [1]);
+	dn_list_remove_if (list, items [1], remove_if_func);
 
 	DN_LIST_FOREACH_BEGIN (list, char *, item) {
 		if (!strcmp (item, items [1]))
@@ -667,7 +667,7 @@ test_list_remove_if (void)
 	} DN_LIST_FOREACH_END;
 
 	// Remove all "first"
-	dn_list_remove_if (list, remove_func, items [0]);
+	dn_list_remove_if (list, items [0], remove_if_func);
 
 	DN_LIST_FOREACH_BEGIN (list, char *, item) {
 		if (!strcmp (item, items [0]))
@@ -675,7 +675,7 @@ test_list_remove_if (void)
 	} DN_LIST_FOREACH_END;
 
 	// Remove all "fourth"
-	dn_list_remove_if (list, remove_func, items [3]);
+	dn_list_remove_if (list, items [3], remove_if_func);
 
 	DN_LIST_FOREACH_BEGIN (list, char *, item) {
 		if (!strcmp (item, items [3]))
@@ -683,7 +683,7 @@ test_list_remove_if (void)
 	} DN_LIST_FOREACH_END;
 
 	// "fourth" already removed.
-	dn_list_remove_if (list, remove_func, items [3]);
+	dn_list_remove_if (list, items [3], remove_if_func);
 
 	// Validate that only "third" is left.
 	DN_LIST_FOREACH_BEGIN (list, char *, item) {
