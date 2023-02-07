@@ -130,32 +130,27 @@ DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, dispose) (DN_DEFINE_VECTOR_T_NAME(name) *ve
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, index) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t index) \
 { \
-	DN_ASSERT (vector); \
-	return (type*)(((vector)->data) + (index)); \
+	return dn_vector_index_t ((dn_vector_t *)vector, type, index); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, at) (const DN_DEFINE_VECTOR_T_NAME(name) *vector, uint32_t index) \
 { \
-	DN_ASSERT (vector); \
-	return (type*)(((vector)->data) + (index)); \
+	return dn_vector_at_t ((dn_vector_t *)vector, type, index); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, front) (const DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
-	DN_ASSERT (vector); \
 	return dn_vector_front_t ((dn_vector_t *)vector, type); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, back) (const DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
-	DN_ASSERT (vector); \
 	return dn_vector_back_t ((dn_vector_t *)vector, type); \
 }\
 static inline type * \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, data) (const DN_DEFINE_VECTOR_T_NAME(name) *vector) \
 { \
-	DN_ASSERT (vector); \
-	return ((type *)(vector->data)); \
+	return dn_vector_data_t ((dn_vector_t *)vector, type); \
 } \
 static inline DN_DEFINE_VECTOR_IT_T_NAME(name) \
 DN_DEFINE_VECTOR_T_SYMBOL_NAME(name, begin) (DN_DEFINE_VECTOR_T_NAME(name) *vector) \

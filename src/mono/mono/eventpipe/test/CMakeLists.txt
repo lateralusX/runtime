@@ -22,8 +22,10 @@ if(ENABLE_PERFTRACING)
             ep-thread-tests.c
             dn-vector-tests.c
             dn-ptr-vector-tests.c
-            dn-slist-tests.c
+            dn-fwd-list-tests.c
             dn-list-tests.c
+            dn-queue-tests.c
+            dn-umap-tests.c
         )
 
         list(APPEND EVENTPIPE_TEST_HEADERS

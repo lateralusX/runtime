@@ -8,6 +8,7 @@ DEFINE_TEST_GROUP_INIT_H(dn_vector_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_ptr_vector_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_fwd_list_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_list_tests_init);
+DEFINE_TEST_GROUP_INIT_H(dn_queue_tests_init);
 DEFINE_TEST_GROUP_INIT_H(dn_umap_tests_init);
 
 // EventPipe tests.
@@ -30,6 +31,7 @@ static Group test_groups [] = {
 	{"ptr-vector", dn_ptr_vector_tests_init},
 	{"fwd_list", dn_fwd_list_tests_init},
 	{"list", dn_list_tests_init},
+	{"queue", dn_queue_tests_init},
 	{"umap", dn_umap_tests_init},
 	{"setup", ep_setup_tests_init},
 	{"rt", ep_rt_tests_init},

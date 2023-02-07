@@ -230,11 +230,27 @@ dn_vector_dispose (dn_vector_t *vector)
 	dn_vector_custom_dispose (vector, NULL);
 }
 
+static inline uint8_t *
+dn_vector_index (dn_vector_t *vector, uint32_t size, uint32_t index)
+{
+	DN_ASSERT (vector && index < vector ->size);
+	return ((uint8_t *)(vector->data) + (size * index));
+}
+
 #define dn_vector_index_t(vector, type, index) \
-	(type*)((uint8_t *)((vector)->data) + (sizeof (type) * (index)))
+	((type*)(dn_vector_index ((vector), sizeof (type), (index))))
+
+static inline uint8_t *
+dn_vector_at (dn_vector_t *vector, uint32_t size, uint32_t index)
+{
+	DN_ASSERT (vector);
+	if (index >= vector->size)
+		return NULL;
+	return dn_vector_index (vector, size, index);
+}
 
 #define dn_vector_at_t(vector, type, index) \
-	dn_vector_index_t(vector, type, index)
+	((type *)dn_vector_at(vector, sizeof (type), index))
 
 #define dn_vector_front_t(vector, type) \
 	dn_vector_index_t(vector, type, 0)
@@ -242,8 +258,15 @@ dn_vector_dispose (dn_vector_t *vector)
 #define dn_vector_back_t(vector, type) \
 	dn_vector_index_t(vector, type, (vector)->size != 0 ? (vector)->size - 1 : 0)
 
+static inline uint8_t *
+dn_vector_data (dn_vector_t *vector)
+{
+	DN_ASSERT (vector);
+	return vector->data;
+}
+
 #define dn_vector_data_t(vector,type) \
-	((type *)(vector->data))
+	((type *)dn_vector_data (vector))
 
 static inline dn_vector_it_t
 dn_vector_begin (dn_vector_t *vector)

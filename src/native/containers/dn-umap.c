@@ -28,9 +28,6 @@
 #include <string.h>
 #include <math.h>
 
-//the return of key value in extract should be node_handle_t.
-//more tets to test hash functions
-
 static void * KEYMARKER_REMOVED = &KEYMARKER_REMOVED;
 
 static const uint32_t prime_tbl [] = {

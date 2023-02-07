@@ -120,6 +120,9 @@ dn_queue_push (
 	return result;
 }
 
+#define dn_queue_push_t(queue, type, data) \
+	dn_queue_push ((queue),((void *)(ptrdiff_t)(data)))
+
 static inline void
 dn_queue_pop (dn_queue_t *queue)
 {

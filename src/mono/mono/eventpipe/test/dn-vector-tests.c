@@ -42,9 +42,6 @@ test_vector_alloc (void)
 	if (vector->size != 0)
 		return FAILED ("vector size didn't match");
 
-	if (0 != *dn_vector_index_t (vector, int32_t, 0))
-		return FAILED ("vector was not cleared when allocated");
-
 	dn_vector_free (vector);
 
 	return OK;
@@ -69,9 +66,6 @@ test_vector_init (void)
 
 	if (vector.size != 0)
 		return FAILED ("vector size didn't match");
-
-	if (0 != *dn_vector_index_t (&vector, int32_t, 0))
-		return FAILED ("vector was not cleared when allocated");
 
 	dn_vector_dispose (&vector);
 
@@ -104,7 +98,7 @@ test_vector_alloc_capacity (void)
 		return FAILED ("vector size didn't match");
 
 	for (int32_t i = 0; i < PREALLOC_SIZE; ++i) {
-		if (0 != *dn_vector_index_t (vector, int32_t, i))
+		if (0 != *((int32_t *)(vector->data) + i))
 			return FAILED ("vector was not cleared when allocated");
 	}
 
@@ -141,7 +135,7 @@ test_vector_init_capacity (void)
 		return FAILED ("vector size didn't match");
 
 	for (int32_t i = 0; i < PREALLOC_SIZE; ++i) {
-		if (0 != *dn_vector_index_t (&vector, int32_t, i))
+		if (0 != *((int32_t *)(vector.data) + i))
 			return FAILED ("vector was not cleared when allocated");
 	}
 
