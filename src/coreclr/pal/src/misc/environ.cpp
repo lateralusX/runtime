@@ -1062,7 +1062,7 @@ void SystemPropertyCallback(const prop_info* info, void* cookie)
         // debug.dotnet.long_prop.0 = ThisIsReallyALongPropertyNameAbove32Chars
         // debug.dotnet.long_prop.1 = SomePropertyNameValue
         char* indexStart = strrchr(name, '.');
-        if (indexStart != nullptr && isdigit(indexStart[1]) != 0)
+        if (indexStart != nullptr && isdigit(indexStart[1]) == 0)
         {
             indexStart = nullptr;
         }
@@ -1294,15 +1294,23 @@ EnvironInitialize(void)
     char** sourceSystemProps = GetSystemProperties();
     if (sourceSystemProps != nullptr)
     {
-        while (sourceSystemProps[variableCount] != nullptr)
+        int sourceSystemPropsIndex = 0;
+        while (sourceSystemProps[sourceSystemPropsIndex] != nullptr)
+        {
+            sourceSystemPropsIndex++;
             variableCount++;
+        }   
     }
 
     char** sourceEnviron = EnvironGetSystemEnvironment();
     if (sourceEnviron)
     {
-        while (sourceEnviron[variableCount] != nullptr)
+        int sourceEnvironIndex = 0;
+        while (sourceEnviron[sourceEnvironIndex] != nullptr)
+        {
+            sourceEnvironIndex++;
             variableCount++;
+        }
     }
 
     palEnvironmentCount = 0;
