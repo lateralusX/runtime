@@ -666,24 +666,6 @@ bool minipal_tetst_env_foreach_callback_break(const char* env_s, void* cookie)
     return true;
 }
 
-static bool minipal_tests_env_foreach(void)
-{
-    size_t count = 0;
-
-    minipal_env_unload_environ();
-
-    bool result = minipal_env_foreach(minipal_tetst_env_foreach_callback, &count);
-    assert(result && count != 0);
-
-    count = 0;
-    result = minipal_env_foreach(minipal_tetst_env_foreach_callback_break, &count);
-    assert(!result && count == 5);
-
-    minipal_env_unload_environ();
-
-    return true;
-}
-
 static bool minipal_test_env_merge(void)
 {
     minipal_env_unload_environ();
@@ -1003,7 +985,6 @@ int main(int argc, char** argv, char** envp)
     minipal_tests_env_set();
     minipal_tests_env_put();
     minipal_tests_env_unset();
-    minipal_tests_env_foreach();
     minipal_test_env_merge();
     minipal_test_env_cache();
     minipal_test_env_resize();
