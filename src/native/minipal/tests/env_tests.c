@@ -206,11 +206,11 @@ bool minipal_tests_env_unload_environ(void)
     return true;
 }
 
-bool minipal_tests_env_get_free_environ(void)
+bool minipal_tests_env_copy_free_environ(void)
 {
     minipal_env_unload_environ();
 
-    char** result = minipal_env_get_environ();
+    char** result = minipal_env_get_environ_copy();
     assert(result);
 
     minipal_env_free_environ(result);
@@ -220,16 +220,16 @@ bool minipal_tests_env_get_free_environ(void)
     return true;
 }
 
-bool minipal_tests_env_get_environ_unsafe(void)
+bool minipal_tests_env_get_environ(void)
 {
     minipal_env_unload_environ();
 
-    char** result = minipal_env_get_environ_unsafe();
+    char** result = minipal_env_get_environ();
     assert(result);
 
     minipal_env_load_environ();
 
-    char** result2 = minipal_env_get_environ_unsafe();
+    char** result2 = minipal_env_get_environ();
     assert(result2);
 
     assert(result != result2);
@@ -288,11 +288,11 @@ bool minipal_tests_env_exists(void)
     return true;
 }
 
-bool minipal_tests_env_get(void)
+bool minipal_tests_env_get_copy(void)
 {
     minipal_env_unload_environ();
 
-    char* path = minipal_env_get("PATH");
+    char* path = minipal_env_get_copy("PATH");
     assert(path);
 
     char* env_path = getenv("PATH");
@@ -307,21 +307,21 @@ bool minipal_tests_env_get(void)
 
     env_put_s("minipal_tests_env_get", "1");
 
-    char* value = minipal_env_get("minipal_tests_env_get");
+    char* value = minipal_env_get_copy("minipal_tests_env_get");
     assert(value);
 
     free(value);
 
     minipal_env_load_environ();
 
-    value = minipal_env_get("minipal_tests_env_get");
+    value = minipal_env_get_copy("minipal_tests_env_get");
     assert(value);
 
     free(value);
 
     env_put_s("minipal_tests_env_get", "2");
 
-    value = minipal_env_get("minipal_tests_env_get");
+    value = minipal_env_get_copy("minipal_tests_env_get");
     assert(value);
     assert(!strcmp(value, "1"));
 
@@ -329,7 +329,7 @@ bool minipal_tests_env_get(void)
 
     minipal_env_unload_environ();
 
-    value = minipal_env_get("minipal_tests_env_get");
+    value = minipal_env_get_copy("minipal_tests_env_get");
     assert(value);
     assert(!strcmp(value, "2"));
 
@@ -535,13 +535,13 @@ static bool minipal_tests_env_set(void)
 {
     minipal_env_unload_environ();
 
-    char* value = minipal_env_get("__minipal_tests_env_set");
+    char* value = minipal_env_get_copy("__minipal_tests_env_set");
     assert(!value);
 
     bool result = minipal_env_set("__minipal_tests_env_set", "XYZ", true);
     assert(result);
 
-    value = minipal_env_get("__minipal_tests_env_set");
+    value = minipal_env_get_copy("__minipal_tests_env_set");
     assert(value);
     assert(!strcmp(value, "XYZ"));
     free(value);
@@ -549,7 +549,7 @@ static bool minipal_tests_env_set(void)
     result = minipal_env_set("__minipal_tests_env_set", "1", false);
     assert(result);
 
-    value = minipal_env_get("__minipal_tests_env_set");
+    value = minipal_env_get_copy("__minipal_tests_env_set");
     assert(value);
     assert(!strcmp(value, "XYZ"));
     free(value);
@@ -557,7 +557,7 @@ static bool minipal_tests_env_set(void)
     result = minipal_env_set("__minipal_tests_env_set", "1", true);
     assert(result);
 
-    value = minipal_env_get("__minipal_tests_env_set");
+    value = minipal_env_get_copy("__minipal_tests_env_set");
     assert(value);
     assert(!strcmp(value, "1"));
     free(value);
@@ -565,7 +565,7 @@ static bool minipal_tests_env_set(void)
     result = minipal_env_set("__minipal_tests_env_set", "", true);
     assert(result);
 
-    value = minipal_env_get("__minipal_tests_env_set");
+    value = minipal_env_get_copy("__minipal_tests_env_set");
     assert(value);
     assert(!strcmp(value, ""));
     free(value);
@@ -573,7 +573,7 @@ static bool minipal_tests_env_set(void)
     result = minipal_env_set("__minipal_tests_env_set", NULL, true);
     assert(result);
 
-    value = minipal_env_get("__minipal_tests_env_set");
+    value = minipal_env_get_copy("__minipal_tests_env_set");
     assert(value);
     assert(!strcmp(value, ""));
     free(value);
@@ -587,13 +587,13 @@ static bool minipal_tests_env_put(void)
 {
     minipal_env_unload_environ();
 
-    char* value = minipal_env_get("__minipal_tests_env_put");
+    char* value = minipal_env_get_copy("__minipal_tests_env_put");
     assert(!value);
 
     bool result = minipal_env_put("__minipal_tests_env_put=XYZ");
     assert(result);
 
-    value = minipal_env_get("__minipal_tests_env_put");
+    value = minipal_env_get_copy("__minipal_tests_env_put");
     assert(value);
 
     assert(!strcmp(value, "XYZ"));
@@ -603,7 +603,7 @@ static bool minipal_tests_env_put(void)
     result = minipal_env_put("__minipal_tests_env_put=newValue");
     assert(result);
 
-    value = minipal_env_get("__minipal_tests_env_put");
+    value = minipal_env_get_copy("__minipal_tests_env_put");
     assert(value);
 
     assert(!strcmp(value, "newValue"));
@@ -619,13 +619,13 @@ static bool minipal_tests_env_unset(void)
 {
     minipal_env_unload_environ();
 
-    char* value = minipal_env_get("minipal_tests_env_unset");
+    char* value = minipal_env_get_copy("minipal_tests_env_unset");
     assert(!value);
 
     bool result = minipal_env_set("minipal_tests_env_unset", "123", true);
     assert(result);
 
-    value = minipal_env_get("minipal_tests_env_unset");
+    value = minipal_env_get_copy("minipal_tests_env_unset");
     assert(value);
 
     free(value);
@@ -633,7 +633,7 @@ static bool minipal_tests_env_unset(void)
     result = minipal_env_unset("minipal_tests_env_unset");
     assert(result);
 
-    value = minipal_env_get("minipal_tests_env_unset");
+    value = minipal_env_get_copy("minipal_tests_env_unset");
     assert(!value);
 
     result = minipal_env_unset("minipal_tests_env_unset");
@@ -682,19 +682,19 @@ static bool minipal_test_env_merge(void)
     result = minipal_env_load_environ();
     assert(result);
 
-    char* value = minipal_env_get("minipal_test_env_merge_1");
+    char* value = minipal_env_get_copy("minipal_test_env_merge_1");
     assert(value);
     assert(!strcmp(value, "1"));
 
     free(value);
 
-    value = minipal_env_get("minipal_test_env_merge_2");
+    value = minipal_env_get_copy("minipal_test_env_merge_2");
     assert(value);
     assert(!strcmp(value, "2"));
 
     free(value);
 
-    value = minipal_env_get("minipal_test_env_merge_3");
+    value = minipal_env_get_copy("minipal_test_env_merge_3");
     assert(value);
     assert(!strcmp(value, "3"));
 
@@ -711,7 +711,7 @@ static bool minipal_test_env_cache(void)
 
     env_put_s("minipal_test_env_cache", "1");
 
-    char* value = minipal_env_get("minipal_test_env_cache");
+    char* value = minipal_env_get_copy("minipal_test_env_cache");
     assert(value);
     assert(!strcmp(value, "1"));
     free(value);
@@ -719,13 +719,13 @@ static bool minipal_test_env_cache(void)
     bool result = minipal_env_unset("minipal_test_env_cache");
     assert(result);
 
-    value = minipal_env_get("minipal_test_env_cache");
+    value = minipal_env_get_copy("minipal_test_env_cache");
     assert(!value);
 
     result = minipal_env_set("minipal_test_env_cache", "", true);
     assert(result);
 
-    value = minipal_env_get("minipal_test_env_cache");
+    value = minipal_env_get_copy("minipal_test_env_cache");
     assert(value);
     assert(value[0] == '\0');
     free(value);
@@ -733,7 +733,7 @@ static bool minipal_test_env_cache(void)
     result = minipal_env_set("minipal_test_env_cache", NULL, true);
     assert(result);
 
-    value = minipal_env_get("minipal_test_env_cache");
+    value = minipal_env_get_copy("minipal_test_env_cache");
     assert(value);
     assert(value[0] == '\0');
     free(value);
@@ -741,13 +741,13 @@ static bool minipal_test_env_cache(void)
     result = minipal_env_unset("minipal_test_env_cache");
     assert(result);
 
-    value = minipal_env_get("minipal_test_env_cache");
+    value = minipal_env_get_copy("minipal_test_env_cache");
     assert(!value);
 
     result = minipal_env_put("minipal_test_env_cache=1");
     assert(result);
 
-    value = minipal_env_get("minipal_test_env_cache");
+    value = minipal_env_get_copy("minipal_test_env_cache");
     assert(value);
     assert(!strcmp(value, "1"));
     free(value);
@@ -755,7 +755,7 @@ static bool minipal_test_env_cache(void)
     result = minipal_env_put("minipal_test_env_cache=");
     assert(result);
 
-    value = minipal_env_get("minipal_test_env_cache");
+    value = minipal_env_get_copy("minipal_test_env_cache");
     assert(value);
     assert(value[0] == '\0');
     free(value);
@@ -767,7 +767,7 @@ static bool minipal_test_env_cache(void)
     result = minipal_env_unset("minipal_test_env_cache");
     assert(result);
 
-    value = minipal_env_get("minipal_test_env_cache");
+    value = minipal_env_get_copy("minipal_test_env_cache");
     assert(!value);
     free(value);
 
@@ -790,7 +790,7 @@ static bool minipal_test_env_resize(void)
         assert(result);
     }
 
-    char** env = minipal_env_get_environ_unsafe();
+    char** env = minipal_env_get_environ();
     assert(env);
 
     for (int i = 0; i < 1000; ++i)
@@ -975,10 +975,10 @@ int main(int argc, char** argv, char** envp)
     _CrtMemCheckpoint (&eventpipe_memory_start_snapshot);
 #endif
 
-    minipal_tests_env_get_free_environ();
-    minipal_tests_env_get_environ_unsafe();
+    minipal_tests_env_copy_free_environ();
+    minipal_tests_env_get_environ();
     minipal_tests_env_exists();
-    minipal_tests_env_get();
+    minipal_tests_env_get_copy();
     minipal_tests_env_get_s();
     minipal_tests_env_get_s_cache_consistency();
     minipal_tests_env_get_s_api_consistency();
