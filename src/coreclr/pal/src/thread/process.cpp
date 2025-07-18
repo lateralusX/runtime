@@ -1486,6 +1486,19 @@ ClosePipe(int fd)
     }
 }
 
+#pragma push_macro("TRACE")
+#undef TRACE
+#define TRACE(...) do { if (logFd) { fprintf(logFd, __VA_ARGS__); fflush(logFd); } } while (0)
+
+#define INIT_TRACE() \
+    char logFileName[MAX_DEBUGGER_TRANSPORT_PIPE_NAME_LENGTH]; \
+    PAL_GetTransportPipeName(logFileName, gPID, applicationGroupId, "log-dbge.txt"); \
+    FILE* logFd = fopen(logFileName, "w")
+
+#define CLOSE_TRACE() do { \
+    if (logFd) { fclose(logFd); logFd = NULL; } \
+} while (0)
+
 static
 RuntimeEventsOverPipes
 NotifyRuntimeUsingPipes()
@@ -1498,6 +1511,8 @@ NotifyRuntimeUsingPipes()
     size_t offset = 0;
 
     LPCSTR applicationGroupId = PAL_GetApplicationGroupId();
+
+    INIT_TRACE();
 
     PAL_GetTransportPipeName(continuePipeName, gPID, applicationGroupId, RuntimeContinuePipeName);
     TRACE("NotifyRuntimeUsingPipes: opening continue '%s' pipe\n", continuePipeName);
@@ -1606,8 +1621,12 @@ exit:
         ClosePipe(continuePipeFd);
     }
 
+    CLOSE_TRACE();
+
     return result;
 }
+
+#pragma pop_macro("TRACE")
 #endif // ENABLE_RUNTIME_EVENTS_OVER_PIPES
 
 static
