@@ -13,7 +13,6 @@
 DEFINE_DACGFN(DACNotifyCompilationFinished)
 DEFINE_DACGFN(ThePreStub)
 
-DEFINE_DACGFN(ThePreStubPatchLabel)
 #ifdef FEATURE_COMINTEROP
 DEFINE_DACGFN(Unknown_AddRef)
 DEFINE_DACGFN(Unknown_AddRefSpecial)

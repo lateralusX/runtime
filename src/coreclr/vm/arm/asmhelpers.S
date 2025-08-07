@@ -211,15 +211,6 @@ LOCAL_LABEL(LNullThis):
         NESTED_END ThePreStub, _TEXT
 
 // ------------------------------------------------------------------
-// This method does nothing. It's just a fixed function for the debugger to put a breakpoint on.
-        LEAF_ENTRY ThePreStubPatch, _TEXT
-        nop
-ThePreStubPatchLabel:
-        .global ThePreStubPatchLabel
-        bx      lr
-        LEAF_END ThePreStubPatch, _TEXT
-
-// ------------------------------------------------------------------
 // The call in ndirect import precode points to this function.
         NESTED_ENTRY NDirectImportThunk, _TEXT, NoHandler
 

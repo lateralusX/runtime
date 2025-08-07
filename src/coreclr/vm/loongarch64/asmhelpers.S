@@ -551,14 +551,6 @@ LOCAL_LABEL(LNullThis):
     b JIT_InternalThrow
 LEAF_END SinglecastDelegateInvokeStub, _TEXT
 
-// ------------------------------------------------------------------
-// ThePreStubPatch()
-LEAF_ENTRY ThePreStubPatch, _TEXT
-.globl C_FUNC(ThePreStubPatchLabel)
-C_FUNC(ThePreStubPatchLabel):
-    jirl  $r0, $ra, 0
-LEAF_END ThePreStubPatch, _TEXT
-
 #ifdef FEATURE_PREJIT
 // ------------------------------------------------------------------
 // void StubDispatchFixupStub(args in regs $a0-$a7 & stack, $t1:IndirectionCellAndFlags)

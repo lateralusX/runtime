@@ -229,16 +229,6 @@ Done
 
         NESTED_END
 
-;; ------------------------------------------------------------------
-;; ThePreStubPatch()
-
-        LEAF_ENTRY ThePreStubPatch
-        nop
-ThePreStubPatchLabel
-        EXPORT          ThePreStubPatchLabel
-        ret             lr
-        LEAF_END
-
 ;-----------------------------------------------------------------------------
 ; void JIT_UpdateWriteBarrierState(bool skipEphemeralCheck, size_t writeableOffset)
 ;

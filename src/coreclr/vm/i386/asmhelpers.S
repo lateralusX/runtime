@@ -621,16 +621,6 @@ NESTED_ENTRY ThePreStub, _TEXT, NoHandler
     ret
 NESTED_END ThePreStub, _TEXT
 
-// This method does nothing.  It's just a fixed function for the debugger to put a breakpoint
-// on so that it can trace a call target.
-LEAF_ENTRY ThePreStubPatch, _TEXT
-    // make sure that the basic block is unique
-    test eax,34
-
-PATCH_LABEL ThePreStubPatchLabel
-    ret
-LEAF_END ThePreStubPatch, _TEXT
-
 #ifdef FEATURE_READYTORUN
 // ==========================================================================
 //  Define helpers for delay loading of readytorun helpers

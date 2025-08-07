@@ -560,7 +560,7 @@ BOOL PrestubMethodFrame::TraceFrame(Thread *thread, BOOL fromPatch,
     if (fromPatch)
     {
         // In between the time where the Prestub read the method entry point from the slot and the time it reached
-        // ThePrestubPatchLabel, GetMethodEntryPoint() could have been updated due to code versioning. This will result in the
+        // ThePrestub SW breakpoint, GetMethodEntryPoint() could have been updated due to code versioning. This will result in the
         // debugger getting some version of the code or the prestub, but not necessarily the exact code pointer that winds up
         // getting executed. The debugger has code that handles this ambiguity by placing a breakpoint at the start of all
         // native code versions, even if they aren't the one that was reported by this trace, see

@@ -171,15 +171,6 @@ NESTED_ENTRY ThePreStub, _TEXT, NoHandler
 
 NESTED_END ThePreStub, _TEXT
 
-// ------------------------------------------------------------------
-// ThePreStubPatch()
-
-LEAF_ENTRY ThePreStubPatch, _TEXT
-    nop
-PATCH_LABEL ThePreStubPatchLabel
-    ret lr
-LEAF_END ThePreStubPatch, _TEXT
-
 // void JIT_UpdateWriteBarrierState(bool skipEphemeralCheck, size_t writeableOffset)
 //
 // Update shadow copies of the various state info required for barrier

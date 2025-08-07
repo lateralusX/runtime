@@ -23,13 +23,4 @@ NESTED_ENTRY ThePreStub, _TEXT, ProcessCLRException
 
 NESTED_END ThePreStub, _TEXT
 
-LEAF_ENTRY ThePreStubPatch, _TEXT
-        ; make sure that the basic block is unique
-        test            eax,34
-PATCH_LABEL ThePreStubPatchLabel
-        ret
-LEAF_END ThePreStubPatch, _TEXT
-
-
-
 end

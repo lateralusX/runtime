@@ -27,7 +27,6 @@ extern TADDR gHighestFCall;
 extern PCODE g_FCDynamicallyAssignedImplementations[ECall::NUM_DYNAMICALLY_ASSIGNED_FCALL_IMPLEMENTATIONS];
 extern DWORD gThreadTLSIndex;
 extern DWORD gAppDomainTLSIndex;
-extern "C" void STDCALL ThePreStubPatchLabel(void);
 
 #ifdef FEATURE_COMWRAPPERS
 // Keep these forward declarations in sync with the method definitions in interop/comwrappers.cpp

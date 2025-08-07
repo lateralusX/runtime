@@ -1204,16 +1204,6 @@ _ThePreStub@0 proc public
 
 _ThePreStub@0 endp
 
-; This method does nothing.  It's just a fixed function for the debugger to put a breakpoint
-; on so that it can trace a call target.
-_ThePreStubPatch@0 proc public
-    ; make sure that the basic block is unique
-    test eax,34
-_ThePreStubPatchLabel@0:
-public _ThePreStubPatchLabel@0
-    ret
-_ThePreStubPatch@0 endp
-
 _TheUMEntryPrestub@0 proc public
     ; push argument registers
     push        ecx
