@@ -64,4 +64,11 @@ enum DebuggerAssemblyControlFlags
     DACF_MISC_FLAGS_MASK            = 0x10,
 };
 
+enum DebuggerSWBreakpointType
+{
+    DSWBT_MIN = 0,
+    DSWBT_PRE_STUB = DSWBT_MIN,
+    DSWBT_MAX
+};
+
 #endif /* _cordbpriv_h_ */

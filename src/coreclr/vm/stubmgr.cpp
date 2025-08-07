@@ -11,6 +11,7 @@
 #ifdef FEATURE_COMINTEROP
 #include "olecontexthelpers.h"
 #endif
+#include "../debug/ee/debugger.h"
 
 #ifdef LOGGING
 const char *GetTType( TraceType tt)
@@ -917,8 +918,6 @@ void StubManager::DbgGetLog(SString * pStringOut)
 
 #endif // _DEBUG
 
-extern "C" void STDCALL ThePreStubPatchLabel(void);
-
 //-----------------------------------------------------------
 //-----------------------------------------------------------
 BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *trace)
@@ -938,15 +937,10 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     // We cannot tell where the stub will end up
     // until after the prestub worker has been run.
     //
-#if defined(TARGET_ARM64) && defined(__APPLE__)
-    // On ARM64 Mac, we cannot put a breakpoint inside of ThePreStubPatchLabel
-    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: Skipping on arm64-macOS\n"));
-    return FALSE;
-#else
-    trace->InitForFramePush(GetEEFuncEntryPoint(ThePreStubPatchLabel));
+    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: ThePreStub SW breakpoint\n"));
+    trace->InitForFramePush(DSWB_TYPE_TO_PCODE(DSWBT_PRE_STUB));
 
     return TRUE;
-#endif //defined(TARGET_ARM64) && defined(__APPLE__)
 }
 
 //-----------------------------------------------------------

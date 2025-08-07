@@ -21,6 +21,7 @@
 #include "array.h"
 #include "ecall.h"
 #include "virtualcallstub.h"
+#include "../debug/ee/debugger.h"
 
 #ifdef FEATURE_INTERPRETER
 #include "interpreter.h"
@@ -50,8 +51,6 @@ EXTERN_C void SavePitchingCandidate(MethodDesc* pMD, ULONG sizeOfCode);
 EXTERN_C void DeleteFromPitchingCandidate(MethodDesc* pMD);
 EXTERN_C void MarkMethodNotPitchingCandidate(MethodDesc* pMD);
 #endif
-
-EXTERN_C void STDCALL ThePreStubPatch();
 
 #if defined(HAVE_GCCOVER)
 CrstStatic MethodDesc::m_GCCoverCrst;
@@ -2607,7 +2606,7 @@ static PCODE PreStubWorker_Preemptive(
         HardwareExceptionHolder;
 
         // Give debugger opportunity to stop here
-        ThePreStubPatch();
+        DSWB_DISPATCH(DSWBT_PRE_STUB);
     }
 
     return pbRetVal;
@@ -2712,7 +2711,7 @@ extern "C" PCODE STDCALL PreStubWorker(TransitionBlock* pTransitionBlock, Method
             HardwareExceptionHolder;
 
             // Give debugger opportunity to stop here
-            ThePreStubPatch();
+            DSWB_DISPATCH(DSWBT_PRE_STUB);
         }
 
         pPFrame->Pop(CURRENT_THREAD);

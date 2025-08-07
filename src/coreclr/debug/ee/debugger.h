@@ -2353,8 +2353,9 @@ private:
 
 public:
     HRESULT DeoptimizeMethod(Module* pModule, mdMethodDef methodDef);
-#endif //DACCESS_COMPILE
     HRESULT IsMethodDeoptimized(Module *pModule, mdMethodDef methodDef, BOOL *pResult);
+    void DispatchSWBreakpoint(DebuggerSWBreakpointType type);
+#endif //DACCESS_COMPILE
     HRESULT UpdateForceCatchHandlerFoundTable(BOOL enableEvents, OBJECTREF exObj, AppDomain *pAppDomain);
     HRESULT UpdateCustomNotificationTable(Module *pModule, mdTypeDef classToken, BOOL enabled);
 
@@ -4039,5 +4040,75 @@ HANDLE OpenWin32EventOrThrow(
 bool DbgIsSpecialILOffset(DWORD offset);
 
 void FixupDispatcherContext(T_DISPATCHER_CONTEXT* pDispatcherContext, T_CONTEXT* pContext, PEXCEPTION_ROUTINE pUnwindPersonalityRoutine = NULL);
+
+#ifndef DACCESS_COMPILE
+
+static inline bool DSWB_IS(PTR_CORDB_ADDRESS_TYPE address)
+{
+    return (DWORD *)address >= g_pDebuggerSWBreakpoints &&
+        (DWORD *)address < &g_pDebuggerSWBreakpoints[DSWBT_MAX];
+}
+
+static inline PTR_CORDB_ADDRESS_TYPE DSWB_PCODE_TO_CORDB_ADDRESS(PCODE address)
+{
+    return (PTR_CORDB_ADDRESS_TYPE)(address);
+}
+
+static inline DebuggerSWBreakpointType DSWB_CORDB_ADDRESS_TO_TYPE(PTR_CORDB_ADDRESS_TYPE address)
+{
+    _ASSERTE(DSWB_IS(address));
+    return (DebuggerSWBreakpointType)(((DWORD *)address - g_pDebuggerSWBreakpoints) / sizeof(DWORD));
+}
+
+static inline PTR_CORDB_ADDRESS_TYPE DSWB_TYPE_TO_CORDB_ADDRESS(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    return (PTR_CORDB_ADDRESS_TYPE)(&g_pDebuggerSWBreakpoints[type]);
+}
+
+static inline PCODE DSWB_TYPE_TO_PCODE(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    return (PCODE)(&g_pDebuggerSWBreakpoints[type]);
+}
+
+static inline bool DSWB_ENABLED(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    return g_pDebuggerSWBreakpoints[type] != 0;
+}
+
+static inline DWORD DSWB_ENABLE(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    return ++g_pDebuggerSWBreakpoints[type];
+}
+
+static inline DWORD DSWB_DISABLE(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    return --g_pDebuggerSWBreakpoints[type];
+}
+
+static inline DWORD DSWB_COUNT(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    return g_pDebuggerSWBreakpoints[type];
+}
+
+static inline DWORD DSWB_RESET(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    return g_pDebuggerSWBreakpoints[type] = 0;
+}
+
+static inline void DSWB_DISPATCH(DebuggerSWBreakpointType type)
+{
+    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
+    if (DSWB_ENABLED(type))
+        g_pDebugger->DispatchSWBreakpoint(type);
+}
+
+#endif // DACCESS_COMPILE
 
 #endif /* DEBUGGER_H_ */

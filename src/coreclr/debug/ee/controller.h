@@ -1095,6 +1095,8 @@ class DebuggerController
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
 
+    static void DispatchSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address);
+    static void DispatchSWBreakpoint(DebuggerSWBreakpointType type);
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
     // If pAppDomain is specified, then only patches tied to the specified AppDomain are
@@ -1162,8 +1164,12 @@ class DebuggerController
 
   private:
 
-    static bool MatchPatch(Thread *thread, CONTEXT *context,
-                           DebuggerControllerPatch *patch);
+    static bool MatchPatch(
+        Thread *thread,
+        PTR_CORDB_ADDRESS_TYPE address,
+        CONTEXT *context,
+        DebuggerControllerPatch *patch
+    );
 
     // Returns TRUE if we should continue to dispatch after this exception
     // hook.
@@ -1202,10 +1208,16 @@ private:
 
     static bool BindPatch(DebuggerControllerPatch *patch,
                           MethodDesc *fd,
-                          CORDB_ADDRESS_TYPE *startAddr);
+                          PTR_CORDB_ADDRESS_TYPE startAddr);
+    static bool IsSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address);
+    static bool IsHWBreakpoint(PTR_CORDB_ADDRESS_TYPE address);
+    static bool IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native);
+    static bool ApplySWBreakpointPatch(DebuggerControllerPatch *patch);
+    static bool UnapplySWBreakpointPatch(DebuggerControllerPatch *patch);
+    static bool ApplyHWBreakpointPatch(DebuggerControllerPatch *patch);
+    static bool UnapplyHWBreakpointPatch(DebuggerControllerPatch *patch);
     static bool ApplyPatch(DebuggerControllerPatch *patch);
     static bool UnapplyPatch(DebuggerControllerPatch *patch);
-    static bool IsPatched(CORDB_ADDRESS_TYPE *address, BOOL native);
 
     static void ActivatePatch(DebuggerControllerPatch *patch);
     static void DeactivatePatch(DebuggerControllerPatch *patch);
@@ -1534,7 +1546,7 @@ public:
 #ifdef OUT_OF_PROCESS_SETTHREADCONTEXT
 #ifndef FEATURE_EMULATE_SINGLESTEP
         // only in-place single steps over call intructions are supported at this time
-        _ASSERTE(m_instrAttrib.m_fIsCall);
+        _ASSERTE(!m_fInPlaceSS || m_instrAttrib.m_fIsCall);
         return m_fInPlaceSS;
 #else
 #error only non-emulated single-steps with OUT_OF_PROCESS_SETTHREADCONTEXT enabled are supported

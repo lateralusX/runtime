@@ -1190,7 +1190,6 @@ void DebuggerController::Dequeue()
     }
 }
 
-
 // bool DebuggerController::BindPatch()  If the method has
 // been JITted and isn't hashed by address already, then hash
 // it into the hashtable by address and not DebuggerFunctionKey.
@@ -1299,7 +1298,74 @@ bool DebuggerController::BindPatch(DebuggerControllerPatch *patch,
     return true;
 }
 
-// bool DebuggerController::ApplyPatch()    applies
+bool DebuggerController::IsSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
+{
+    return DSWB_IS(address);
+}
+
+bool DebuggerController::IsHWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
+{
+    return AddressIsBreakpoint(address);
+}
+
+// bool DebuggerController::IsPatched()  Is there a patch at addr?
+// How: if fNative && the instruction at addr is the break
+// instruction for this platform.
+bool DebuggerController::IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native)
+{
+    LIMITED_METHOD_CONTRACT;
+
+    if (native)
+        return IsSWBreakpoint(address) || IsHWBreakpoint(address);
+
+    return false;
+}
+
+bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
+{
+    _ASSERTE(patch != NULL);
+    _ASSERT(IsSWBreakpoint(patch->address));
+
+    DebuggerSWBreakpointType type = DSWB_CORDB_ADDRESS_TO_TYPE(patch->address);
+
+    DWORD oldCount = DSWB_COUNT(type);
+    DSWB_ENABLE(type);
+
+    LOG((LF_CORDB,
+        LL_INFO10000,
+        "DC::ApplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
+        patch,
+        patch->patchId,
+        patch->address,
+        oldCount,
+        DSWB_COUNT(type)));
+
+    return true;
+}
+
+bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch)
+{
+    _ASSERTE(patch != NULL);
+    _ASSERT(IsSWBreakpoint(patch->address));
+
+    DebuggerSWBreakpointType type = DSWB_CORDB_ADDRESS_TO_TYPE(patch->address);
+
+    DWORD oldCount = DSWB_COUNT(type);
+    DSWB_DISABLE(type);
+
+    LOG((LF_CORDB,
+        LL_INFO10000,
+        "DC::UnapplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
+        patch,
+        patch->patchId,
+        patch->address,
+        oldCount,
+        DSWB_COUNT(type)));
+
+    return true;
+}
+
+// bool DebuggerController::ApplyHWBreakpointPatch() applies
 // the patch described to the code, and
 // remembers the replaced opcode.  Note that the same address
 // cannot be patched twice at the same time.
@@ -1311,11 +1377,12 @@ bool DebuggerController::BindPatch(DebuggerControllerPatch *patch,
 //        to set the INT3 instruction
 // Returns: true if the user break instruction was successfully
 //        placed into the code-stream, false otherwise
-bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
+bool DebuggerController::ApplyHWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
+    _ASSERT(!IsSWBreakpoint(patch->address));
 
-    LOG((LF_CORDB, LL_INFO10000, "DC::ApplyPatch %p, patchId:0x%zx at addr %p\n",
+    LOG((LF_CORDB, LL_INFO10000, "DC::ApplyHWBreakpointPatch %p, patchId:0x%zx at addr %p\n",
         patch, patch->patchId, patch->address));
 
     // If we try to apply an already applied patch, we'll override our saved opcode
@@ -1368,7 +1435,7 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
         patch->opcode = CORDbgGetInstruction(patch->address);
 
         CORDbgInsertBreakpoint((CORDB_ADDRESS_TYPE *)patch->address);
-        LOG((LF_CORDB, LL_EVERYTHING, "DC::ApplyPatch Breakpoint was inserted at %p for opcode %x\n",
+        LOG((LF_CORDB, LL_EVERYTHING, "DC::ApplyHWBreakpointPatch Breakpoint was inserted at %p for opcode %x\n",
             patch->address, patch->opcode));
 
 #if !defined(HOST_OSX) || !defined(HOST_ARM64)
@@ -1420,8 +1487,8 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
     return true;
 }
 
-// bool DebuggerController::UnapplyPatch()
-// UnapplyPatch removes the patch described by the patch.
+// bool DebuggerController::UnapplyHWBreakpointPatch()
+// UnapplyHWBreakpointPatch removes the patch described by the patch.
 // (CopyOpcodeFromAddrToPatch, in reverse.)
 // Looks a lot like CopyOpcodeFromAddrToPatch, except that we use a macro to
 // copy the instruction back to the code-stream & immediately set the
@@ -1432,13 +1499,14 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
 // NO LOCKING
 // DebuggerControllerPatch * patch:  Patch to remove
 // Returns:  true if the patch was unapplied, false otherwise
-bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
+bool DebuggerController::UnapplyHWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
     _ASSERTE(patch->address != NULL);
     _ASSERTE(patch->IsActivated() );
+    _ASSERT(!IsSWBreakpoint(patch->address));
 
-    LOG((LF_CORDB, LL_INFO1000, "DC::UnapplyPatch %p, patchId:0x%zx\n",
+    LOG((LF_CORDB, LL_INFO1000, "DC::UnapplyHWBreakPointPatch %p, patchId:0x%zx\n",
         patch, patch->patchId));
 
     if (patch->IsNativePatch())
@@ -1543,16 +1611,22 @@ bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
     return true;
 }
 
-// bool DebuggerController::IsPatched()  Is there a patch at addr?
-// How: if fNative && the instruction at addr is the break
-// instruction for this platform.
-bool DebuggerController::IsPatched(CORDB_ADDRESS_TYPE *address, BOOL native)
+bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
 {
     LIMITED_METHOD_CONTRACT;
-    if (native)
-        return AddressIsBreakpoint(address);
 
-    return false;
+    _ASSERTE(patch != NULL);
+
+    return IsSWBreakpoint(patch->address) ? ApplySWBreakpointPatch(patch) : ApplyHWBreakpointPatch(patch);
+}
+
+bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
+{
+    LIMITED_METHOD_CONTRACT;
+
+    _ASSERTE(patch != NULL);
+
+    return IsSWBreakpoint(patch->address) ? UnapplySWBreakpointPatch(patch) : UnapplyHWBreakpointPatch(patch);
 }
 
 // DWORD DebuggerController::GetPatchedOpcode()  Gets the opcode
@@ -2419,13 +2493,14 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
 //     False
 //-----------------------------------------------------------------------------
 bool DebuggerController::MatchPatch(Thread *thread,
+                                    PTR_CORDB_ADDRESS_TYPE address,
                                     CONTEXT *context,
                                     DebuggerControllerPatch *patch)
 {
-    LOG((LF_CORDB, LL_INFO100000, "DC::MP: EIP:0x%p\n", GetIP(context)));
+    LOG((LF_CORDB, LL_INFO100000, "DC::MP: EIP:0x%p\n", address));
 
     // Caller should have already matched our addresses.
-    if (patch->address != dac_cast<PTR_CORDB_ADDRESS_TYPE>(GetIP(context)))
+    if (patch->address != address)
     {
         return false;
     }
@@ -2621,7 +2696,7 @@ DPOSS_ACTION DebuggerController::ScanForTriggers(CORDB_ADDRESS_TYPE *address,
             iEventNext = g_patches->GetItemIndex((HASHENTRY *)patchNext);
         }
 
-        if (MatchPatch(thread, context, patch))
+        if (MatchPatch(thread, dac_cast<PTR_CORDB_ADDRESS_TYPE>(GetIP(context)), context, patch))
         {
             LOG((LF_CORDB, LL_INFO10000, "DC::SFT: patch matched\n"));
             AddRefPatch(patch);
@@ -3903,6 +3978,61 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
     _ASSERTE(g_cTotalMethodEnter == count);
 
+}
+
+void DebuggerController::DispatchSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
+{
+    _ASSERT(!ThisIsHelperThreadWorker());
+    _ASSERTE(!HasLock());
+    _ASSERT(address != NULL);
+
+     Thread * thread = g_pEEInterface->GetThread();
+    _ASSERTE(thread  != NULL);
+
+    LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: starting scan for addr:%p thread:%p\n", address, thread));
+
+    CrstHolderWithState lockController(&g_criticalSection);
+
+    if (g_patches != NULL)
+    {
+        DebuggerControllerPatch *patch = NULL;
+        InlineSArray<DebuggerControllerPatch*, 32> patchArray;
+        for (patch = g_patches->GetPatch(address); patch != NULL; patch = g_patches->GetNextPatch(patch))
+        {
+            LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: patch:%p\n", patch));
+            if (MatchPatch(thread, address, NULL, patch))
+            {
+                LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: patch:%p matched\n", patch));
+
+                _ASSERT(patch->trace.GetTraceType() != TRACE_ENTRY_STUB);
+                AddRefPatch(patch);
+                patchArray.Append(patch);
+            }
+        }
+
+        for (auto it = patchArray.Begin(); it != patchArray.End(); ++it)
+        {
+            patch = *it;
+            _ASSERT(patch != NULL);
+
+            if (patch->refCount == 1)
+            {
+                LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: ignoring patch:%p, patch pending removal\n", patch));
+                ReleasePatch(patch);
+                continue;
+            }
+
+            AtSafePlaceHolder unsafePlaceHolder(thread);
+            TP_RESULT tpr = patch->controller->TriggerPatch(patch, thread, TY_NORMAL);
+            _ASSERT(tpr == TPR_IGNORE);
+            ReleasePatch(patch);
+        }
+    }
+}
+
+void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type)
+{
+    DispatchSWBreakpoint(DSWB_TYPE_TO_CORDB_ADDRESS(type));
 }
 
 //
