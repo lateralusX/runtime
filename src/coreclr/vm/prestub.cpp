@@ -2887,7 +2887,7 @@ PCODE MethodDesc::DoPrestub(MethodTable *pDispatchingMT, CallerGCMode callerGCMo
 
     if (!IsPointingToPrestub())
     {
-        LOG((LF_CLASSLOADER, LL_INFO10000,
+        LOG((LF_CLASSLOADER, LL_INFO1000,
             "    In PreStubWorker, method already jitted, backpatching call point\n"));
         #if defined(FEATURE_JIT_PITCHING)
             MarkMethodNotPitchingCandidate(this);
