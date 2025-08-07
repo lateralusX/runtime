@@ -89,6 +89,7 @@ struct DebuggerControllerPatch;
 class DebuggerEval;
 class DebuggerControllerQueue;
 class DebuggerController;
+class DebuggerSWBreakpoint;
 class Crst;
 
 typedef CUnorderedArray<DebuggerControllerPatch *, 17> PATCH_UNORDERED_ARRAY;
@@ -2353,8 +2354,9 @@ private:
 
 public:
     HRESULT DeoptimizeMethod(Module* pModule, mdMethodDef methodDef);
-#endif //DACCESS_COMPILE
     HRESULT IsMethodDeoptimized(Module *pModule, mdMethodDef methodDef, BOOL *pResult);
+    void TriggerSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint);
+#endif //DACCESS_COMPILE
     HRESULT UpdateForceCatchHandlerFoundTable(BOOL enableEvents, OBJECTREF exObj, AppDomain *pAppDomain);
     HRESULT UpdateCustomNotificationTable(Module *pModule, mdTypeDef classToken, BOOL enabled);
 
@@ -4040,4 +4042,126 @@ bool DbgIsSpecialILOffset(DWORD offset);
 
 void FixupDispatcherContext(T_DISPATCHER_CONTEXT* pDispatcherContext, T_CONTEXT* pContext, PEXCEPTION_ROUTINE pUnwindPersonalityRoutine = NULL);
 
+class DebuggerSWBreakpoint
+{
+protected:
+
+    PCODE m_ip;
+    PTR_CORDB_ADDRESS_TYPE m_rwAddress;
+
+#ifndef DACCESS_COMPILE
+    FORCEINLINE void TriggerIfEnabled()
+    {
+        if (IsEnabled())
+        {
+            CONTEXT context;
+            ZeroMemory(&context, sizeof(context));
+            context.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+            ClrCaptureContext(&context);
+            g_pDebugger->TriggerSWBreakpoint(&context, this);
+        }
+    }
+#endif // !DACCESS_COMPILE
+
+public:
+
+    PCODE GetIP()
+    {
+        return m_ip;
+    }
+
+    PTR_CORDB_ADDRESS_TYPE GetRWAddress()
+    {
+        return m_rwAddress;
+    }
+
+    PCODE GetRWAddressAsPCODE()
+    {
+        return dac_cast<PCODE>(m_rwAddress);
+    }
+
+    bool IsValid()
+    {
+        return m_rwAddress != NULL && m_ip != NULL;
+    }
+
+    static bool IsEnabled(PTR_CORDB_ADDRESS_TYPE address)
+    {
+#ifndef DACCESS_COMPILE
+        return *(dac_cast<CorDB_SW_BREAKPOINT_CPTR_TYPE>(address)) != g_templateSWBreakpoint;
+#else
+        return false;
+#endif // !DACCESS_COMPILE
+    }
+
+    bool IsEnabled()
+    {
+        return IsEnabled(m_rwAddress);
+    }
+};
+
+#ifndef DACCESS_COMPILE
+#define DEFINE_DEBUGGER_SW_BREAKPOINT(swBreakpointClassName, swBreakpointRWSymbol) \
+static_assert(sizeof(swBreakpointRWSymbol) == sizeof(CorDB_SW_BREAKPOINT_TYPE), "Invalid SW breakpoint size."); \
+class swBreakpointClassName : public DebuggerSWBreakpoint \
+{ \
+public: \
+    static NOINLINE void Dispatch() \
+    { \
+        swBreakpointClassName swBreakpoint; \
+        swBreakpoint.TriggerIfEnabled(); \
+    } \
+    static PCODE GetIP() \
+    { \
+        return (PCODE)swBreakpointClassName::Dispatch; \
+    } \
+    static PTR_CORDB_ADDRESS_TYPE GetRWAddress() \
+    { \
+        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(&swBreakpointRWSymbol); \
+    } \
+    static PCODE GetRWAddressAsPCODE() \
+    { \
+        return dac_cast<PCODE>(&swBreakpointRWSymbol); \
+    } \
+    static PCODE IsEnabled() \
+    { \
+        return DebuggerSWBreakpoint::IsEnabled(swBreakpointClassName::GetRWAddress()); \
+    } \
+    swBreakpointClassName() \
+    { \
+        m_ip = swBreakpointClassName::GetIP(); \
+        m_rwAddress = swBreakpointClassName::GetRWAddress(); \
+    } \
+}
+#else
+#define DEFINE_DEBUGGER_SW_BREAKPOINT(swBreakpointClassName, swBreakpointRWSymbol) \
+class swBreakpointClassName : public DebuggerSWBreakpoint \
+{ \
+public: \
+    static void Dispatch() \
+    { \
+    } \
+    static PCODE GetIP() \
+    { \
+        return dac_cast<PCODE>(NULL); \
+    } \
+    static PTR_CORDB_ADDRESS_TYPE GetRWAddress() \
+    { \
+        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(NULL); \
+    } \
+    static PCODE GetRWAddressAsPCODE() \
+    { \
+        return dac_cast<PCODE>(NULL); \
+    } \
+    static PCODE IsEnabled() \
+    { \
+        return false; \
+    } \
+    swBreakpointClassName() \
+    { \
+        m_ip = swBreakpointClassName::GetIP(); \
+        m_rwAddress = swBreakpointClassName::GetRWAddress(); \
+    } \
+}
+#endif // !DACCESS_COMPILE
 #endif /* DEBUGGER_H_ */

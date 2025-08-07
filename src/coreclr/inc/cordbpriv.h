@@ -18,6 +18,23 @@
 #define CorDB_DEFAULT_ENC_FUNCTION_VERSION    1
 #define CorDB_UNKNOWN_ENC_FUNCTION_VERSION    ((SIZE_T)(-1))
 
+//
+// Helper macros used when predefining SW breakpoints.
+//
+#define CorDB_SW_BREAKPOINT_TYPE DWORD
+#define CorDB_SW_BREAKPOINT_PTR_TYPE PTR_DWORD
+#define CorDB_SW_BREAKPOINT_CPTR_TYPE const PTR_DWORD
+
+#ifndef DACCESS_COMPILE
+#define CorDB_SW_BREAKPOINT_DECL(swBreakpointRWSymbol) \
+    GVAL_DECL(CorDB_SW_BREAKPOINT_TYPE, swBreakpointRWSymbol)
+#define CorDB_SW_BREAKPOINT_IMPL(swBreakpointRWSymbol) \
+    GVAL_IMPL_INIT(CorDB_SW_BREAKPOINT_TYPE, swBreakpointRWSymbol, g_templateSWBreakpoint)
+#else
+#define CorDB_SW_BREAKPOINT_DECL(swBreakpointRWSymbol)
+#define CorDB_SW_BREAKPOINT_IMPL(swBreakpointRWSymbol)
+#endif // !DACCESS_COMPILE
+
 enum DebuggerLaunchSetting
 {
     DLS_ASK_USER          = 0,

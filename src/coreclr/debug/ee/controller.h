@@ -449,6 +449,8 @@ private:
     SharedPatchBypassBuffer* m_pSharedPatchBypassBuffer;
 #endif // !FEATURE_EMULATE_SINGLESTEP
 
+    PTR_CORDB_ADDRESS_TYPE rwAddress;
+
 public:
     SIZE_T                  patchId;
     AppDomain              *pAppDomain;
@@ -568,12 +570,23 @@ public:
     }
 #endif // !FEATURE_EMULATE_SINGLESTEP
 
+    PTR_CORDB_ADDRESS_TYPE GetRWAddress()
+    {
+        return rwAddress;
+    }
+
+    bool SupportsPatchSkipping()
+    {
+        return IsNativePatch() && (address == rwAddress || rwAddress == NULL);
+    }
+
     void LogInstance()
     {
         LOG((LF_CORDB, LL_INFO10000, "  DCP: %p\n"
             "              patchId: 0x%zx\n"
             "               offset: 0x%zx\n"
             "              address: %p\n"
+            "            rwAddress: %p\n"
             "           offsetIsIL: %s\n"
             "             refCount: %d\n"
             "                 kind: %d\n"
@@ -582,7 +595,7 @@ public:
             "       IsManagedPatch: %s\n"
             "     IsILPrimaryPatch: %s\n"
             "     IsILReplicaPatch: %s\n",
-            this, patchId, offset, address, (offsetIsIL ? "true" : "false"), refCount, GetKind(),
+            this, patchId, offset, address, rwAddress, (offsetIsIL ? "true" : "false"), refCount, GetKind(),
             (IsBound() ? "true" : "false"),
             (IsNativePatch() ? "true" : "false"),
             (IsManagedPatch() ? "true" : "false"),
@@ -777,7 +790,8 @@ public:
                                       AppDomain *pAppDomain,
                                       DebuggerJitInfo *dji = NULL,
                                       SIZE_T patchId = DCP_PATCHID_INVALID,
-                                      TraceType traceType = DPT_DEFAULT_TRACE_TYPE);
+                                      TraceType traceType = DPT_DEFAULT_TRACE_TYPE,
+                                      CORDB_ADDRESS_TYPE *rwAddress = NULL);
 
     // Set the native address for this patch.
     void BindPatch(DebuggerControllerPatch *patch, CORDB_ADDRESS_TYPE *address);
@@ -1095,7 +1109,6 @@ class DebuggerController
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
 
-
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
     // If pAppDomain is specified, then only patches tied to the specified AppDomain are
     // removed.  If pAppDomain is null, then all patches for the module are removed.
@@ -1162,8 +1175,8 @@ class DebuggerController
 
   private:
 
-    static bool MatchPatch(Thread *thread, CONTEXT *context,
-                           DebuggerControllerPatch *patch);
+    static bool MatchPatch(Thread *thread, PTR_CORDB_ADDRESS_TYPE address,
+                           CONTEXT *context, DebuggerControllerPatch *patch);
 
     // Returns TRUE if we should continue to dispatch after this exception
     // hook.
@@ -1284,9 +1297,8 @@ public:
     DebuggerControllerPatch *AddAndActivateNativePatchForAddress(CORDB_ADDRESS_TYPE *address,
                                       FramePointer fp,
                                       bool managed,
-                                      TraceType traceType);
-
-
+                                      TraceType traceType,
+                                      CORDB_ADDRESS_TYPE *rwAddress = NULL);
 
     bool PatchTrace(TraceDestination *trace, FramePointer fp, bool fStopInUnmanaged);
 
@@ -1329,6 +1341,8 @@ public:
 
     void Enqueue();
     void Dequeue();
+
+    static void TriggerSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint);
 
   protected:
     // Helper function that is called on each virtual trace call target to set a trace patch
@@ -1376,6 +1390,12 @@ public:
     virtual TP_RESULT TriggerPatch(DebuggerControllerPatch *patch,
                               Thread *thread,
                               TRIGGER_WHY tyWhy);
+
+    virtual TP_RESULT TriggerPatch2(DebuggerControllerPatch *patch,
+                              Thread *thread,
+                              CONTEXT *context,
+                              TRIGGER_WHY tyWhy,
+                              TraceData *traceData);
 
     // Dispatched when we get a SingleStep exception on this thread.
     // Return true if we want SendEvent to get called.
@@ -1680,6 +1700,11 @@ protected:
     TP_RESULT TriggerPatch(DebuggerControllerPatch *patch,
                       Thread *thread,
                       TRIGGER_WHY tyWhy);
+    TP_RESULT TriggerPatch2(DebuggerControllerPatch *patch,
+                      Thread *thread,
+                      CONTEXT *context,
+                      TRIGGER_WHY tyWhy,
+                      TraceData *traceData);
     bool TriggerSingleStep(Thread *thread, const BYTE *ip);
     void TriggerUnwind(Thread *thread, MethodDesc *fd, DebuggerJitInfo * pDJI,
                       SIZE_T offset, FramePointer fp,

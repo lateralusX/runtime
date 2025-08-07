@@ -261,6 +261,13 @@ public:
                       T_CONTEXT *context,
                       BYTE **pRetAddr);
 
+    bool TraceManager2(Thread *thread,
+                       StubManager *stubManager,
+                       TraceDestination *trace,
+                       T_CONTEXT *context,
+                       TraceData *traceData,
+                       BYTE **pRetAddr);
+
     void EnableTraceCall(Thread *thread);
 
     void DisableTraceCall(Thread *thread);

@@ -95,7 +95,9 @@ public:
     {
         this->type = TRACE_UNMANAGED;
         this->address = addr;
+        this->rwAddress = addr;
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // The addr is inside jitted code (eg, there's a JitManaged that will claim it)
@@ -103,7 +105,9 @@ public:
     {
         this->type = TRACE_MANAGED;
         this->address = addr;
+        this->rwAddress = addr;
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Initialize for an unmanaged entry stub.
@@ -111,7 +115,9 @@ public:
     {
         this->type = TRACE_ENTRY_STUB;
         this->address = addr;
+        this->rwAddress = addr;
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Initialize for a stub.
@@ -119,7 +125,9 @@ public:
     {
         this->type = TRACE_STUB;
         this->address = addr;
+        this->rwAddress = addr;
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Init for a managed unjitted method.
@@ -128,23 +136,27 @@ public:
     // If pDesc is a wrapper methoddesc, we will unwrap it.
     void InitForUnjittedMethod(MethodDesc * pDesc);
 
-    // Place a patch at the given addr, and then when it's hit,
+    // Place a patch at the given addr or rwAddr, and then when it's hit,
     // call pStubManager->TraceManager() to get the next TraceDestination.
-    void InitForManagerPush(PCODE addr, StubManager * pStubManager)
+    void InitForManagerPush(PCODE addr, StubManager * pStubManager, PCODE rwAddr = NULL)
     {
         this->type = TRACE_MGR_PUSH;
         this->address = addr;
+        this->rwAddress = rwAddr == NULL ? addr : rwAddr;
         this->stubManager = pStubManager;
+        this->pDesc = NULL;
     }
 
-    // Place a patch at the given addr, and then when it's hit
+    // Place a patch at the given addr or rwAddr, and then when it's hit
     // call GetThread()->GetFrame()->TraceFrame() to get the next TraceDestination.
     // This address must be safe to run a callstack at.
-    void InitForFramePush(PCODE addr)
+    void InitForFramePush(PCODE addr, PCODE rwAddr = NULL)
     {
         this->type = TRACE_FRAME_PUSH;
         this->address = addr;
+        this->rwAddress = rwAddr == NULL ? addr : rwAddr;
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Nobody recognized the target address. We will not be able to step-in to it.
@@ -155,7 +167,9 @@ public:
     {
         this->type = TRACE_OTHER;
         this->address = addr;
+        this->rwAddress = addr;
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Accessors
@@ -178,6 +192,11 @@ public:
         return stubManager;
     }
 
+    PCODE GetRWAddress()
+    {
+        return rwAddress;
+    }
+
     // Expose this b/c DebuggerPatchTable::AddPatchForAddress() needs it.
     // Ideally we'd get rid of this.
     void Bad_SetTraceType(TraceType t)
@@ -189,6 +208,7 @@ private:
     PCODE                           address;            // Where the stub is going
     StubManager                     *stubManager;       // The manager that claims this stub
     MethodDesc                      *pDesc;
+    PCODE                           rwAddress;
 };
 
 // For logging
@@ -198,6 +218,41 @@ private:
 #else
     #define LOG_TRACE_DESTINATION(_tracedestination, stubAddr, _stHint)
 #endif
+
+enum TraceDataType
+{
+    TRACE_DATA_DEFAULT,
+    TRACE_DATA_SW_BREAKPOINT
+};
+
+class TraceData
+{
+public:
+    TraceData() :
+        m_type(TRACE_DATA_DEFAULT), m_data(NULL)
+    {
+    }
+
+    TraceData(TraceDataType type, void *data)
+        : m_type(type), m_data(data)
+    {
+    }
+
+    TraceDataType GetType() const
+    {
+        return m_type;
+    }
+
+    void * GetData() const
+    {
+        return m_data;
+    }
+
+private:
+
+    TraceDataType m_type;
+    void* m_data;
+};
 
 typedef VPTR(class StubManager) PTR_StubManager;
 
@@ -258,6 +313,15 @@ class StubManager
         LIMITED_METHOD_CONTRACT;
 
         _ASSERTE(!"Default impl of TraceManager should never be called!");
+        return FALSE;
+    }
+
+    virtual BOOL TraceManager2(Thread *thread, TraceDestination *trace,
+                              T_CONTEXT *pContext, TraceData *traceData, BYTE **pRetAddr)
+    {
+        LIMITED_METHOD_CONTRACT;
+
+        _ASSERTE(!"Default impl of TraceManager2 should never be called!");
         return FALSE;
     }
 
@@ -902,7 +966,6 @@ public:
         return (TADDR)NULL;
 #endif
     }
-
 };
 
 #endif // !__stubmgr_h__

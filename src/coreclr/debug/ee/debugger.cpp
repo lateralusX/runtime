@@ -70,6 +70,15 @@ InteropSafe interopsafe;
 
 DebuggerRCThread        *g_pRCThread = NULL;
 
+// Macro to fill a SW_BREAKPOINT_TYPE with a NOP instruction of size 1, 2, or 4 bytes
+#define CORDbg_FILL_SW_BREAKPOINT_TYPE_WITH_NOP(nop, size) \
+    ((size) == 1 ? ((CorDB_SW_BREAKPOINT_TYPE)(nop) | ((CorDB_SW_BREAKPOINT_TYPE)(nop) << 8) | ((CorDB_SW_BREAKPOINT_TYPE)(nop) << 16) | ((CorDB_SW_BREAKPOINT_TYPE)(nop) << 24)) : \
+     (size) == 2 ? ((CorDB_SW_BREAKPOINT_TYPE)(nop) | ((CorDB_SW_BREAKPOINT_TYPE)(nop) << 16)) : \
+     (size) == 4 ? ((CorDB_SW_BREAKPOINT_TYPE)(nop)) : 0)
+
+// Predefined template SW breakpoint filled with NOP's.
+GVAL_IMPL_INIT(CorDB_SW_BREAKPOINT_TYPE, g_templateSWBreakpoint, CORDbg_FILL_SW_BREAKPOINT_TYPE_WITH_NOP(CORDbg_NOP_INSTRUCTION, CORDbg_NOP_INSTRUCTION_SIZE));
+
 #ifndef _PREFAST_
 // Do some compile time checking on the events in DbgIpcEventTypes.h
 // No one ever calls this. But the compiler should still compile it,
@@ -16838,5 +16847,11 @@ BOOL Debugger::IsOutOfProcessSetContextEnabled()
 #endif // OUT_OF_PROCESS_SETTHREADCONTEXT
 #endif // DACCESS_COMPILE
 
+#ifndef DACCESS_COMPILE
+void Debugger::TriggerSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint)
+{
+    DebuggerController::TriggerSWBreakpoint(context, swBreakpoint);
+}
+#endif // !DACCESS_COMPILE
 #endif //DEBUGGING_SUPPORTED
 

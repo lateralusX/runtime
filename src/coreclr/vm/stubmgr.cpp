@@ -191,6 +191,7 @@ void TraceDestination::InitForUnjittedMethod(MethodDesc * pDesc)
     this->type = TRACE_UNJITTED_METHOD;
     this->pDesc = pDesc;
     this->stubManager = NULL;
+    this->rwAddress = NULL;
 }
 
 

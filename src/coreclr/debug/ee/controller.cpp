@@ -511,6 +511,7 @@ DebuggerControllerPatch *DebuggerPatchTable::AddPatchForMethodDef(DebuggerContro
     patch->offset = offset;
     patch->offsetIsIL = offsetIsIL;
     patch->address = NULL;
+    patch->rwAddress = NULL;
     patch->fp = fp;
     patch->trace.Bad_SetTraceType(DPT_DEFAULT_TRACE_TYPE);      // TRACE_OTHER
     patch->refCount   = 1;            // AddRef()
@@ -577,7 +578,8 @@ DebuggerControllerPatch *DebuggerPatchTable::AddPatchForAddress(DebuggerControll
                                   AppDomain *pAppDomain,
                                   DebuggerJitInfo *dji,
                                   SIZE_T patchId,
-                                  TraceType traceType)
+                                  TraceType traceType,
+                                  CORDB_ADDRESS_TYPE *rwAddress)
 
 {
     CONTRACTL
@@ -626,6 +628,7 @@ DebuggerControllerPatch *DebuggerPatchTable::AddPatchForAddress(DebuggerControll
     patch->offset = offset;
     patch->offsetIsIL = FALSE;
     patch->address = address;
+    patch->rwAddress = rwAddress == NULL ? address : rwAddress;
     patch->fp = fp;
     patch->trace.Bad_SetTraceType(traceType);
     patch->refCount   = 1;            // AddRef()
@@ -677,6 +680,7 @@ void DebuggerPatchTable::BindPatch(DebuggerControllerPatch *patch, CORDB_ADDRESS
     CHashTable::Delete(HashKey(&patch->key), ItemIndex((HASHENTRY*)patch));
 
     patch->address = address;
+    patch->rwAddress = address;
 
     CHashTable::Add(HashAddress(address), ItemIndex((HASHENTRY*)patch));
 
@@ -712,6 +716,7 @@ void DebuggerPatchTable::UnbindPatch(DebuggerControllerPatch *patch)
     CHashTable::Delete( HashAddress(patch->address),
                         ItemIndex((HASHENTRY*)patch));
 
+    patch->rwAddress = NULL;
     patch->address = NULL;      // we're no longer bound to this address
 
     CHashTable::Add( HashKey(&patch->key),
@@ -1190,7 +1195,6 @@ void DebuggerController::Dequeue()
     }
 }
 
-
 // bool DebuggerController::BindPatch()  If the method has
 // been JITted and isn't hashed by address already, then hash
 // it into the hashtable by address and not DebuggerFunctionKey.
@@ -1299,7 +1303,7 @@ bool DebuggerController::BindPatch(DebuggerControllerPatch *patch,
     return true;
 }
 
-// bool DebuggerController::ApplyPatch()    applies
+// bool DebuggerController::ApplyPatch() applies
 // the patch described to the code, and
 // remembers the replaced opcode.  Note that the same address
 // cannot be patched twice at the same time.
@@ -1315,8 +1319,8 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
 
-    LOG((LF_CORDB, LL_INFO10000, "DC::ApplyPatch %p, patchId:0x%zx at addr %p\n",
-        patch, patch->patchId, patch->address));
+    LOG((LF_CORDB, LL_INFO10000, "DC::ApplyPatch %p, patchId:0x%zx at addr:%p rwAddr:%p\n",
+        patch, patch->patchId, patch->address, patch->rwAddress));
 
     // If we try to apply an already applied patch, we'll override our saved opcode
     // with the break opcode and end up getting a break in out patch bypass buffer.
@@ -1331,55 +1335,63 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
 
     if (patch->IsNativePatch())
     {
+        PTR_CORDB_ADDRESS_TYPE patchAddress = patch->rwAddress == NULL ? patch->address : patch->rwAddress;
+        bool isRWAddress = patch->address != patchAddress;
+
         if (patch->fSaveOpcode)
         {
             // We only used SaveOpcode for when we've moved code, so
             // the patch should already be there.
             patch->opcode = patch->opcodeSaved;
-            _ASSERTE( AddressIsBreakpoint(patch->address) );
+            _ASSERTE( AddressIsBreakpoint(patchAddress) );
             return true;
         }
 
-#if _DEBUG
-        VerifyExecutableAddress((BYTE*)patch->address);
-#endif
-
-        LPVOID baseAddress = (LPVOID)(patch->address);
-
-#if !defined(HOST_OSX) || !defined(HOST_ARM64)
+        LPVOID baseAddress = (LPVOID)(patchAddress);
         DWORD oldProt;
 
-        if (!VirtualProtect(baseAddress,
-                            CORDbg_BREAK_INSTRUCTION_SIZE,
-                            PAGE_EXECUTE_READWRITE, &oldProt))
+        if (!isRWAddress)
         {
-            // we may be seeing unwriteable directly mapped executable memory.
-            // let's try copy-on-write instead,
+#if _DEBUG
+            VerifyExecutableAddress((BYTE*)patchAddress);
+#endif
+
+#if !defined(HOST_OSX) || !defined(HOST_ARM64)
             if (!VirtualProtect(baseAddress,
-                CORDbg_BREAK_INSTRUCTION_SIZE,
-                PAGE_EXECUTE_WRITECOPY, &oldProt))
+                                CORDbg_BREAK_INSTRUCTION_SIZE,
+                                PAGE_EXECUTE_READWRITE, &oldProt))
+            {
+                // we may be seeing unwriteable directly mapped executable memory.
+                // let's try copy-on-write instead,
+                if (!VirtualProtect(baseAddress,
+                    CORDbg_BREAK_INSTRUCTION_SIZE,
+                    PAGE_EXECUTE_WRITECOPY, &oldProt))
+                {
+                    _ASSERTE(!"VirtualProtect of code page failed");
+                    return false;
+                }
+            }
+#endif // !defined(HOST_OSX) || !defined(HOST_ARM64)
+        }
+
+        patch->opcode = CORDbgGetInstruction(patchAddress);
+
+        CORDbgInsertBreakpoint(patchAddress);
+        LOG((LF_CORDB, LL_EVERYTHING, "DC::ApplyPatch Breakpoint was inserted at %p for opcode %x\n",
+            patchAddress, patch->opcode));
+
+        if (!isRWAddress)
+        {
+#if !defined(HOST_OSX) || !defined(HOST_ARM64)
+            if (!VirtualProtect(baseAddress,
+                                CORDbg_BREAK_INSTRUCTION_SIZE,
+                                oldProt, &oldProt))
             {
                 _ASSERTE(!"VirtualProtect of code page failed");
                 return false;
             }
-        }
 #endif // !defined(HOST_OSX) || !defined(HOST_ARM64)
-
-        patch->opcode = CORDbgGetInstruction(patch->address);
-
-        CORDbgInsertBreakpoint((CORDB_ADDRESS_TYPE *)patch->address);
-        LOG((LF_CORDB, LL_EVERYTHING, "DC::ApplyPatch Breakpoint was inserted at %p for opcode %x\n",
-            patch->address, patch->opcode));
-
-#if !defined(HOST_OSX) || !defined(HOST_ARM64)
-        if (!VirtualProtect(baseAddress,
-                            CORDbg_BREAK_INSTRUCTION_SIZE,
-                            oldProt, &oldProt))
-        {
-            _ASSERTE(!"VirtualProtect of code page failed");
-            return false;
         }
-#endif // !defined(HOST_OSX) || !defined(HOST_ARM64)
     }
 // TODO: : determine if this is needed for AMD64
 #if defined(TARGET_X86) //REVISIT_TODO what is this?!
@@ -1443,6 +1455,9 @@ bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
 
     if (patch->IsNativePatch())
     {
+        PTR_CORDB_ADDRESS_TYPE patchAddress = patch->rwAddress == NULL ? patch->address : patch->rwAddress;
+        bool isRWAddress = patch->address != patchAddress;
+
         if (patch->fSaveOpcode)
         {
             // We're doing this for MoveCode, and we don't want to
@@ -1453,31 +1468,33 @@ bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
             return true;
         }
 
-        LPVOID baseAddress = (LPVOID)(patch->address);
-
-#if !defined(HOST_OSX) || !defined(HOST_ARM64)
+        LPVOID baseAddress = (LPVOID)(patchAddress);
         DWORD oldProt;
 
-        if (!VirtualProtect(baseAddress,
-                            CORDbg_BREAK_INSTRUCTION_SIZE,
-                            PAGE_EXECUTE_READWRITE, &oldProt))
+#if !defined(HOST_OSX) || !defined(HOST_ARM64)
+        if (!isRWAddress)
         {
             if (!VirtualProtect(baseAddress,
-                CORDbg_BREAK_INSTRUCTION_SIZE,
-                PAGE_EXECUTE_WRITECOPY, &oldProt))
+                                CORDbg_BREAK_INSTRUCTION_SIZE,
+                                PAGE_EXECUTE_READWRITE, &oldProt))
             {
-                //
-                // We may be trying to remove a patch from memory
-                // which has been unmapped. We can ignore the
-                // error in this case.
-                //
-                InitializePRD(&(patch->opcode));
-                return false;
+                if (!VirtualProtect(baseAddress,
+                    CORDbg_BREAK_INSTRUCTION_SIZE,
+                    PAGE_EXECUTE_WRITECOPY, &oldProt))
+                {
+                    //
+                    // We may be trying to remove a patch from memory
+                    // which has been unmapped. We can ignore the
+                    // error in this case.
+                    //
+                    InitializePRD(&(patch->opcode));
+                    return false;
+                }
             }
         }
 #endif // !defined(HOST_OSX) || !defined(HOST_ARM64)
 
-        CORDbgSetInstruction((CORDB_ADDRESS_TYPE *)patch->address, patch->opcode);
+        CORDbgSetInstruction(patchAddress, patch->opcode);
 
         // VERY IMPORTANT to zero out opcode, else we might mistake
         // this patch for an active one on ReadMem/WriteMem (see
@@ -1485,12 +1502,15 @@ bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
         InitializePRD(&(patch->opcode));
 
 #if !defined(HOST_OSX) || !defined(HOST_ARM64)
-        if (!VirtualProtect(baseAddress,
-                            CORDbg_BREAK_INSTRUCTION_SIZE,
-                            oldProt, &oldProt))
+        if (!isRWAddress)
         {
-            _ASSERTE(!"VirtualProtect of code page failed");
-            return false;
+            if (!VirtualProtect(baseAddress,
+                                CORDbg_BREAK_INSTRUCTION_SIZE,
+                                oldProt, &oldProt))
+            {
+                _ASSERTE(!"VirtualProtect of code page failed");
+                return false;
+            }
         }
 #endif // !defined(HOST_OSX) || !defined(HOST_ARM64)
     }
@@ -1549,6 +1569,7 @@ bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
 bool DebuggerController::IsPatched(CORDB_ADDRESS_TYPE *address, BOOL native)
 {
     LIMITED_METHOD_CONTRACT;
+
     if (native)
         return AddressIsBreakpoint(address);
 
@@ -2092,7 +2113,8 @@ BOOL DebuggerController::AddBindAndActivatePatchForMethodDesc(MethodDesc *fd,
 DebuggerControllerPatch *DebuggerController::AddAndActivateNativePatchForAddress(CORDB_ADDRESS_TYPE *address,
                                   FramePointer fp,
                                   bool managed,
-                                  TraceType traceType)
+                                  TraceType traceType,
+                                  CORDB_ADDRESS_TYPE *rwAddress)
 {
     CONTRACTL
     {
@@ -2117,7 +2139,8 @@ DebuggerControllerPatch *DebuggerController::AddAndActivateNativePatchForAddress
                             NULL,
                             NULL,
                             DebuggerPatchTable::DCP_PATCHID_INVALID,
-                            traceType);
+                            traceType,
+                            rwAddress);
 
     ActivatePatch(patch);
 
@@ -2374,7 +2397,8 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
         AddAndActivateNativePatchForAddress((CORDB_ADDRESS_TYPE *)trace->GetAddress(),
                  fp,
                  TRUE,
-                 TRACE_FRAME_PUSH);
+                 TRACE_FRAME_PUSH,
+                 (CORDB_ADDRESS_TYPE *)trace->GetRWAddress());
         return true;
 
     case TRACE_MGR_PUSH:
@@ -2385,7 +2409,8 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
         dcp = AddAndActivateNativePatchForAddress((CORDB_ADDRESS_TYPE *)trace->GetAddress(),
                        LEAF_MOST_FRAME, // But Mgr_push can't have fp affinity!
                        TRUE,
-                       DPT_DEFAULT_TRACE_TYPE); // TRACE_OTHER
+                       DPT_DEFAULT_TRACE_TYPE, // TRACE_OTHER
+                       (CORDB_ADDRESS_TYPE *)trace->GetRWAddress());
         // Now copy over the trace field since TriggerPatch will expect this
         // to be set for this case.
         if (dcp != NULL)
@@ -2419,13 +2444,14 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
 //     False
 //-----------------------------------------------------------------------------
 bool DebuggerController::MatchPatch(Thread *thread,
+                                    PTR_CORDB_ADDRESS_TYPE address,
                                     CONTEXT *context,
                                     DebuggerControllerPatch *patch)
 {
-    LOG((LF_CORDB, LL_INFO100000, "DC::MP: EIP:0x%p\n", GetIP(context)));
+    LOG((LF_CORDB, LL_INFO100000, "DC::MP: address:0x%p\n", address));
 
     // Caller should have already matched our addresses.
-    if (patch->address != dac_cast<PTR_CORDB_ADDRESS_TYPE>(GetIP(context)))
+    if (patch->address != address)
     {
         return false;
     }
@@ -2516,7 +2542,7 @@ DebuggerPatchSkip *DebuggerController::ActivatePatchSkip(Thread *thread,
     DebuggerControllerPatch *patch = g_patches->GetPatch((CORDB_ADDRESS_TYPE *)PC);
     DebuggerPatchSkip *skip = NULL;
 
-    if (patch != NULL && patch->IsNativePatch())
+    if (patch != NULL && patch->SupportsPatchSkipping())
     {
         //
         // We adjust the thread's PC to someplace where we write
@@ -2621,7 +2647,7 @@ DPOSS_ACTION DebuggerController::ScanForTriggers(CORDB_ADDRESS_TYPE *address,
             iEventNext = g_patches->GetItemIndex((HASHENTRY *)patchNext);
         }
 
-        if (MatchPatch(thread, context, patch))
+        if (MatchPatch(thread, dac_cast<PTR_CORDB_ADDRESS_TYPE>(GetIP(context)), context, patch))
         {
             LOG((LF_CORDB, LL_INFO10000, "DC::SFT: patch matched\n"));
             AddRefPatch(patch);
@@ -2636,7 +2662,6 @@ DPOSS_ACTION DebuggerController::ScanForTriggers(CORDB_ADDRESS_TYPE *address,
             {
                 // Mark if we're at an unsafe place.
                 AtSafePlaceHolder unsafePlaceHolder(thread);
-
                 tpr = patch->controller->TriggerPatch(patch,
                                                     thread,
                                                     TY_NORMAL);
@@ -3905,6 +3930,77 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
 }
 
+void DebuggerController::TriggerSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint)
+{
+    _ASSERT(!ThisIsHelperThreadWorker());
+    _ASSERTE(!HasLock());
+    _ASSERT(context != NULL);
+    _ASSERT(swBreakpoint != NULL);
+
+     Thread * thread = g_pEEInterface->GetThread();
+    _ASSERTE(thread  != NULL);
+
+    LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: triggering SW breakpoint %p for addr:%p rwAddr:%p thread:%p\n",
+        swBreakpoint, swBreakpoint->GetIP(), swBreakpoint->GetRWAddress(), thread));
+
+    if (swBreakpoint->GetIP() == swBreakpoint->GetRWAddressAsPCODE())
+    {
+        LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: %p is not a valid SW breakpoint, skipping.\n", swBreakpoint));
+        return;
+    }
+
+    PTR_CORDB_ADDRESS_TYPE address = dac_cast<PTR_CORDB_ADDRESS_TYPE>(swBreakpoint->GetIP());
+
+    LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: starting scan for addr:%p thread:%p\n", address, thread));
+
+    CrstHolderWithState lockController(&g_criticalSection);
+
+    if (g_patches != NULL)
+    {
+        DebuggerControllerPatch *patch = NULL;
+        InlineSArray<DebuggerControllerPatch*, 32> patchArray;
+        for (patch = g_patches->GetPatch(address); patch != NULL; patch = g_patches->GetNextPatch(patch))
+        {
+            LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: patch:%p\n", patch));
+            if (MatchPatch(thread, address, context, patch))
+            {
+                TraceType traceType = patch->trace.GetTraceType();
+                if (traceType != TRACE_FRAME_PUSH && traceType != TRACE_MGR_PUSH)
+                {
+                    LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: unsupported trace type: %d in patch:%p, skipping\n", traceType, patch));
+                    continue;
+                }
+
+                LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: patch:%p matched\n", patch));
+
+                AddRefPatch(patch);
+                patchArray.Append(patch);
+            }
+        }
+
+        for (auto it = patchArray.Begin(); it != patchArray.End(); ++it)
+        {
+            patch = *it;
+            _ASSERT(patch != NULL);
+
+            if (patch->refCount == 1)
+            {
+                LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: ignoring patch:%p, patch pending removal\n", patch));
+                ReleasePatch(patch);
+                continue;
+            }
+
+            AtSafePlaceHolder unsafePlaceHolder(thread);
+
+            TraceData traceData(TRACE_DATA_SW_BREAKPOINT, swBreakpoint);
+            TP_RESULT tpr = patch->controller->TriggerPatch2(patch, thread, context, TY_NORMAL, &traceData);
+
+            _ASSERT(tpr == TPR_IGNORE);
+            ReleasePatch(patch);
+        }
+    }
+}
+
 //
 // AddProtection adds page protection to (at least) the given range of
 // addresses
@@ -3952,6 +4048,21 @@ TP_RESULT DebuggerController::TriggerPatch(DebuggerControllerPatch *patch,
                               TRIGGER_WHY tyWhy)
 {
     LOG((LF_CORDB, LL_INFO10000, "DC::TP: in default TriggerPatch\n"));
+    return TPR_IGNORE;
+}
+
+// bool DebuggerController::TriggerPatch2()   What: Tells the
+// static DC whether this patch should be activated now.
+// Returns true if it should be, false otherwise.
+// How: Base class implementation returns false.  Others may
+// return true.
+TP_RESULT DebuggerController::TriggerPatch2(DebuggerControllerPatch *patch,
+                              Thread *thread,
+                              CONTEXT *context,
+                              TRIGGER_WHY tyWhy,
+                              TraceData *traceData)
+{
+    LOG((LF_CORDB, LL_INFO10000, "DC::TP: in default TriggerPatch2\n"));
     return TPR_IGNORE;
 }
 
@@ -4277,7 +4388,7 @@ bool DebuggerController::DispatchNativeException(EXCEPTION_RECORD *pException,
             result = DebuggerController::DispatchPatchOrSingleStep(pCurThread,
                                                             pContext,
                                                             ip,
-                                        (SCAN_TRIGGER)(ST_PATCH|ST_SINGLE_STEP)
+                                                            (SCAN_TRIGGER)(ST_PATCH|ST_SINGLE_STEP)
 #ifdef OUT_OF_PROCESS_SETTHREADCONTEXT
                                                             ,
                                                             pDebuggerSteppingInfo
@@ -7005,6 +7116,30 @@ TP_RESULT DebuggerStepper::TriggerPatch(DebuggerControllerPatch *patch,
                                    Thread *thread,
                                    TRIGGER_WHY tyWhy)
 {
+    CONTEXT *context = g_pEEInterface->GetThreadFilterContext(thread);
+    _ASSERTE(context != NULL);
+    return TriggerPatch2(patch, thread, context, tyWhy, NULL);
+}
+
+// TP_RESULT DebuggerStepper::TriggerPatch2()
+// What: Triggers patch if we're not in a stub, and we're
+// outside of the stepping range.  Otherwise sets another patch so as to
+// step out of the stub, or in the next instruction within the range.
+// How: If module==NULL & managed==> we're in a stub:
+// TrapStepOut() and return false.  Module==NULL&!managed==> return
+// true.  If m_range != NULL & execution is currently in the range,
+// attempt a TrapStep (TrapStepOut otherwise) & return false.  Otherwise,
+// return true.
+TP_RESULT DebuggerStepper::TriggerPatch2(DebuggerControllerPatch *patch,
+                                   Thread *thread,
+                                   CONTEXT *context,
+                                   TRIGGER_WHY tyWhy,
+                                   TraceData *traceData)
+{
+    _ASSERTE(patch != NULL);
+    _ASSERTE(thread != NULL);
+    _ASSERTE(context != NULL);
+
     LOG((LF_CORDB, LL_INFO10000, "DS::TP\n"));
 
     // If we're frozen, we may hit a patch but we just ignore it
@@ -7025,12 +7160,8 @@ TP_RESULT DebuggerStepper::TriggerPatch(DebuggerControllerPatch *patch,
     // - the context is in managed code (eg, not a stub)
     // - OR we have a frame in place to prime the stackwalk.
     ControllerStackInfo info;
-    CONTEXT *context = g_pEEInterface->GetThreadFilterContext(thread);
 
     _ASSERTE(!ISREDIRECTEDTHREAD(thread));
-
-    // Context should always be from patch.
-    _ASSERTE(context != NULL);
 
     bool fSafeToDoStackTrace = true;
 
@@ -7091,12 +7222,26 @@ TP_RESULT DebuggerStepper::TriggerPatch(DebuggerControllerPatch *patch,
             {
                 _ASSERTE(context != NULL);
                 CONTRACT_VIOLATION(GCViolation);
-                traceOk = g_pEEInterface->TraceManager(
-                                                 thread,
-                                                 patch->trace.GetStubManager(),
-                                                 &trace,
-                                                 context,
-                                                 &traceManagerRetAddr);
+
+                if (traceData == NULL)
+                {
+                    traceOk = g_pEEInterface->TraceManager(
+                                                     thread,
+                                                     patch->trace.GetStubManager(),
+                                                     &trace,
+                                                     context,
+                                                     &traceManagerRetAddr);
+                }
+                else
+                {
+                    traceOk = g_pEEInterface->TraceManager2(
+                                                     thread,
+                                                     patch->trace.GetStubManager(),
+                                                     &trace,
+                                                     context,
+                                                     traceData,
+                                                     &traceManagerRetAddr);
+                }
 
                 // We don't hae an active frame here, so patch with a
                 // FP of NULL so anything will match.

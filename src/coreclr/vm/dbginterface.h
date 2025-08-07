@@ -20,6 +20,7 @@ typedef DPTR(struct ICorDebugInfo::NativeVarInfo) PTR_NativeVarInfo;
 typedef void (*FAVORCALLBACK)(void *);
 
 class DebuggerSteppingInfo;
+class DebuggerSWBreakpoint;
 
 //
 // The purpose of this object is to serve as an entry point to the
@@ -414,6 +415,7 @@ public:
 #ifndef DACCESS_COMPILE
     virtual HRESULT DeoptimizeMethod(Module* pModule, mdMethodDef methodDef) = 0;
     virtual HRESULT IsMethodDeoptimized(Module *pModule, mdMethodDef methodDef, BOOL *pResult) = 0;
+    virtual void TriggerSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint) = 0;
 #endif //DACCESS_COMPILE
 };
 

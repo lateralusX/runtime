@@ -1239,11 +1239,21 @@ bool EEDbgInterfaceImpl::TraceFrame(Thread *thread,
     return fResult;
 }
 
-bool EEDbgInterfaceImpl::TraceManager(Thread *thread,
-                                      StubManager *stubManager,
-                                      TraceDestination *trace,
-                                      CONTEXT *context,
-                                      BYTE **pRetAddr)
+bool EEDbgInterfaceImpl::TraceManager(Thread* thread,
+                                      StubManager* stubManager,
+                                      TraceDestination* trace,
+                                      CONTEXT* context,
+                                      BYTE** pRetAddr)
+{
+    return TraceManager2(thread, stubManager, trace, context, NULL, pRetAddr);
+}
+
+bool EEDbgInterfaceImpl::TraceManager2(Thread *thread,
+                                       StubManager *stubManager,
+                                       TraceDestination *trace,
+                                       CONTEXT *context,
+                                       TraceData *traceData,
+                                       BYTE **pRetAddr)
 {
     CONTRACTL
     {
@@ -1257,7 +1267,14 @@ bool EEDbgInterfaceImpl::TraceManager(Thread *thread,
 
     EX_TRY
     {
-        fResult =  stubManager->TraceManager(thread, trace, context, pRetAddr) != FALSE;
+        if (traceData == NULL)
+        {
+            fResult =  stubManager->TraceManager(thread, trace, context, pRetAddr) != FALSE;
+        }
+        else
+        {
+            fResult =  stubManager->TraceManager2(thread, trace, context, traceData, pRetAddr) != FALSE;
+        }
     }
     EX_CATCH
     {

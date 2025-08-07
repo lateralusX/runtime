@@ -30,8 +30,11 @@ typedef M128A FPRegister64;
 // this is the offset by which it should be decremented to lend somewhere in a call instruction.
 #define STACKWALK_CONTROLPC_ADJUST_OFFSET 1
 
-#define CORDbg_BREAK_INSTRUCTION_SIZE          1
-#define CORDbg_BREAK_INSTRUCTION         (BYTE)0xCC
+#define CORDbg_BREAK_INSTRUCTION_SIZE 1
+#define CORDbg_BREAK_INSTRUCTION (BYTE)0xCC
+
+#define CORDbg_NOP_INSTRUCTION_SIZE 1
+#define CORDbg_NOP_INSTRUCTION (BYTE)0x90
 
 inline CORDB_ADDRESS GetPatchEndAddr(CORDB_ADDRESS patchAddr)
 {

@@ -416,6 +416,9 @@ GPTR_DECL(DebugInterface,     g_pDebugInterface);
 GVAL_DECL(DWORD,              g_CORDebuggerControlFlags);
 #ifdef DEBUGGING_SUPPORTED
 GPTR_DECL(EEDbgInterfaceImpl, g_pEEDbgInterfaceImpl);
+
+// Predefined SW breakpoints.
+CorDB_SW_BREAKPOINT_DECL(g_templateSWBreakpoint);
 #endif // DEBUGGING_SUPPORTED
 
 #ifdef PROFILING_SUPPORTED
