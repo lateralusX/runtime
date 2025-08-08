@@ -95,7 +95,9 @@ public:
     {
         this->type = TRACE_UNMANAGED;
         this->address = addr;
+        this->bpAddress = dac_cast<PTR_BYTE>(addr);
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // The addr is inside jitted code (eg, there's a JitManaged that will claim it)
@@ -103,7 +105,9 @@ public:
     {
         this->type = TRACE_MANAGED;
         this->address = addr;
+        this->bpAddress = dac_cast<PTR_BYTE>(addr);
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Initialize for an unmanaged entry stub.
@@ -111,7 +115,9 @@ public:
     {
         this->type = TRACE_ENTRY_STUB;
         this->address = addr;
+        this->bpAddress = dac_cast<PTR_BYTE>(addr);
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Initialize for a stub.
@@ -119,7 +125,9 @@ public:
     {
         this->type = TRACE_STUB;
         this->address = addr;
+        this->bpAddress = dac_cast<PTR_BYTE>(addr);
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Init for a managed unjitted method.
@@ -130,21 +138,25 @@ public:
 
     // Place a patch at the given addr, and then when it's hit,
     // call pStubManager->TraceManager() to get the next TraceDestination.
-    void InitForManagerPush(PCODE addr, StubManager * pStubManager)
+    void InitForManagerPush(PCODE addr, StubManager * pStubManager, PTR_BYTE bpAddr = NULL)
     {
         this->type = TRACE_MGR_PUSH;
         this->address = addr;
+        this->bpAddress = bpAddr != NULL ? bpAddr : dac_cast<PTR_BYTE>(addr);
         this->stubManager = pStubManager;
+        this->pDesc = NULL;
     }
 
     // Place a patch at the given addr, and then when it's hit
     // call GetThread()->GetFrame()->TraceFrame() to get the next TraceDestination.
     // This address must be safe to run a callstack at.
-    void InitForFramePush(PCODE addr)
+    void InitForFramePush(PCODE addr, PTR_BYTE bpAddr = NULL)
     {
         this->type = TRACE_FRAME_PUSH;
         this->address = addr;
+        this->bpAddress = bpAddr != NULL ? bpAddr : dac_cast<PTR_BYTE>(addr);
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Nobody recognized the target address. We will not be able to step-in to it.
@@ -155,7 +167,9 @@ public:
     {
         this->type = TRACE_OTHER;
         this->address = addr;
+        this->bpAddress = dac_cast<PTR_BYTE>(addr);
         this->stubManager = NULL;
+        this->pDesc = NULL;
     }
 
     // Accessors
@@ -178,6 +192,11 @@ public:
         return stubManager;
     }
 
+    PTR_BYTE GetBreakpointAddress()
+    {
+        return bpAddress;
+    }
+
     // Expose this b/c DebuggerPatchTable::AddPatchForAddress() needs it.
     // Ideally we'd get rid of this.
     void Bad_SetTraceType(TraceType t)
@@ -185,9 +204,10 @@ public:
         this->type = t;
     }
 private:
-    TraceType                       type;               // The kind of code the stub is going to
-    PCODE                           address;            // Where the stub is going
-    StubManager                     *stubManager;       // The manager that claims this stub
+    TraceType                       type;                   // The kind of code the stub is going to
+    PCODE                           address;                // Where the stub is going
+    PTR_BYTE                        bpAddress;              // In case breakpoint is not at address.
+    StubManager                     *stubManager;           // The manager that claims this stub
     MethodDesc                      *pDesc;
 };
 
@@ -839,18 +859,7 @@ public:
 
     static TADDR GetHiddenArg(T_CONTEXT * pContext)
     {
-#if defined(TARGET_X86)
-        return pContext->Eax;
-#elif defined(TARGET_AMD64)
-        return pContext->R10;
-#elif defined(TARGET_ARM)
-        return pContext->R12;
-#elif defined(TARGET_ARM64)
-        return pContext->X12;
-#else
-        PORTABILITY_ASSERT("StubManagerHelpers::GetHiddenArg");
-        return (TADDR)NULL;
-#endif
+        return *GetHiddenArgOffset(pContext);
     }
 
     static PCODE GetRetAddrFromMulticastILStubFrame(T_CONTEXT * pContext)
@@ -903,6 +912,34 @@ public:
 #endif
     }
 
+    static void SetSWBreakpoint(T_CONTEXT *pContext, TADDR swBreakpoint)
+    {
+        PTR_TADDR offset = GetHiddenArgOffset(pContext);
+        *offset = swBreakpoint;
+    }
+
+    static TADDR GetSWBreakpoint(T_CONTEXT *pContext)
+    {
+        return GetHiddenArg(pContext);
+    }
+
+private:
+
+    static PTR_TADDR GetHiddenArgOffset(T_CONTEXT * pContext)
+    {
+#if defined(TARGET_X86)
+        return dac_cast<PTR_TADDR>(&pContext->Eax);
+#elif defined(TARGET_AMD64)
+        return dac_cast<PTR_TADDR>(&pContext->R10);
+#elif defined(TARGET_ARM)
+        return dac_cast<PTR_TADDR>(&pContext->R12);
+#elif defined(TARGET_ARM64)
+        return dac_cast<PTR_TADDR>(&pContext->X12);
+#else
+        PORTABILITY_ASSERT("StubManagerHelpers::GetHiddenArgOffset");
+        return (TADDR)NULL;
+#endif
+    }
 };
 
 #endif // !__stubmgr_h__

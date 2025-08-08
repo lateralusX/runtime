@@ -426,6 +426,7 @@ struct DebuggerControllerPatch
     DebuggerFunctionKey     key;
     SIZE_T                  offset;
     PTR_CORDB_ADDRESS_TYPE  address;
+    PTR_BYTE                bpAddress;
     FramePointer            fp;
     PRD_TYPE                opcode; // See description above.
     BOOL                    fSaveOpcode;
@@ -1095,8 +1096,7 @@ class DebuggerController
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
 
-    static void DispatchSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address);
-    static void DispatchSWBreakpoint(DebuggerSWBreakpointType type);
+    static void DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpointData *breakpointData);
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
     // If pAppDomain is specified, then only patches tied to the specified AppDomain are
@@ -1164,12 +1164,9 @@ class DebuggerController
 
   private:
 
-    static bool MatchPatch(
-        Thread *thread,
-        PTR_CORDB_ADDRESS_TYPE address,
-        CONTEXT *context,
-        DebuggerControllerPatch *patch
-    );
+    static bool MatchPatch(Thread *thread,
+                           CONTEXT *context,
+                           DebuggerControllerPatch *patch);
 
     // Returns TRUE if we should continue to dispatch after this exception
     // hook.
@@ -1296,9 +1293,8 @@ public:
     DebuggerControllerPatch *AddAndActivateNativePatchForAddress(CORDB_ADDRESS_TYPE *address,
                                       FramePointer fp,
                                       bool managed,
-                                      TraceType traceType);
-
-
+                                      TraceType traceType,
+                                      TraceDestination *trace = NULL);
 
     bool PatchTrace(TraceDestination *trace, FramePointer fp, bool fStopInUnmanaged);
 

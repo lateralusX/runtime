@@ -511,6 +511,7 @@ DebuggerControllerPatch *DebuggerPatchTable::AddPatchForMethodDef(DebuggerContro
     patch->offset = offset;
     patch->offsetIsIL = offsetIsIL;
     patch->address = NULL;
+    patch->bpAddress = NULL;
     patch->fp = fp;
     patch->trace.Bad_SetTraceType(DPT_DEFAULT_TRACE_TYPE);      // TRACE_OTHER
     patch->refCount   = 1;            // AddRef()
@@ -626,6 +627,7 @@ DebuggerControllerPatch *DebuggerPatchTable::AddPatchForAddress(DebuggerControll
     patch->offset = offset;
     patch->offsetIsIL = FALSE;
     patch->address = address;
+    patch->bpAddress = NULL;
     patch->fp = fp;
     patch->trace.Bad_SetTraceType(traceType);
     patch->refCount   = 1;            // AddRef()
@@ -1300,7 +1302,7 @@ bool DebuggerController::BindPatch(DebuggerControllerPatch *patch,
 
 bool DebuggerController::IsSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
 {
-    return DSWB_IS(address);
+    return DebuggerSWBreakpoint::Exist(address);
 }
 
 bool DebuggerController::IsHWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
@@ -1316,7 +1318,7 @@ bool DebuggerController::IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native)
     LIMITED_METHOD_CONTRACT;
 
     if (native)
-        return IsSWBreakpoint(address) || IsHWBreakpoint(address);
+        return IsHWBreakpoint(address);
 
     return false;
 }
@@ -1324,21 +1326,21 @@ bool DebuggerController::IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native)
 bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
-    _ASSERT(IsSWBreakpoint(patch->address));
+    _ASSERT(IsSWBreakpoint(patch->bpAddress));
 
-    DebuggerSWBreakpointType type = DSWB_CORDB_ADDRESS_TO_TYPE(patch->address);
+    DebuggerSWBreakpointType type = DebuggerSWBreakpoint::AddressToType(patch->bpAddress);
 
-    DWORD oldCount = DSWB_COUNT(type);
-    DSWB_ENABLE(type);
+    DWORD oldCount = DebuggerSWBreakpoint::Count(type);
+    DebuggerSWBreakpoint::Enable(type);
 
     LOG((LF_CORDB,
         LL_INFO10000,
         "DC::ApplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
         patch,
         patch->patchId,
-        patch->address,
+        patch->bpAddress,
         oldCount,
-        DSWB_COUNT(type)));
+        DebuggerSWBreakpoint::Count(type)));
 
     return true;
 }
@@ -1346,21 +1348,21 @@ bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
 bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
-    _ASSERT(IsSWBreakpoint(patch->address));
+    _ASSERT(IsSWBreakpoint(patch->bpAddress));
 
-    DebuggerSWBreakpointType type = DSWB_CORDB_ADDRESS_TO_TYPE(patch->address);
+    DebuggerSWBreakpointType type = DebuggerSWBreakpoint::AddressToType(patch->bpAddress);
 
-    DWORD oldCount = DSWB_COUNT(type);
-    DSWB_DISABLE(type);
+    DWORD oldCount = DebuggerSWBreakpoint::Count(type);
+    DebuggerSWBreakpoint::Disable(type);
 
     LOG((LF_CORDB,
         LL_INFO10000,
         "DC::UnapplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
         patch,
         patch->patchId,
-        patch->address,
+        patch->bpAddress,
         oldCount,
-        DSWB_COUNT(type)));
+        DebuggerSWBreakpoint::Count(type)));
 
     return true;
 }
@@ -1380,7 +1382,6 @@ bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch
 bool DebuggerController::ApplyHWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
-    _ASSERT(!IsSWBreakpoint(patch->address));
 
     LOG((LF_CORDB, LL_INFO10000, "DC::ApplyHWBreakpointPatch %p, patchId:0x%zx at addr %p\n",
         patch, patch->patchId, patch->address));
@@ -1504,7 +1505,6 @@ bool DebuggerController::UnapplyHWBreakpointPatch(DebuggerControllerPatch *patch
     _ASSERTE(patch != NULL);
     _ASSERTE(patch->address != NULL);
     _ASSERTE(patch->IsActivated() );
-    _ASSERT(!IsSWBreakpoint(patch->address));
 
     LOG((LF_CORDB, LL_INFO1000, "DC::UnapplyHWBreakPointPatch %p, patchId:0x%zx\n",
         patch, patch->patchId));
@@ -1617,7 +1617,7 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
 
     _ASSERTE(patch != NULL);
 
-    return IsSWBreakpoint(patch->address) ? ApplySWBreakpointPatch(patch) : ApplyHWBreakpointPatch(patch);
+    return IsSWBreakpoint(patch->bpAddress) ? ApplySWBreakpointPatch(patch) : ApplyHWBreakpointPatch(patch);
 }
 
 bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
@@ -1626,7 +1626,7 @@ bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
 
     _ASSERTE(patch != NULL);
 
-    return IsSWBreakpoint(patch->address) ? UnapplySWBreakpointPatch(patch) : UnapplyHWBreakpointPatch(patch);
+    return IsSWBreakpoint(patch->bpAddress) ? UnapplySWBreakpointPatch(patch) : UnapplyHWBreakpointPatch(patch);
 }
 
 // DWORD DebuggerController::GetPatchedOpcode()  Gets the opcode
@@ -2166,7 +2166,8 @@ BOOL DebuggerController::AddBindAndActivatePatchForMethodDesc(MethodDesc *fd,
 DebuggerControllerPatch *DebuggerController::AddAndActivateNativePatchForAddress(CORDB_ADDRESS_TYPE *address,
                                   FramePointer fp,
                                   bool managed,
-                                  TraceType traceType)
+                                  TraceType traceType,
+                                  TraceDestination *trace)
 {
     CONTRACTL
     {
@@ -2192,6 +2193,12 @@ DebuggerControllerPatch *DebuggerController::AddAndActivateNativePatchForAddress
                             NULL,
                             DebuggerPatchTable::DCP_PATCHID_INVALID,
                             traceType);
+
+    if (trace != NULL)
+    {
+        patch->trace = *trace;
+        patch->bpAddress = trace->GetBreakpointAddress();
+    }
 
     ActivatePatch(patch);
 
@@ -2448,7 +2455,8 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
         AddAndActivateNativePatchForAddress((CORDB_ADDRESS_TYPE *)trace->GetAddress(),
                  fp,
                  TRUE,
-                 TRACE_FRAME_PUSH);
+                 TRACE_FRAME_PUSH,
+                 trace);
         return true;
 
     case TRACE_MGR_PUSH:
@@ -2459,14 +2467,8 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
         dcp = AddAndActivateNativePatchForAddress((CORDB_ADDRESS_TYPE *)trace->GetAddress(),
                        LEAF_MOST_FRAME, // But Mgr_push can't have fp affinity!
                        TRUE,
-                       DPT_DEFAULT_TRACE_TYPE); // TRACE_OTHER
-        // Now copy over the trace field since TriggerPatch will expect this
-        // to be set for this case.
-        if (dcp != NULL)
-        {
-            dcp->trace = *trace;
-        }
-
+                       DPT_DEFAULT_TRACE_TYPE, // TRACE_OTHER
+                       trace);
         return true;
 
     case TRACE_OTHER:
@@ -2493,11 +2495,12 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
 //     False
 //-----------------------------------------------------------------------------
 bool DebuggerController::MatchPatch(Thread *thread,
-                                    PTR_CORDB_ADDRESS_TYPE address,
                                     CONTEXT *context,
                                     DebuggerControllerPatch *patch)
 {
-    LOG((LF_CORDB, LL_INFO100000, "DC::MP: EIP:0x%p\n", address));
+    PTR_CORDB_ADDRESS_TYPE address = dac_cast<PTR_CORDB_ADDRESS_TYPE>(GetIP(context));
+
+    LOG((LF_CORDB, LL_INFO100000, "DC::MP: address:0x%p\n", address));
 
     // Caller should have already matched our addresses.
     if (patch->address != address)
@@ -2696,7 +2699,7 @@ DPOSS_ACTION DebuggerController::ScanForTriggers(CORDB_ADDRESS_TYPE *address,
             iEventNext = g_patches->GetItemIndex((HASHENTRY *)patchNext);
         }
 
-        if (MatchPatch(thread, dac_cast<PTR_CORDB_ADDRESS_TYPE>(GetIP(context)), context, patch))
+        if (MatchPatch(thread, context, patch))
         {
             LOG((LF_CORDB, LL_INFO10000, "DC::SFT: patch matched\n"));
             AddRefPatch(patch);
@@ -2711,10 +2714,7 @@ DPOSS_ACTION DebuggerController::ScanForTriggers(CORDB_ADDRESS_TYPE *address,
             {
                 // Mark if we're at an unsafe place.
                 AtSafePlaceHolder unsafePlaceHolder(thread);
-
-                tpr = patch->controller->TriggerPatch(patch,
-                                                    thread,
-                                                    TY_NORMAL);
+                tpr = patch->controller->TriggerPatch(patch, thread, TY_NORMAL);
             }
 
             // Any patch may potentially send an event.
@@ -3980,11 +3980,34 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
 }
 
-void DebuggerController::DispatchSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
+void DebuggerController::DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpointData *swBreakpointData)
 {
     _ASSERT(!ThisIsHelperThreadWorker());
     _ASSERTE(!HasLock());
+    _ASSERT(context != NULL);
+
+    Thread * thread = g_pEEInterface->GetThread();
+    _ASSERTE(thread  != NULL);
+
+    if (swBreakpointData->GetIP() != NULL)
+    {
+        SetIP(context, swBreakpointData->GetIP());
+    }
+
+    EXCEPTION_RECORD exception;
+    ZeroMemory(&exception, sizeof(exception));
+
+    exception.ExceptionCode = EXCEPTION_BREAKPOINT;
+    exception.ExceptionAddress = dac_cast<PVOID>(GetIP(context));
+
+    StubManagerHelpers::SetSWBreakpoint(context, dac_cast<TADDR>(swBreakpointData));
+
+    DispatchNativeException(&exception, context, exception.ExceptionCode, thread);
+
+    /*_ASSERT(!ThisIsHelperThreadWorker());
+    _ASSERTE(!HasLock());
     _ASSERT(address != NULL);
+    _ASSERT(context != NULL);
 
      Thread * thread = g_pEEInterface->GetThread();
     _ASSERTE(thread  != NULL);
@@ -3995,6 +4018,9 @@ void DebuggerController::DispatchSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
 
     if (g_patches != NULL)
     {
+        CONTEXT *previousContext = thread->GetFilterContext();
+        thread->SetFilterContext(context);
+
         DebuggerControllerPatch *patch = NULL;
         InlineSArray<DebuggerControllerPatch*, 32> patchArray;
         for (patch = g_patches->GetPatch(address); patch != NULL; patch = g_patches->GetNextPatch(patch))
@@ -4023,16 +4049,13 @@ void DebuggerController::DispatchSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
             }
 
             AtSafePlaceHolder unsafePlaceHolder(thread);
-            TP_RESULT tpr = patch->controller->TriggerPatch(patch, thread, TY_NORMAL);
+            TP_RESULT tpr = patch->controller->TriggerPatch2(patch, thread, TY_NORMAL, data);
             _ASSERT(tpr == TPR_IGNORE);
             ReleasePatch(patch);
         }
-    }
-}
 
-void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type)
-{
-    DispatchSWBreakpoint(DSWB_TYPE_TO_CORDB_ADDRESS(type));
+        thread->SetFilterContext(previousContext);
+    }*/
 }
 
 //
@@ -4391,6 +4414,7 @@ bool DebuggerController::DispatchNativeException(EXCEPTION_RECORD *pException,
                                                        pDebuggerSteppingInfo
 #endif
                                                        );
+
             LOG((LF_CORDB, LL_EVERYTHING, "DC::DNE DispatchPatch call returned\n"));
 
             // If we detached, we should remove all our breakpoints. So if we try
@@ -4407,7 +4431,7 @@ bool DebuggerController::DispatchNativeException(EXCEPTION_RECORD *pException,
             result = DebuggerController::DispatchPatchOrSingleStep(pCurThread,
                                                             pContext,
                                                             ip,
-                                        (SCAN_TRIGGER)(ST_PATCH|ST_SINGLE_STEP)
+                                                            (SCAN_TRIGGER)(ST_PATCH|ST_SINGLE_STEP)
 #ifdef OUT_OF_PROCESS_SETTHREADCONTEXT
                                                             ,
                                                             pDebuggerSteppingInfo

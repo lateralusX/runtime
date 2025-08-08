@@ -192,6 +192,7 @@ void TraceDestination::InitForUnjittedMethod(MethodDesc * pDesc)
     this->type = TRACE_UNJITTED_METHOD;
     this->pDesc = pDesc;
     this->stubManager = NULL;
+    this->bpAddress = NULL;
 }
 
 
@@ -937,8 +938,10 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     // We cannot tell where the stub will end up
     // until after the prestub worker has been run.
     //
-    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: ThePreStub SW breakpoint\n"));
-    trace->InitForFramePush(DSWB_TYPE_TO_PCODE(DSWBT_PRE_STUB));
+    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: PreStubWorker SW breakpoint\n"));
+
+    PreStubWorkerSWBreakpointData swBreakpointData;
+    trace->InitForFramePush(swBreakpointData.GetIP(), swBreakpointData.GetAddress());
 
     return TRUE;
 }

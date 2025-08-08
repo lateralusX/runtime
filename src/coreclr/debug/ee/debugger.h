@@ -2354,7 +2354,7 @@ private:
 public:
     HRESULT DeoptimizeMethod(Module* pModule, mdMethodDef methodDef);
     HRESULT IsMethodDeoptimized(Module *pModule, mdMethodDef methodDef, BOOL *pResult);
-    void DispatchSWBreakpoint(DebuggerSWBreakpointType type);
+    void DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpointData *swBreakpointData);
 #endif //DACCESS_COMPILE
     HRESULT UpdateForceCatchHandlerFoundTable(BOOL enableEvents, OBJECTREF exObj, AppDomain *pAppDomain);
     HRESULT UpdateCustomNotificationTable(Module *pModule, mdTypeDef classToken, BOOL enabled);
@@ -4041,74 +4041,132 @@ bool DbgIsSpecialILOffset(DWORD offset);
 
 void FixupDispatcherContext(T_DISPATCHER_CONTEXT* pDispatcherContext, T_CONTEXT* pContext, PEXCEPTION_ROUTINE pUnwindPersonalityRoutine = NULL);
 
+enum DebuggerSWBreakpointType
+{
+    SW_BREAKPOINT_MIN = 0,
+    SW_BREAKPOINT_THE_PRE_STUB_WORKER = SW_BREAKPOINT_MIN,
+    SW_BREAKPOINT_MAX
+};
+
+struct DebuggerSWBreakpointData
+{
+    DebuggerSWBreakpointType m_type;
+    PCODE m_ip;
+    PTR_BYTE m_address;
+    void *m_data;
+
+public:
+
+    DebuggerSWBreakpointType GetType()
+    {
+        return m_type;
+    }
+
+    PCODE GetIP()
+    {
+        return m_ip;
+    }
+
+    PTR_BYTE GetAddress()
+    {
+        return m_address;
+    }
+
+    void *GetData()
+    {
+        return m_data;
+    }
+};
+
+GARY_DECL(DWORD, g_pDebuggerSWBreakpoints, SW_BREAKPOINT_MAX);
+
+class DebuggerSWBreakpoint
+{
+public:
+
+    static inline bool Exist(PTR_CORDB_ADDRESS_TYPE address)
+    {
+        TADDR start = dac_cast<TADDR>(g_pDebuggerSWBreakpoints);
+        TADDR end = start + (SW_BREAKPOINT_MAX * sizeof(DWORD));
+        TADDR addressAsTAddr = dac_cast<TADDR>(address);
+
+        return addressAsTAddr >= start && addressAsTAddr < end;
+    }
+
+    static inline DebuggerSWBreakpointType AddressToType(PTR_CORDB_ADDRESS_TYPE address)
+    {
+        _ASSERTE(Exist(address));
+
+        TADDR start = dac_cast<TADDR>(g_pDebuggerSWBreakpoints);
+        TADDR addressAsTAddr = dac_cast<TADDR>(address);
+
+        _ASSERT(addressAsTAddr - start >= 0);
+
+        return (DebuggerSWBreakpointType)((addressAsTAddr - start) / sizeof(DWORD));
+    }
+
+    static inline PTR_BYTE TypeToAddress(DebuggerSWBreakpointType type)
+    {
+        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
+        return dac_cast<PTR_BYTE>(&g_pDebuggerSWBreakpoints[type]);
+    }
+
+    static inline bool Enabled(DebuggerSWBreakpointType type)
+    {
+        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
+        return g_pDebuggerSWBreakpoints[type] != 0;
+    }
+
+    static inline DWORD Enable(DebuggerSWBreakpointType type)
+    {
+        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
+        return ++g_pDebuggerSWBreakpoints[type];
+    }
+
+    static inline DWORD Disable(DebuggerSWBreakpointType type)
+    {
+        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
+        return --g_pDebuggerSWBreakpoints[type];
+    }
+
+    static inline DWORD Count(DebuggerSWBreakpointType type)
+    {
+        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
+        return g_pDebuggerSWBreakpoints[type];
+    }
+
+    static inline DWORD Reset(DebuggerSWBreakpointType type)
+    {
+        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
+        return g_pDebuggerSWBreakpoints[type] = 0;
+    }
+
+    static FORCEINLINE void Dispatch(DebuggerSWBreakpointData *swBreakpointData)
+    {
 #ifndef DACCESS_COMPILE
+        _ASSERT(swBreakpointData != NULL);
+        _ASSERTE(swBreakpointData->GetType() >= SW_BREAKPOINT_MIN && swBreakpointData->GetType() < SW_BREAKPOINT_MAX);
+        if (Enabled(swBreakpointData->GetType()))
+        {
+            CONTEXT context;
+            context.ContextFlags = CONTEXT_CONTROL;
+            ClrCaptureContext(&context);
+            g_pDebugger->DispatchSWBreakpoint(&context, swBreakpointData);
+        }
+#endif
+    }
+};
 
-static inline bool DSWB_IS(PTR_CORDB_ADDRESS_TYPE address)
+struct PreStubWorkerSWBreakpointData : public DebuggerSWBreakpointData
 {
-    return (DWORD *)address >= g_pDebuggerSWBreakpoints &&
-        (DWORD *)address < &g_pDebuggerSWBreakpoints[DSWBT_MAX];
-}
-
-static inline PTR_CORDB_ADDRESS_TYPE DSWB_PCODE_TO_CORDB_ADDRESS(PCODE address)
-{
-    return (PTR_CORDB_ADDRESS_TYPE)(address);
-}
-
-static inline DebuggerSWBreakpointType DSWB_CORDB_ADDRESS_TO_TYPE(PTR_CORDB_ADDRESS_TYPE address)
-{
-    _ASSERTE(DSWB_IS(address));
-    return (DebuggerSWBreakpointType)(((DWORD *)address - g_pDebuggerSWBreakpoints) / sizeof(DWORD));
-}
-
-static inline PTR_CORDB_ADDRESS_TYPE DSWB_TYPE_TO_CORDB_ADDRESS(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    return (PTR_CORDB_ADDRESS_TYPE)(&g_pDebuggerSWBreakpoints[type]);
-}
-
-static inline PCODE DSWB_TYPE_TO_PCODE(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    return (PCODE)(&g_pDebuggerSWBreakpoints[type]);
-}
-
-static inline bool DSWB_ENABLED(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    return g_pDebuggerSWBreakpoints[type] != 0;
-}
-
-static inline DWORD DSWB_ENABLE(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    return ++g_pDebuggerSWBreakpoints[type];
-}
-
-static inline DWORD DSWB_DISABLE(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    return --g_pDebuggerSWBreakpoints[type];
-}
-
-static inline DWORD DSWB_COUNT(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    return g_pDebuggerSWBreakpoints[type];
-}
-
-static inline DWORD DSWB_RESET(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    return g_pDebuggerSWBreakpoints[type] = 0;
-}
-
-static inline void DSWB_DISPATCH(DebuggerSWBreakpointType type)
-{
-    _ASSERTE(type >= DSWBT_MIN && type < DSWBT_MAX);
-    if (DSWB_ENABLED(type))
-        g_pDebugger->DispatchSWBreakpoint(type);
-}
-
-#endif // DACCESS_COMPILE
+public:
+    PreStubWorkerSWBreakpointData()
+    {
+        m_type = SW_BREAKPOINT_THE_PRE_STUB_WORKER;
+        m_ip = (TADDR)PreStubWorker;
+        m_address = DebuggerSWBreakpoint::TypeToAddress(SW_BREAKPOINT_THE_PRE_STUB_WORKER);
+        m_data = NULL;
+    }
+};
 
 #endif /* DEBUGGER_H_ */

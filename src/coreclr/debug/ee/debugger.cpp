@@ -57,6 +57,7 @@ bool g_DbgShouldntUseDebugger = false;
 
 GPTR_IMPL(Debugger,         g_pDebugger);
 GPTR_IMPL(EEDebugInterface, g_pEEInterface);
+GARY_IMPL(DWORD, g_pDebuggerSWBreakpoints, SW_BREAKPOINT_MAX);
 SVAL_IMPL_INIT(BOOL, Debugger, s_fCanChangeNgenFlags, TRUE);
 
 // This is a public export so debuggers can read and determine if the coreclr
@@ -16839,10 +16840,9 @@ BOOL Debugger::IsOutOfProcessSetContextEnabled()
 #endif // DACCESS_COMPILE
 
 #ifndef DACCESS_COMPILE
-void Debugger::DispatchSWBreakpoint(DebuggerSWBreakpointType type)
+void Debugger::DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpointData *swBreakpointData)
 {
-    _ASSERT(DSWB_ENABLED(type));
-    DebuggerController::DispatchSWBreakpoint(type);
+    DebuggerController::DispatchSWBreakpoint(context, swBreakpointData);
 }
 #endif // !DACCESS_COMPILE
 #endif //DEBUGGING_SUPPORTED
