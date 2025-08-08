@@ -57,7 +57,6 @@ bool g_DbgShouldntUseDebugger = false;
 
 GPTR_IMPL(Debugger,         g_pDebugger);
 GPTR_IMPL(EEDebugInterface, g_pEEInterface);
-GARY_IMPL(DWORD, g_pDebuggerSWBreakpoints, SW_BREAKPOINT_MAX);
 SVAL_IMPL_INIT(BOOL, Debugger, s_fCanChangeNgenFlags, TRUE);
 
 // This is a public export so debuggers can read and determine if the coreclr
@@ -68,6 +67,8 @@ GVAL_IMPL_INIT(ULONG, CLRJitAttachState, 0);
 InteropSafe interopsafe;
 
 #ifndef DACCESS_COMPILE
+
+GARY_IMPL(DWORD, g_pDebuggerSWBreakpoints, SW_BREAKPOINT_MAX);
 
 DebuggerRCThread        *g_pRCThread = NULL;
 

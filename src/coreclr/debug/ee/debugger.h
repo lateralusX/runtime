@@ -4078,6 +4078,7 @@ public:
     }
 };
 
+#ifndef DACCESS_COMPILE
 GARY_DECL(DWORD, g_pDebuggerSWBreakpoints, SW_BREAKPOINT_MAX);
 
 class DebuggerSWBreakpoint
@@ -4143,7 +4144,6 @@ public:
 
     static FORCEINLINE void Dispatch(DebuggerSWBreakpointData *swBreakpointData)
     {
-#ifndef DACCESS_COMPILE
         _ASSERT(swBreakpointData != NULL);
         _ASSERTE(swBreakpointData->GetType() >= SW_BREAKPOINT_MIN && swBreakpointData->GetType() < SW_BREAKPOINT_MAX);
         if (Enabled(swBreakpointData->GetType()))
@@ -4153,19 +4153,21 @@ public:
             ClrCaptureContext(&context);
             g_pDebugger->DispatchSWBreakpoint(&context, swBreakpointData);
         }
-#endif
     }
 };
+#endif // !DACCESS_COMPILE
 
 struct PreStubWorkerSWBreakpointData : public DebuggerSWBreakpointData
 {
 public:
     PreStubWorkerSWBreakpointData()
     {
+#ifndef DACCESS_COMPILE
         m_type = SW_BREAKPOINT_THE_PRE_STUB_WORKER;
         m_ip = (TADDR)PreStubWorker;
         m_address = DebuggerSWBreakpoint::TypeToAddress(SW_BREAKPOINT_THE_PRE_STUB_WORKER);
         m_data = NULL;
+#endif
     }
 };
 
