@@ -4042,28 +4042,29 @@ bool DbgIsSpecialILOffset(DWORD offset);
 
 void FixupDispatcherContext(T_DISPATCHER_CONTEXT* pDispatcherContext, T_CONTEXT* pContext, PEXCEPTION_ROUTINE pUnwindPersonalityRoutine = NULL);
 
-enum DebuggerSWBreakpointType
-{
-    SW_BREAKPOINT_MIN = 0,
-    SW_BREAKPOINT_THE_PRE_STUB_WORKER = SW_BREAKPOINT_MIN,
-    SW_BREAKPOINT_MAX
-};
-
 class DebuggerSWBreakpoint
 {
 protected:
 
-    DebuggerSWBreakpointType m_type;
     PCODE m_ip;
     PTR_DWORD m_address;
     void *m_data;
 
-public:
-
-    DebuggerSWBreakpointType GetType()
+#ifndef DACCESS_COMPILE
+    FORCEINLINE void Dispatch()
     {
-        return m_type;
+        if (IsEnabled())
+        {
+            CONTEXT context;
+            context.ContextFlags = CONTEXT_CONTROL;
+            ClrCaptureContext(&context);
+            SetIP(&context, GetIP());
+            g_pDebugger->DispatchSWBreakpoint(&context, this);
+        }
     }
+#endif
+
+public:
 
     PCODE GetIP()
     {
@@ -4085,115 +4086,57 @@ public:
         return m_address != NULL && m_ip != NULL;
     }
 
-    bool Enabled()
+    static bool IsEnabled(PTR_DWORD address)
     {
-        return m_address != NULL ? *m_address != 0 : false;
+        return address != NULL ? VolatileLoadWithoutBarrier<DWORD>(address) != 0 : false;
+    }
+
+    bool IsEnabled()
+    {
+        return IsEnabled(m_address);
+    }
+
+    static DWORD Count(PTR_DWORD address)
+    {
+        return address != NULL ? VolatileLoadWithoutBarrier<DWORD>(address) : 0;
     }
 
     DWORD Count()
     {
-        _ASSERT(m_address != NULL);
-        return *m_address;
+        return Count(m_address);
+    }
+
+    static DWORD Enable(PTR_DWORD address)
+    {
+        return address != NULL ? InterlockedIncrement(address) : 0;
     }
 
     DWORD Enable()
     {
-        _ASSERT(m_address != NULL);
-        return ++(*m_address);
+        return Enable(m_address);
+    }
+
+    static DWORD Disable(PTR_DWORD address)
+    {
+        return address != NULL ? InterlockedDecrement(address) : 0;
     }
 
     DWORD Disable()
     {
-        _ASSERT(m_address != NULL);
-        return --(*m_address);
+        return Disable(m_address);
+    }
+
+    static void Reset(PTR_DWORD address)
+    {
+        if (address != NULL)
+            InterlockedExchange(address, 0);
     }
 
     void Reset()
     {
-        _ASSERT(m_address != NULL);
-        *m_address = 0;
+        Reset(m_address);
     }
 };
-
-#ifndef DACCESS_COMPILE
-GARY_DECL(DWORD, g_pDebuggerSWBreakpoints, SW_BREAKPOINT_MAX);
-
-class DebuggerSWBreakpointHelpers
-{
-public:
-
-    static inline bool Exist(PTR_DWORD address)
-    {
-        TADDR start = dac_cast<TADDR>(g_pDebuggerSWBreakpoints);
-        TADDR end = start + (SW_BREAKPOINT_MAX * sizeof(DWORD));
-        TADDR addressAsTAddr = dac_cast<TADDR>(address);
-
-        return addressAsTAddr >= start && addressAsTAddr < end;
-    }
-
-    static inline DebuggerSWBreakpointType AddressToType(PTR_DWORD address)
-    {
-        _ASSERTE(Exist(address));
-
-        TADDR start = dac_cast<TADDR>(g_pDebuggerSWBreakpoints);
-        TADDR addressAsTAddr = dac_cast<TADDR>(address);
-
-        _ASSERT(addressAsTAddr - start >= 0);
-
-        return (DebuggerSWBreakpointType)((addressAsTAddr - start) / sizeof(DWORD));
-    }
-
-    static inline PTR_BYTE TypeToAddress(DebuggerSWBreakpointType type)
-    {
-        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
-        return dac_cast<PTR_BYTE>(&g_pDebuggerSWBreakpoints[type]);
-    }
-
-    static inline bool Enabled(DebuggerSWBreakpointType type)
-    {
-        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
-        return g_pDebuggerSWBreakpoints[type] != 0;
-    }
-
-    static inline DWORD Enable(DebuggerSWBreakpointType type)
-    {
-        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
-        return ++g_pDebuggerSWBreakpoints[type];
-    }
-
-    static inline DWORD Disable(DebuggerSWBreakpointType type)
-    {
-        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
-        return --g_pDebuggerSWBreakpoints[type];
-    }
-
-    static inline DWORD Count(DebuggerSWBreakpointType type)
-    {
-        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
-        return g_pDebuggerSWBreakpoints[type];
-    }
-
-    static inline DWORD Reset(DebuggerSWBreakpointType type)
-    {
-        _ASSERTE(type >= SW_BREAKPOINT_MIN && type < SW_BREAKPOINT_MAX);
-        return g_pDebuggerSWBreakpoints[type] = 0;
-    }
-
-    static FORCEINLINE void Dispatch(DebuggerSWBreakpoint *swBreakpoint)
-    {
-        _ASSERT(swBreakpoint != NULL);
-        _ASSERTE(swBreakpoint->GetType() >= SW_BREAKPOINT_MIN && swBreakpoint->GetType() < SW_BREAKPOINT_MAX);
-        if (Enabled(swBreakpoint->GetType()))
-        {
-            CONTEXT context;
-            context.ContextFlags = CONTEXT_CONTROL;
-            ClrCaptureContext(&context);
-            SetIP(&context, swBreakpoint->GetIP());
-            g_pDebugger->DispatchSWBreakpoint(&context, swBreakpoint);
-        }
-    }
-};
-#endif // !DACCESS_COMPILE
 
 class PreStubSWBreakpoint : public DebuggerSWBreakpoint
 {
@@ -4203,16 +4146,15 @@ public:
     {
 #ifndef DACCESS_COMPILE
         PreStubSWBreakpoint swBreakpoint;
-        DebuggerSWBreakpointHelpers::Dispatch(&swBreakpoint);
+        swBreakpoint.Dispatch();
 #endif
     }
 
     PreStubSWBreakpoint()
     {
 #ifndef DACCESS_COMPILE
-        m_type = SW_BREAKPOINT_THE_PRE_STUB_WORKER;
-        m_ip = (TADDR)Trigger;
-        m_address = (PTR_DWORD)DebuggerSWBreakpointHelpers::TypeToAddress(SW_BREAKPOINT_THE_PRE_STUB_WORKER);
+        m_ip = (PCODE)Trigger;
+        m_address = &g_prestubSWBreakpoint;
         m_data = NULL;
 #endif
     }

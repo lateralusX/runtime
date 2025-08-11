@@ -68,8 +68,6 @@ InteropSafe interopsafe;
 
 #ifndef DACCESS_COMPILE
 
-GARY_IMPL(DWORD, g_pDebuggerSWBreakpoints, SW_BREAKPOINT_MAX);
-
 DebuggerRCThread        *g_pRCThread = NULL;
 
 #ifndef _PREFAST_

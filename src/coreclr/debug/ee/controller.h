@@ -1169,8 +1169,7 @@ class DebuggerController
 
   private:
 
-    static bool MatchPatch(Thread *thread,
-                           CONTEXT *context,
+    static bool MatchPatch(Thread *thread, CONTEXT *context,
                            DebuggerControllerPatch *patch);
 
     // Returns TRUE if we should continue to dispatch after this exception
@@ -1210,14 +1209,14 @@ private:
 
     static bool BindPatch(DebuggerControllerPatch *patch,
                           MethodDesc *fd,
-                          PTR_CORDB_ADDRESS_TYPE startAddr);
-    static bool IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native);
-    static bool ApplySWBreakpointPatch(DebuggerControllerPatch *patch);
-    static bool UnapplySWBreakpointPatch(DebuggerControllerPatch *patch);
-    static bool ApplyHWBreakpointPatch(DebuggerControllerPatch *patch);
-    static bool UnapplyHWBreakpointPatch(DebuggerControllerPatch *patch);
+                          CORDB_ADDRESS_TYPE *startAddr);
     static bool ApplyPatch(DebuggerControllerPatch *patch);
     static bool UnapplyPatch(DebuggerControllerPatch *patch);
+    static bool IsPatched(CORDB_ADDRESS_TYPE *address, BOOL native);
+    static bool ApplyHWBreakpointPatch(DebuggerControllerPatch *patch);
+    static bool UnapplyHWBreakpointPatch(DebuggerControllerPatch *patch);
+    static bool ApplySWBreakpointPatch(DebuggerControllerPatch *patch);
+    static bool UnapplySWBreakpointPatch(DebuggerControllerPatch *patch);
 
     static void ActivatePatch(DebuggerControllerPatch *patch);
     static void DeactivatePatch(DebuggerControllerPatch *patch);

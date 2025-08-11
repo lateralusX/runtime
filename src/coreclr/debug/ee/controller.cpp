@@ -1300,10 +1300,28 @@ bool DebuggerController::BindPatch(DebuggerControllerPatch *patch,
     return true;
 }
 
+bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
+{
+    LIMITED_METHOD_CONTRACT;
+
+    _ASSERTE(patch != NULL);
+
+    return patch->IsSWBreakpoint() ? ApplySWBreakpointPatch(patch) : ApplyHWBreakpointPatch(patch);
+}
+
+bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
+{
+    LIMITED_METHOD_CONTRACT;
+
+    _ASSERTE(patch != NULL);
+
+    return patch->IsSWBreakpoint() ? UnapplySWBreakpointPatch(patch) : UnapplyHWBreakpointPatch(patch);
+}
+
 // bool DebuggerController::IsPatched()  Is there a patch at addr?
 // How: if fNative && the instruction at addr is the break
 // instruction for this platform.
-bool DebuggerController::IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native)
+bool DebuggerController::IsPatched(CORDB_ADDRESS_TYPE *address, BOOL native)
 {
     LIMITED_METHOD_CONTRACT;
 
@@ -1311,50 +1329,6 @@ bool DebuggerController::IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native)
         return AddressIsBreakpoint(address);
 
     return false;
-}
-
-bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
-{
-    _ASSERTE(patch != NULL);
-    _ASSERT(patch->IsSWBreakpoint());
-
-    DebuggerSWBreakpointType type = DebuggerSWBreakpointHelpers::AddressToType(patch->bpAddress);
-
-    DWORD oldCount = DebuggerSWBreakpointHelpers::Count(type);
-    DebuggerSWBreakpointHelpers::Enable(type);
-
-    LOG((LF_CORDB,
-        LL_INFO10000,
-        "DC::ApplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
-        patch,
-        patch->patchId,
-        patch->bpAddress,
-        oldCount,
-        DebuggerSWBreakpointHelpers::Count(type)));
-
-    return true;
-}
-
-bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch)
-{
-    _ASSERTE(patch != NULL);
-    _ASSERT(patch->IsSWBreakpoint());
-
-    DebuggerSWBreakpointType type = DebuggerSWBreakpointHelpers::AddressToType(patch->bpAddress);
-
-    DWORD oldCount = DebuggerSWBreakpointHelpers::Count(type);
-    DebuggerSWBreakpointHelpers::Disable(type);
-
-    LOG((LF_CORDB,
-        LL_INFO10000,
-        "DC::UnapplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
-        patch,
-        patch->patchId,
-        patch->bpAddress,
-        oldCount,
-        DebuggerSWBreakpointHelpers::Count(type)));
-
-    return true;
 }
 
 // bool DebuggerController::ApplyHWBreakpointPatch() applies
@@ -1601,22 +1575,44 @@ bool DebuggerController::UnapplyHWBreakpointPatch(DebuggerControllerPatch *patch
     return true;
 }
 
-bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
+bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
 {
-    LIMITED_METHOD_CONTRACT;
-
     _ASSERTE(patch != NULL);
+    _ASSERT(patch->IsSWBreakpoint());
 
-    return patch->IsSWBreakpoint() ? ApplySWBreakpointPatch(patch) : ApplyHWBreakpointPatch(patch);
+    DWORD oldCount = DebuggerSWBreakpoint::Count(patch->bpAddress);
+    DebuggerSWBreakpoint::Enable(patch->bpAddress);
+
+    LOG((LF_CORDB,
+        LL_INFO10000,
+        "DC::ApplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
+        patch,
+        patch->patchId,
+        patch->bpAddress,
+        oldCount,
+        DebuggerSWBreakpoint::Count(patch->bpAddress)));
+
+    return true;
 }
 
-bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
+bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch)
 {
-    LIMITED_METHOD_CONTRACT;
-
     _ASSERTE(patch != NULL);
+    _ASSERT(patch->IsSWBreakpoint());
 
-    return patch->IsSWBreakpoint() ? UnapplySWBreakpointPatch(patch) : UnapplyHWBreakpointPatch(patch);
+    DWORD oldCount = DebuggerSWBreakpoint::Count(patch->bpAddress);
+    DebuggerSWBreakpoint::Disable(patch->bpAddress);
+
+    LOG((LF_CORDB,
+        LL_INFO10000,
+        "DC::UnapplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
+        patch,
+        patch->patchId,
+        patch->bpAddress,
+        oldCount,
+        DebuggerSWBreakpoint::Count(patch->bpAddress)));
+
+    return true;
 }
 
 // DWORD DebuggerController::GetPatchedOpcode()  Gets the opcode
@@ -2704,7 +2700,9 @@ DPOSS_ACTION DebuggerController::ScanForTriggers(CORDB_ADDRESS_TYPE *address,
             {
                 // Mark if we're at an unsafe place.
                 AtSafePlaceHolder unsafePlaceHolder(thread);
-                tpr = patch->controller->TriggerPatch(patch, thread, TY_NORMAL);
+                tpr = patch->controller->TriggerPatch(patch,
+                                                    thread,
+                                                    TY_NORMAL);
             }
 
             // Any patch may potentially send an event.

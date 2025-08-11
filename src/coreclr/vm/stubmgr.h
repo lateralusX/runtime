@@ -136,7 +136,7 @@ public:
     // If pDesc is a wrapper methoddesc, we will unwrap it.
     void InitForUnjittedMethod(MethodDesc * pDesc);
 
-    // Place a patch at the given addr, and then when it's hit,
+    // Place a patch at the given addr or bpAddr, and then when it's hit,
     // call pStubManager->TraceManager() to get the next TraceDestination.
     void InitForManagerPush(PCODE addr, StubManager * pStubManager, PTR_DWORD bpAddr = NULL)
     {
@@ -147,7 +147,7 @@ public:
         this->pDesc = NULL;
     }
 
-    // Place a patch at the given addr, and then when it's hit
+    // Place a patch at the given addr or bpAddr, and then when it's hit
     // call GetThread()->GetFrame()->TraceFrame() to get the next TraceDestination.
     // This address must be safe to run a callstack at.
     void InitForFramePush(PCODE addr, PTR_DWORD bpAddr = NULL)
