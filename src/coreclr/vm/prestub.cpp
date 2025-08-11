@@ -2606,8 +2606,7 @@ static PCODE PreStubWorker_Preemptive(
         HardwareExceptionHolder;
 
         // Give debugger opportunity to stop here
-        PreStubWorkerSWBreakpointData swBreakpointData;
-        DebuggerSWBreakpoint::Dispatch(&swBreakpointData);
+        PreStubSWBreakpoint::Trigger();
     }
 
     return pbRetVal;
@@ -2712,8 +2711,7 @@ extern "C" PCODE STDCALL PreStubWorker(TransitionBlock* pTransitionBlock, Method
             HardwareExceptionHolder;
 
             // Give debugger opportunity to stop here
-            PreStubWorkerSWBreakpointData swBreakpointData;
-            DebuggerSWBreakpoint::Dispatch(&swBreakpointData);
+            PreStubSWBreakpoint::Trigger();
         }
 
         pPFrame->Pop(CURRENT_THREAD);

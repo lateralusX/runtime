@@ -426,7 +426,7 @@ struct DebuggerControllerPatch
     DebuggerFunctionKey     key;
     SIZE_T                  offset;
     PTR_CORDB_ADDRESS_TYPE  address;
-    PTR_BYTE                bpAddress;
+    PTR_DWORD               bpAddress;
     FramePointer            fp;
     PRD_TYPE                opcode; // See description above.
     BOOL                    fSaveOpcode;
@@ -550,6 +550,11 @@ public:
 
     // Is this patch at a position at which it's safe to take a stack?
     bool IsSafeForStackTrace();
+
+    bool IsSWBreakpoint()
+    {
+        return bpAddress != NULL && bpAddress != dac_cast<PTR_DWORD>(address);
+    }
 
 #ifndef FEATURE_EMULATE_SINGLESTEP
     // gets a pointer to the shared buffer
@@ -1096,7 +1101,7 @@ class DebuggerController
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
 
-    static void DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpointData *breakpointData);
+    static void DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint);
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
     // If pAppDomain is specified, then only patches tied to the specified AppDomain are
@@ -1206,8 +1211,6 @@ private:
     static bool BindPatch(DebuggerControllerPatch *patch,
                           MethodDesc *fd,
                           PTR_CORDB_ADDRESS_TYPE startAddr);
-    static bool IsSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address);
-    static bool IsHWBreakpoint(PTR_CORDB_ADDRESS_TYPE address);
     static bool IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native);
     static bool ApplySWBreakpointPatch(DebuggerControllerPatch *patch);
     static bool UnapplySWBreakpointPatch(DebuggerControllerPatch *patch);

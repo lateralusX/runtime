@@ -1300,16 +1300,6 @@ bool DebuggerController::BindPatch(DebuggerControllerPatch *patch,
     return true;
 }
 
-bool DebuggerController::IsSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
-{
-    return DebuggerSWBreakpoint::Exist(address);
-}
-
-bool DebuggerController::IsHWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
-{
-    return AddressIsBreakpoint(address);
-}
-
 // bool DebuggerController::IsPatched()  Is there a patch at addr?
 // How: if fNative && the instruction at addr is the break
 // instruction for this platform.
@@ -1318,7 +1308,7 @@ bool DebuggerController::IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native)
     LIMITED_METHOD_CONTRACT;
 
     if (native)
-        return IsHWBreakpoint(address);
+        return AddressIsBreakpoint(address);
 
     return false;
 }
@@ -1326,12 +1316,12 @@ bool DebuggerController::IsPatched(PTR_CORDB_ADDRESS_TYPE address, BOOL native)
 bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
-    _ASSERT(IsSWBreakpoint(patch->bpAddress));
+    _ASSERT(patch->IsSWBreakpoint());
 
-    DebuggerSWBreakpointType type = DebuggerSWBreakpoint::AddressToType(patch->bpAddress);
+    DebuggerSWBreakpointType type = DebuggerSWBreakpointHelpers::AddressToType(patch->bpAddress);
 
-    DWORD oldCount = DebuggerSWBreakpoint::Count(type);
-    DebuggerSWBreakpoint::Enable(type);
+    DWORD oldCount = DebuggerSWBreakpointHelpers::Count(type);
+    DebuggerSWBreakpointHelpers::Enable(type);
 
     LOG((LF_CORDB,
         LL_INFO10000,
@@ -1340,7 +1330,7 @@ bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
         patch->patchId,
         patch->bpAddress,
         oldCount,
-        DebuggerSWBreakpoint::Count(type)));
+        DebuggerSWBreakpointHelpers::Count(type)));
 
     return true;
 }
@@ -1348,12 +1338,12 @@ bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
 bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
-    _ASSERT(IsSWBreakpoint(patch->bpAddress));
+    _ASSERT(patch->IsSWBreakpoint());
 
-    DebuggerSWBreakpointType type = DebuggerSWBreakpoint::AddressToType(patch->bpAddress);
+    DebuggerSWBreakpointType type = DebuggerSWBreakpointHelpers::AddressToType(patch->bpAddress);
 
-    DWORD oldCount = DebuggerSWBreakpoint::Count(type);
-    DebuggerSWBreakpoint::Disable(type);
+    DWORD oldCount = DebuggerSWBreakpointHelpers::Count(type);
+    DebuggerSWBreakpointHelpers::Disable(type);
 
     LOG((LF_CORDB,
         LL_INFO10000,
@@ -1362,7 +1352,7 @@ bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch
         patch->patchId,
         patch->bpAddress,
         oldCount,
-        DebuggerSWBreakpoint::Count(type)));
+        DebuggerSWBreakpointHelpers::Count(type)));
 
     return true;
 }
@@ -1617,7 +1607,7 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
 
     _ASSERTE(patch != NULL);
 
-    return IsSWBreakpoint(patch->bpAddress) ? ApplySWBreakpointPatch(patch) : ApplyHWBreakpointPatch(patch);
+    return patch->IsSWBreakpoint() ? ApplySWBreakpointPatch(patch) : ApplyHWBreakpointPatch(patch);
 }
 
 bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
@@ -1626,7 +1616,7 @@ bool DebuggerController::UnapplyPatch(DebuggerControllerPatch *patch)
 
     _ASSERTE(patch != NULL);
 
-    return IsSWBreakpoint(patch->bpAddress) ? UnapplySWBreakpointPatch(patch) : UnapplyHWBreakpointPatch(patch);
+    return patch->IsSWBreakpoint() ? UnapplySWBreakpointPatch(patch) : UnapplyHWBreakpointPatch(patch);
 }
 
 // DWORD DebuggerController::GetPatchedOpcode()  Gets the opcode
@@ -3980,7 +3970,7 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
 }
 
-void DebuggerController::DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpointData *swBreakpointData)
+void DebuggerController::DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint)
 {
     _ASSERT(!ThisIsHelperThreadWorker());
     _ASSERTE(!HasLock());
@@ -3989,18 +3979,13 @@ void DebuggerController::DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakp
     Thread * thread = g_pEEInterface->GetThread();
     _ASSERTE(thread  != NULL);
 
-    if (swBreakpointData->GetIP() != NULL)
-    {
-        SetIP(context, swBreakpointData->GetIP());
-    }
-
     EXCEPTION_RECORD exception;
     ZeroMemory(&exception, sizeof(exception));
 
     exception.ExceptionCode = EXCEPTION_BREAKPOINT;
     exception.ExceptionAddress = dac_cast<PVOID>(GetIP(context));
 
-    StubManagerHelpers::SetSWBreakpoint(context, dac_cast<TADDR>(swBreakpointData));
+    StubManagerHelpers::SetSWBreakpoint(context, dac_cast<TADDR>(swBreakpoint));
 
     DispatchNativeException(&exception, context, exception.ExceptionCode, thread);
 

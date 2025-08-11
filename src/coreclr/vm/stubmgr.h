@@ -95,7 +95,7 @@ public:
     {
         this->type = TRACE_UNMANAGED;
         this->address = addr;
-        this->bpAddress = dac_cast<PTR_BYTE>(addr);
+        this->bpAddress = NULL;
         this->stubManager = NULL;
         this->pDesc = NULL;
     }
@@ -105,7 +105,7 @@ public:
     {
         this->type = TRACE_MANAGED;
         this->address = addr;
-        this->bpAddress = dac_cast<PTR_BYTE>(addr);
+        this->bpAddress = NULL;
         this->stubManager = NULL;
         this->pDesc = NULL;
     }
@@ -115,7 +115,7 @@ public:
     {
         this->type = TRACE_ENTRY_STUB;
         this->address = addr;
-        this->bpAddress = dac_cast<PTR_BYTE>(addr);
+        this->bpAddress = NULL;
         this->stubManager = NULL;
         this->pDesc = NULL;
     }
@@ -125,7 +125,7 @@ public:
     {
         this->type = TRACE_STUB;
         this->address = addr;
-        this->bpAddress = dac_cast<PTR_BYTE>(addr);
+        this->bpAddress = NULL;
         this->stubManager = NULL;
         this->pDesc = NULL;
     }
@@ -138,11 +138,11 @@ public:
 
     // Place a patch at the given addr, and then when it's hit,
     // call pStubManager->TraceManager() to get the next TraceDestination.
-    void InitForManagerPush(PCODE addr, StubManager * pStubManager, PTR_BYTE bpAddr = NULL)
+    void InitForManagerPush(PCODE addr, StubManager * pStubManager, PTR_DWORD bpAddr = NULL)
     {
         this->type = TRACE_MGR_PUSH;
         this->address = addr;
-        this->bpAddress = bpAddr != NULL ? bpAddr : dac_cast<PTR_BYTE>(addr);
+        this->bpAddress = bpAddr != NULL ? bpAddr : NULL;
         this->stubManager = pStubManager;
         this->pDesc = NULL;
     }
@@ -150,11 +150,11 @@ public:
     // Place a patch at the given addr, and then when it's hit
     // call GetThread()->GetFrame()->TraceFrame() to get the next TraceDestination.
     // This address must be safe to run a callstack at.
-    void InitForFramePush(PCODE addr, PTR_BYTE bpAddr = NULL)
+    void InitForFramePush(PCODE addr, PTR_DWORD bpAddr = NULL)
     {
         this->type = TRACE_FRAME_PUSH;
         this->address = addr;
-        this->bpAddress = bpAddr != NULL ? bpAddr : dac_cast<PTR_BYTE>(addr);
+        this->bpAddress = bpAddr != NULL ? bpAddr : NULL;
         this->stubManager = NULL;
         this->pDesc = NULL;
     }
@@ -167,7 +167,7 @@ public:
     {
         this->type = TRACE_OTHER;
         this->address = addr;
-        this->bpAddress = dac_cast<PTR_BYTE>(addr);
+        this->bpAddress = NULL;
         this->stubManager = NULL;
         this->pDesc = NULL;
     }
@@ -192,7 +192,7 @@ public:
         return stubManager;
     }
 
-    PTR_BYTE GetBreakpointAddress()
+    PTR_DWORD GetBreakpointAddress()
     {
         return bpAddress;
     }
@@ -206,7 +206,7 @@ public:
 private:
     TraceType                       type;                   // The kind of code the stub is going to
     PCODE                           address;                // Where the stub is going
-    PTR_BYTE                        bpAddress;              // In case breakpoint is not at address.
+    PTR_DWORD                       bpAddress;              // In case breakpoint uses an explicit address.
     StubManager                     *stubManager;           // The manager that claims this stub
     MethodDesc                      *pDesc;
 };

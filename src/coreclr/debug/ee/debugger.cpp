@@ -16841,9 +16841,9 @@ BOOL Debugger::IsOutOfProcessSetContextEnabled()
 #endif // DACCESS_COMPILE
 
 #ifndef DACCESS_COMPILE
-void Debugger::DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpointData *swBreakpointData)
+void Debugger::DispatchSWBreakpoint(CONTEXT *context, DebuggerSWBreakpoint *swBreakpoint)
 {
-    DebuggerController::DispatchSWBreakpoint(context, swBreakpointData);
+    DebuggerController::DispatchSWBreakpoint(context, swBreakpoint);
 }
 #endif // !DACCESS_COMPILE
 #endif //DEBUGGING_SUPPORTED

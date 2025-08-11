@@ -940,8 +940,8 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     //
     LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: PreStubWorker SW breakpoint\n"));
 
-    PreStubWorkerSWBreakpointData swBreakpointData;
-    trace->InitForFramePush(swBreakpointData.GetIP(), swBreakpointData.GetAddress());
+    PreStubSWBreakpoint swBreakpoint;
+    trace->InitForFramePush(swBreakpoint.GetIP(), swBreakpoint.GetAddress());
 
     return TRUE;
 }
