@@ -580,6 +580,7 @@ public:
             "              patchId: 0x%zx\n"
             "               offset: 0x%zx\n"
             "              address: %p\n"
+            "            bpAddress: %p\n"
             "           offsetIsIL: %s\n"
             "             refCount: %d\n"
             "                 kind: %d\n"
@@ -588,7 +589,7 @@ public:
             "       IsManagedPatch: %s\n"
             "     IsILPrimaryPatch: %s\n"
             "     IsILReplicaPatch: %s\n",
-            this, patchId, offset, address, (offsetIsIL ? "true" : "false"), refCount, GetKind(),
+            this, patchId, offset, address, bpAddress, (offsetIsIL ? "true" : "false"), refCount, GetKind(),
             (IsBound() ? "true" : "false"),
             (IsNativePatch() ? "true" : "false"),
             (IsManagedPatch() ? "true" : "false"),

@@ -938,7 +938,7 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     // We cannot tell where the stub will end up
     // until after the prestub worker has been run.
     //
-    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: Set PreStub software breakpoint\n"));
+    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: Activate PreStub software breakpoint.\n"));
 
     PreStubSWBreakpoint swBreakpoint;
     trace->InitForFramePush(swBreakpoint.GetIP(), swBreakpoint.GetAddress());

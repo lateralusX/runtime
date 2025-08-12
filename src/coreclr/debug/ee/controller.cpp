@@ -1346,6 +1346,7 @@ bool DebuggerController::IsPatched(CORDB_ADDRESS_TYPE *address, BOOL native)
 bool DebuggerController::ApplyHWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
+    _ASSERTE(!patch->IsSWBreakpoint());
 
     LOG((LF_CORDB, LL_INFO10000, "DC::ApplyHWBreakpointPatch %p, patchId:0x%zx at addr %p\n",
         patch, patch->patchId, patch->address));
@@ -1469,6 +1470,7 @@ bool DebuggerController::UnapplyHWBreakpointPatch(DebuggerControllerPatch *patch
     _ASSERTE(patch != NULL);
     _ASSERTE(patch->address != NULL);
     _ASSERTE(patch->IsActivated() );
+    _ASSERTE(!patch->IsSWBreakpoint());
 
     LOG((LF_CORDB, LL_INFO1000, "DC::UnapplyHWBreakPointPatch %p, patchId:0x%zx\n",
         patch, patch->patchId));
@@ -1579,18 +1581,24 @@ bool DebuggerController::ApplySWBreakpointPatch(DebuggerControllerPatch *patch)
 {
     _ASSERTE(patch != NULL);
     _ASSERT(patch->IsSWBreakpoint());
+    _ASSERT(patch->IsNativePatch() && !patch->fSaveOpcode);
 
     DWORD oldCount = DebuggerSWBreakpoint::Count(patch->bpAddress);
     DebuggerSWBreakpoint::Enable(patch->bpAddress);
 
     LOG((LF_CORDB,
         LL_INFO10000,
-        "DC::ApplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
+        "DC::ApplySWBreakpointPatch %p, patchId:0x%zx at addr %p, bpAddr %p, oldCount:%d, newCount:%d\n",
         patch,
         patch->patchId,
+        patch->address,
         patch->bpAddress,
         oldCount,
         DebuggerSWBreakpoint::Count(patch->bpAddress)));
+
+    // SW breakpoints doesn't change opcode at address, but emulate
+    // to make sure patch logic works the same as for HW breakpoints.
+    patch->opcode = CORDbgGetInstruction(patch->address);
 
     return true;
 }
@@ -1599,18 +1607,24 @@ bool DebuggerController::UnapplySWBreakpointPatch(DebuggerControllerPatch *patch
 {
     _ASSERTE(patch != NULL);
     _ASSERT(patch->IsSWBreakpoint());
+    _ASSERT(patch->IsNativePatch() && !patch->fSaveOpcode);
 
     DWORD oldCount = DebuggerSWBreakpoint::Count(patch->bpAddress);
     DebuggerSWBreakpoint::Disable(patch->bpAddress);
 
     LOG((LF_CORDB,
         LL_INFO10000,
-        "DC::UnapplySWBreakpointPatch %p, patchId:0x%zx at addr %p, oldCount:%d, newCount:%d\n",
+        "DC::UnapplySWBreakpointPatch %p, patchId:0x%zx at addr %p, bpAddr %p, oldCount:%d, newCount:%d\n",
         patch,
         patch->patchId,
+        patch->address,
         patch->bpAddress,
         oldCount,
         DebuggerSWBreakpoint::Count(patch->bpAddress)));
+
+    // SW breakpoints doesn't change opcode at address, but emulate
+    // to make sure patch logic works the same as for HW breakpoints.
+    InitializePRD(&(patch->opcode));
 
     return true;
 }
@@ -2580,7 +2594,7 @@ DebuggerPatchSkip *DebuggerController::ActivatePatchSkip(Thread *thread,
     DebuggerControllerPatch *patch = g_patches->GetPatch((CORDB_ADDRESS_TYPE *)PC);
     DebuggerPatchSkip *skip = NULL;
 
-    if (patch != NULL && patch->IsNativePatch())
+    if (patch != NULL && patch->IsNativePatch() && !patch->IsSWBreakpoint())
     {
         //
         // We adjust the thread's PC to someplace where we write
