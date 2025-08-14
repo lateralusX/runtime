@@ -4164,4 +4164,8 @@ public: \
     } \
 }
 #endif // !DACCESS_COMPILE
+
+// Predefined SW breakpoints.
+DEFINE_DEBUGGER_SW_BREAKPOINT(PreStubSWBreakpoint, g_prestubSWBreakpoint);
+
 #endif /* DEBUGGER_H_ */

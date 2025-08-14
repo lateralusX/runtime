@@ -148,6 +148,9 @@ GVAL_IMPL_INIT(DWORD,         g_CORDebuggerControlFlags, DBCF_NORMAL_OPERATION);
 
 #ifdef DEBUGGING_SUPPORTED
 GPTR_IMPL(EEDbgInterfaceImpl, g_pEEDbgInterfaceImpl);
+
+// Predefined SW breakpoints.
+CorDB_SW_BREAKPOINT_IMPL(g_prestubSWBreakpoint);
 #endif // DEBUGGING_SUPPORTED
 
 #if defined(PROFILING_SUPPORTED_DATA) || defined(PROFILING_SUPPPORTED)
