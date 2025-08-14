@@ -918,7 +918,7 @@ PTR_COR_ILMETHOD ILCodeVersion::GetIL() const
     {
         PTR_Module pModule = GetModule();
         PTR_MethodDesc pMethodDesc = dac_cast<PTR_MethodDesc>(pModule->LookupMethodDef(GetMethodDef()));
-        if (pMethodDesc != NULL)
+        if (pMethodDesc != NULL && pMethodDesc->HasILHeader())
         {
             pIL = dac_cast<PTR_COR_ILMETHOD>(pMethodDesc->GetILHeader());
         }
@@ -1615,6 +1615,11 @@ HRESULT CodeVersionManager::SetActiveILCodeVersions(ILCodeVersion* pActiveVersio
             CDynArray<MethodDesc*> methodDescs = methodDescsToUpdate[i];
             for (int j = 0; j < methodDescs.Count(); j++)
             {
+                if (!methodDescs[j]->IsVersionable())
+                {
+                    continue;
+                }
+
                 // Get an the active child code version for this method instantiation (it might be NULL, that is OK)
                 NativeCodeVersion activeNativeChild = activeILVersion.GetActiveNativeCodeVersion(methodDescs[j]);
 

@@ -3919,9 +3919,9 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
         {
             if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
             {
-                ++count;
                 p->TriggerMethodEnter(pThread, dji, (const BYTE *) pIP, fp);
             }
+            ++count;
         }
         p = p->m_next;
     }
