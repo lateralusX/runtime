@@ -4049,9 +4049,9 @@ protected:
     PCODE m_ip;
     PTR_CORDB_ADDRESS_TYPE m_rwAddress;
 
-#ifndef DACCESS_COMPILE
     FORCEINLINE void TriggerIfEnabled()
     {
+#ifndef DACCESS_COMPILE
         if (IsEnabled())
         {
             CONTEXT context;
@@ -4060,112 +4060,56 @@ protected:
             ClrCaptureContext(&context);
             g_pDebugger->TriggerSWBreakpoint(&context, this);
         }
-    }
 #endif // !DACCESS_COMPILE
+    }
 
 public:
 
-    PCODE GetIP()
-    {
-        return m_ip;
-    }
-
-    PTR_CORDB_ADDRESS_TYPE GetRWAddress()
-    {
-        return m_rwAddress;
-    }
-
-    PCODE GetRWAddressAsPCODE()
-    {
-        return dac_cast<PCODE>(m_rwAddress);
-    }
-
-    bool IsValid()
-    {
-        return m_rwAddress != NULL && m_ip != NULL;
-    }
-
-    static bool IsEnabled(PTR_CORDB_ADDRESS_TYPE address)
+    PCODE GetIP() { return m_ip; }
+    PTR_CORDB_ADDRESS_TYPE GetRWAddress() { return m_rwAddress; }
+    bool IsValid() { return m_rwAddress != NULL && m_ip != NULL && m_ip == dac_cast<PCODE>(m_rwAddress); }
+    bool IsEnabled()
     {
 #ifndef DACCESS_COMPILE
-        return *(dac_cast<CorDB_SW_BREAKPOINT_CPTR_TYPE>(address)) != g_templateSWBreakpoint;
+        return *(dac_cast<CorDB_SW_BREAKPOINT_CPTR_TYPE>(m_rwAddress)) != g_templateSWBreakpoint;
 #else
         return false;
 #endif // !DACCESS_COMPILE
     }
-
-    bool IsEnabled()
-    {
-        return IsEnabled(m_rwAddress);
-    }
 };
 
-#ifndef DACCESS_COMPILE
-#define DEFINE_DEBUGGER_SW_BREAKPOINT(swBreakpointClassName, swBreakpointRWSymbol) \
-static_assert(sizeof(swBreakpointRWSymbol) == sizeof(CorDB_SW_BREAKPOINT_TYPE), "Invalid SW breakpoint size."); \
-class swBreakpointClassName : public DebuggerSWBreakpoint \
-{ \
-public: \
-    static NOINLINE void Dispatch() \
-    { \
-        swBreakpointClassName swBreakpoint; \
-        swBreakpoint.TriggerIfEnabled(); \
-    } \
-    static PCODE GetIP() \
-    { \
-        return (PCODE)swBreakpointClassName::Dispatch; \
-    } \
-    static PTR_CORDB_ADDRESS_TYPE GetRWAddress() \
-    { \
-        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(&swBreakpointRWSymbol); \
-    } \
-    static PCODE GetRWAddressAsPCODE() \
-    { \
-        return dac_cast<PCODE>(&swBreakpointRWSymbol); \
-    } \
-    static PCODE IsEnabled() \
-    { \
-        return DebuggerSWBreakpoint::IsEnabled(swBreakpointClassName::GetRWAddress()); \
-    } \
-    swBreakpointClassName() \
-    { \
-        m_ip = swBreakpointClassName::GetIP(); \
-        m_rwAddress = swBreakpointClassName::GetRWAddress(); \
-    } \
-}
-#else
-#define DEFINE_DEBUGGER_SW_BREAKPOINT(swBreakpointClassName, swBreakpointRWSymbol) \
-class swBreakpointClassName : public DebuggerSWBreakpoint \
-{ \
-public: \
-    static void Dispatch() \
-    { \
-    } \
-    static PCODE GetIP() \
-    { \
-        return dac_cast<PCODE>(NULL); \
-    } \
-    static PTR_CORDB_ADDRESS_TYPE GetRWAddress() \
-    { \
-        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(NULL); \
-    } \
-    static PCODE GetRWAddressAsPCODE() \
-    { \
-        return dac_cast<PCODE>(NULL); \
-    } \
-    static PCODE IsEnabled() \
-    { \
-        return false; \
-    } \
-    swBreakpointClassName() \
-    { \
-        m_ip = swBreakpointClassName::GetIP(); \
-        m_rwAddress = swBreakpointClassName::GetRWAddress(); \
-    } \
-}
-#endif // !DACCESS_COMPILE
-
 // Predefined SW breakpoints.
-DEFINE_DEBUGGER_SW_BREAKPOINT(PreStubSWBreakpoint, g_prestubSWBreakpoint);
+class PreStubSWBreakpoint : public DebuggerSWBreakpoint
+{
+public:
+    static NOINLINE void Dispatch()
+    {
+        PreStubSWBreakpoint swBreakpoint;
+        swBreakpoint.TriggerIfEnabled();
+    }
+
+    static void InitTrace(TraceDestination *trace)
+    {
+        LOG((LF_CORDB, LL_INFO10000, "PSSWB::InitTrace: Activate PreStub software breakpoint.\n"));
+        PreStubSWBreakpoint swBreakpoint;
+        trace->InitForFramePush(swBreakpoint.GetIP(), dac_cast<PCODE>(swBreakpoint.GetRWAddress()));
+    }
+
+    PreStubSWBreakpoint()
+    {
+        m_ip = dac_cast<PCODE>(PreStubSWBreakpoint::Dispatch);
+        m_rwAddress = PreStubSWBreakpoint::GetRWAddress();
+    }
+
+private:
+    static PTR_CORDB_ADDRESS_TYPE GetRWAddress()
+    {
+#ifndef DACCESS_COMPILE
+        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(&g_prestubSWBreakpoint);
+#else
+        return NULL;
+#endif
+    }
+};
 
 #endif /* DEBUGGER_H_ */

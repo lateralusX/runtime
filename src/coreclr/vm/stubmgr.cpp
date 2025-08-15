@@ -940,9 +940,7 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     // We cannot tell where the stub will end up
     // until after the prestub worker has been run.
     //
-    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: Activate ThePreStub software breakpoint.\n"));
-
-    trace->InitForFramePush(PreStubSWBreakpoint::GetIP(), PreStubSWBreakpoint::GetRWAddressAsPCODE());
+    PreStubSWBreakpoint::InitTrace(trace);
 
     return TRUE;
 }

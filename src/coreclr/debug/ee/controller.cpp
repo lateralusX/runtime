@@ -3943,7 +3943,7 @@ void DebuggerController::TriggerSWBreakpoint(CONTEXT *context, DebuggerSWBreakpo
     LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: triggering SW breakpoint %p for addr:%p rwAddr:%p thread:%p\n",
         swBreakpoint, swBreakpoint->GetIP(), swBreakpoint->GetRWAddress(), thread));
 
-    if (swBreakpoint->GetIP() == swBreakpoint->GetRWAddressAsPCODE())
+    if (swBreakpoint->IsValid())
     {
         LOG((LF_CORDB, LL_INFO10000, "DC::DSWB: %p is not a valid SW breakpoint, skipping.\n", swBreakpoint));
         return;
