@@ -1664,13 +1664,8 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 #ifdef DACCESS_COMPILE
         DacNotImpl();
 #else
-#if defined(TARGET_ARM64) && defined(__APPLE__)
-        // On ARM64 Mac, we cannot put a breakpoint inside of ExternalMethodFixupPatchLabel
-        LOG((LF_CORDB, LL_INFO10000, "RSM::DoTraceStub: Skipping on arm64-macOS\n"));
-        return FALSE;
-#else
+        LOG((LF_CORDB, LL_ALWAYS, "RSSM::DoTraceStub: Activate ExternalMethodFixup software breakpoint.\n"));
         trace->InitForManagerPush(GetEEFuncEntryPoint(ExternalMethodFixupPatchLabel), this);
-#endif //defined(TARGET_ARM64) && defined(__APPLE__)
 #endif
         return TRUE;
 
@@ -1682,9 +1677,19 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 }
 
 #ifndef DACCESS_COMPILE
-BOOL RangeSectionStubManager::TraceManager(Thread *thread,
+BOOL RangeSectionStubManager::TraceManager(Thread* thread,
+                            TraceDestination* trace,
+                            CONTEXT* pContext,
+                            BYTE** pRetAddr)
+{
+    //_ASSERTE(!"This code should be unreachable. RangeSectionStubManager uses SW breakpoints for TRACE_MGR_PUSH.");
+    return TraceManager2(thread, trace, pContext, NULL, pRetAddr);
+}
+
+BOOL RangeSectionStubManager::TraceManager2(Thread *thread,
                             TraceDestination *trace,
                             CONTEXT *pContext,
+                            TraceData *traceData,
                             BYTE **pRetAddr)
 {
     CONTRACTL
@@ -1694,6 +1699,17 @@ BOOL RangeSectionStubManager::TraceManager(Thread *thread,
         MODE_ANY;
     }
     CONTRACTL_END;
+
+    // TODO, replace with target arg from input.
+    /*_ASSERTE(traceData != NULL);
+    _ASSERTE(traceData->GetType() == TRACE_DATA_SW_BREAKPOINT);
+
+    *pRetAddr = (BYTE *)StubManagerHelpers::GetReturnAddress(pContext);
+
+    ExternaMethodFixupSWBreakpoint *swBreakpoint = (ExternaMethodFixupSWBreakpoint *)traceData->GetData();
+    _ASSERTE(swBreakpoint != NULL);
+    PCODE target = swBreakpoint->GetTarget();
+    trace->InitForStub(target);*/
 
     _ASSERTE(GetIP(pContext) == GetEEFuncEntryPoint(ExternalMethodFixupPatchLabel));
 

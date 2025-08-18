@@ -151,6 +151,7 @@ GPTR_IMPL(EEDbgInterfaceImpl, g_pEEDbgInterfaceImpl);
 
 // Predefined SW breakpoints.
 CorDB_SW_BREAKPOINT_IMPL(g_prestubSWBreakpoint);
+CorDB_SW_BREAKPOINT_IMPL(g_externalMethodFixupSWBreakpoint);
 #endif // DEBUGGING_SUPPORTED
 
 #if defined(PROFILING_SUPPORTED_DATA) || defined(PROFILING_SUPPPORTED)

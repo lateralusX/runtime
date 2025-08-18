@@ -4112,4 +4112,41 @@ private:
     }
 };
 
+class ExternaMethodFixupSWBreakpoint : public DebuggerSWBreakpoint
+{
+public:
+    static NOINLINE void Dispatch(PCODE target)
+    {
+        ExternaMethodFixupSWBreakpoint swBreakpoint(target);
+        swBreakpoint.TriggerIfEnabled();
+    }
+
+    static void InitTrace(TraceDestination *trace, StubManager *stubManager)
+    {
+        ExternaMethodFixupSWBreakpoint swBreakpoint(NULL);
+        trace->InitForManagerPush(swBreakpoint.GetIP(), stubManager, dac_cast<PCODE>(swBreakpoint.GetRWAddress()));
+    }
+
+    ExternaMethodFixupSWBreakpoint(PCODE target)
+    {
+        m_ip = dac_cast<PCODE>(ExternaMethodFixupSWBreakpoint::Dispatch);
+        m_rwAddress = ExternaMethodFixupSWBreakpoint::GetRWAddress();
+        m_target = target;
+    }
+
+    PCODE GetTarget() { return m_target; }
+
+private:
+    static PTR_CORDB_ADDRESS_TYPE GetRWAddress()
+    {
+#ifndef DACCESS_COMPILE
+        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(&g_externalMethodFixupSWBreakpoint);
+#else
+        return NULL;
+#endif
+    }
+
+    PCODE m_target;
+};
+
 #endif /* DEBUGGER_H_ */

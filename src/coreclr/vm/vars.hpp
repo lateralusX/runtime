@@ -420,6 +420,7 @@ GPTR_DECL(EEDbgInterfaceImpl, g_pEEDbgInterfaceImpl);
 // Predefined SW breakpoints.
 CorDB_SW_BREAKPOINT_DECL(g_templateSWBreakpoint);
 CorDB_SW_BREAKPOINT_DECL(g_prestubSWBreakpoint);
+CorDB_SW_BREAKPOINT_DECL(g_externalMethodFixupSWBreakpoint);
 #endif // DEBUGGING_SUPPORTED
 
 #ifdef PROFILING_SUPPORTED

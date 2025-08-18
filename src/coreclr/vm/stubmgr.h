@@ -675,6 +675,12 @@ class RangeSectionStubManager : public StubManager
                               TraceDestination *trace,
                               T_CONTEXT *pContext,
                               BYTE **pRetAddr);
+
+    virtual BOOL TraceManager2(Thread *thread,
+                              TraceDestination *trace,
+                              T_CONTEXT *pContext,
+                              TraceData *traceData,
+                              BYTE **pRetAddr);
 #endif
 
 #ifdef DACCESS_COMPILE
