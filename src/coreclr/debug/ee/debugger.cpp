@@ -16869,12 +16869,35 @@ void DebuggerExternalMethodFixupSWBreakpoint::Trigger(DebuggerController *contro
     controller->PatchTrace(&trace, fp, false);
     controller->DeactivateSWBreakpoint(m_type);
 }
+
+void DebuggerMulticastDelgateSWBreakpoint::Trigger(DebuggerController *controller)
+{
+    GCX_ASSERT_COOP();
+
+    LOG((LF_CORDB, LL_INFO10000, "Trigger MultiDelegate SW breakpoint for controller %p.\n", controller));
+
+    TraceDestination trace;
+    FramePointer fp = LEAF_MOST_FRAME;
+
+    PTRARRAYREF array = (PTRARRAYREF) m_delegates->GetInvocationList();
+    DELEGATEREF delegate = (DELEGATEREF) array->GetAt(m_count);
+
+    StubLinkStubManager::TraceDelegateObject((BYTE*)OBJECTREFToObject(delegate), &trace);
+
+    g_pEEInterface->FollowTrace(&trace);
+    controller->PatchTrace(&trace, fp, false);
+    controller->DeactivateSWBreakpoint(m_type);
+}
 #else
 void DebuggerPreStubSWBreakpoint::Trigger(DebuggerController *controller)
 {
 }
 
 void DebuggerExternalMethodFixupSWBreakpoint::Trigger(DebuggerController *controller)
+{
+}
+
+void DebuggerMulticastDelegateSWBreakpoint::Trigger(DebuggerController *controller)
 {
 }
 #endif // !DACCESS_COMPILE

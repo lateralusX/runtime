@@ -25,6 +25,7 @@
 #ifdef FEATURE_COMINTEROP
 #include "comcallablewrapper.h"
 #endif // FEATURE_COMINTEROP
+#include "../debug/ee/debugger.h"
 
 #define DELEGATE_MARKER_UNMANAGEDFPTR -1
 
@@ -2185,6 +2186,21 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
         //Label_nextDelegate:
         pCode->EmitLabel(nextDelegate);
 
+#ifdef DEBUGGING_SUPPORTED
+        ILCodeLabel *invokeTraceHelper = pCode->NewCodeLabel();
+        ILCodeLabel *debuggerCheckEnd = pCode->NewCodeLabel();
+
+        // Call MulticastDebuggerTraceHelper only if we have a controller subscribing to the event
+        pCode->EmitLDC((DWORD_PTR)DebuggerSWBreakpoint::GetSWBreakpointAddress(DSWB_MULTICAST_DELEGATE));
+        pCode->EmitCONV_I();
+        pCode->EmitLDIND_I4();
+        pCode->EmitLDC(0);
+        pCode->EmitCEQ();
+        pCode->EmitBRFALSE(invokeTraceHelper);
+
+        pCode->EmitLabel(debuggerCheckEnd);
+#endif // DEBUGGING_SUPPORTED
+
         // Load next delegate from array using LoopCounter as index
         pCode->EmitLoadThis();
         pCode->EmitLDFLD(pCode->GetToken(CoreLibBinder::GetField(FIELD__MULTICAST_DELEGATE__INVOCATION_LIST)));
@@ -2207,26 +2223,6 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
         pCode->EmitLDC(1);
         pCode->EmitADD();
         pCode->EmitSTLOC(dwLoopCounterNum);
-
-        //Label_checkCount
-        pCode->EmitLabel(checkCount);
-
-#ifdef DEBUGGING_SUPPORTED
-        ILCodeLabel *invokeTraceHelper = pCode->NewCodeLabel();
-        ILCodeLabel *debuggerCheckEnd = pCode->NewCodeLabel();
-
-        // Call MulticastDebuggerTraceHelper only if any debugger is attached
-        pCode->EmitLDC((DWORD_PTR)&g_CORDebuggerControlFlags);
-        pCode->EmitCONV_I();
-        pCode->EmitLDIND_I4();
-
-        // (g_CORDebuggerControlFlags & DBCF_ATTACHED) != 0
-        pCode->EmitLDC(DBCF_ATTACHED);
-        pCode->EmitAND();
-        pCode->EmitBRTRUE(invokeTraceHelper);
-
-        pCode->EmitLabel(debuggerCheckEnd);
-#endif // DEBUGGING_SUPPORTED
 
         // compare LoopCounter with InvocationCount. If less then branch to nextDelegate
         pCode->EmitLDLOC(dwLoopCounterNum);

@@ -4227,7 +4227,7 @@ END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType)
 #define DECLARE_DEBUGGER_SW_BREAKPOINT_TWO_ARGS(swBreakpointName, swBreakpointType, arg1Type, arg1Name, arg2Type, arg2Name) \
 START_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType) \
 public: \
-    static FORCEINLINE void Dispatch(arg1Type arg1Name) \
+    static FORCEINLINE void Dispatch(arg1Type arg1Name, arg2Type arg2Name) \
     { \
         if (IsEnabled(swBreakpointType)) \
         { \
@@ -4249,5 +4249,6 @@ END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType)
 // Predefined SW breakpoints.
 DECLARE_DEBUGGER_SW_BREAKPOINT_ONE_ARG(DebuggerPreStubSWBreakpoint, DSWB_PRE_STUB, PCODE, target);
 DECLARE_DEBUGGER_SW_BREAKPOINT_ONE_ARG(DebuggerExternalMethodFixupSWBreakpoint, DSWB_EXTERNAL_METHOD_FIXUP, PCODE, target);
+DECLARE_DEBUGGER_SW_BREAKPOINT_TWO_ARGS(DebuggerMulticastDelgateSWBreakpoint, DSWB_MULTICAST_DELEGATE, DELEGATEREF, delegates, INT32, count);
 
 #endif /* DEBUGGER_H_ */

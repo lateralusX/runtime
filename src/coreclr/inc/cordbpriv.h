@@ -69,6 +69,7 @@ enum DebuggerSWBreakpointType
     DSWB_MIN = 0,
     DSWB_PRE_STUB = DSWB_MIN,
     DSWB_EXTERNAL_METHOD_FIXUP,
+    DSWB_MULTICAST_DELEGATE,
     DSWB_MAX
 };
 
@@ -78,6 +79,7 @@ static inline const char * DebuggerSWBreakpointTypeToString(DebuggerSWBreakpoint
     {
         case DSWB_PRE_STUB: return "DSWB_PRE_STUB";
         case DSWB_EXTERNAL_METHOD_FIXUP: return "DSWB_EXTERNAL_METHOD_FIXUP";
+        case DSWB_MULTICAST_DELEGATE: return "DSWB_MULTICAST_DELEGATE";
         default: return "Unknown DebuggerSWBreakpointType";
     }
 }

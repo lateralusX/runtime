@@ -1788,21 +1788,15 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
     MethodDesc* pStubMD = ExecutionManager::GetCodeMethodDesc(stubStartAddress);
     if (pStubMD != NULL && pStubMD->AsDynamicMethodDesc()->IsMulticastStub())
     {
-#if defined(TARGET_ARM64) && defined(__APPLE__)
-        //On ARM64 Mac, we cannot put a breakpoint inside of MulticastDebuggerTraceHelper
-        LOG((LF_CORDB, LL_INFO10000, "ILSM::DoTraceStub: skipping on arm64-macOS\n"));
-        return FALSE;
-#else
-        traceDestination = GetEEFuncEntryPoint(StubHelpers::MulticastDebuggerTraceHelper);
-#endif //defined(TARGET_ARM64) && defined(__APPLE__)
+        // This call is going over the multicast delegate stub.
+        DebuggerMulticastDelgateSWBreakpoint::InitTrace(trace);
     }
     else
     {
         // This call is going out to unmanaged code, either through pinvoke or COM interop.
-        traceDestination = stubStartAddress;
+        trace->InitForManagerPush(traceDestination, this);
     }
 
-    trace->InitForManagerPush(traceDestination, this);
     LOG_TRACE_DESTINATION(trace, traceDestination, "ILStubManager::DoTraceStub");
 
     return TRUE;
@@ -1851,12 +1845,6 @@ BOOL ILStubManager::TraceManager(Thread *thread,
     PCODE stubIP = GetIP(pContext);
     *pRetAddr = (BYTE *)StubManagerHelpers::GetReturnAddress(pContext);
 
-    if (stubIP == GetEEFuncEntryPoint(StubHelpers::MulticastDebuggerTraceHelper))
-    {
-        stubIP = (PCODE)*pRetAddr;
-        *pRetAddr = (BYTE*)StubManagerHelpers::GetRetAddrFromMulticastILStubFrame(pContext);
-    }
-
     DynamicMethodDesc *pStubMD = Entry2MethodDesc(stubIP, NULL)->AsDynamicMethodDesc();
     TADDR arg = StubManagerHelpers::GetHiddenArg(pContext);
     Object * pThis = StubManagerHelpers::GetThisPtr(pContext);
@@ -1866,30 +1854,7 @@ BOOL ILStubManager::TraceManager(Thread *thread,
     // See code:ILStubCache.CreateNewMethodDesc for the code that sets flags on stub MDs
     PCODE target = (PCODE)NULL;
 
-    if (pStubMD->IsMulticastStub())
-    {
-        _ASSERTE(GetIP(pContext) == GetEEFuncEntryPoint(StubHelpers::MulticastDebuggerTraceHelper));
-
-        int delegateCount = (int)StubManagerHelpers::GetSecondArg(pContext);
-        int totalDelegateCount = (int)*(size_t*)((BYTE*)pThis + DelegateObject::GetOffsetOfInvocationCount());
-        if (delegateCount == totalDelegateCount)
-        {
-            LOG((LF_CORDB, LL_INFO1000, "ILSM::TraceManager: Fired all delegates\n"));
-            return FALSE;
-        }
-        else
-        {
-            // We're going to execute stub delegateCount next, so go and grab it.
-            BYTE *pbDelInvocationList = *(BYTE **)((BYTE*)pThis + DelegateObject::GetOffsetOfInvocationList());
-
-            BYTE* pbDel = *(BYTE**)( ((ArrayBase *)pbDelInvocationList)->GetDataPtr() +
-                               ((ArrayBase *)pbDelInvocationList)->GetComponentSize()*delegateCount);
-
-            _ASSERTE(pbDel);
-            return StubLinkStubManager::TraceDelegateObject(pbDel, trace);
-        }
-    }
-    else if (pStubMD->IsReverseStub())
+    if (pStubMD->IsReverseStub())
     {
         if (pStubMD->IsStatic())
         {
