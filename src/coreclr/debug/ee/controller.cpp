@@ -1138,6 +1138,11 @@ void DebuggerController::DisableAll()
             DisableTraceCall();
         if (m_fEnableMethodEnter)
             DisableMethodEnter();
+
+        for (DebuggerSWBreakpointType type = DSWB_MIN; type < DSWB_MAX; type = (DebuggerSWBreakpointType)(type + 1))
+        {
+            DeactivateSWBreakpoint(type);
+        }
     }
 }
 
@@ -2124,6 +2129,60 @@ DebuggerControllerPatch *DebuggerController::AddAndActivateNativePatchForAddress
     return patch;
 }
 
+bool DebuggerController::ActivateSWBreakpoint(DebuggerSWBreakpointType type)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        MODE_ANY;
+        GC_NOTRIGGER;
+        PRECONDITION(DebuggerSWBreakpoint::IsValid(type));
+    }
+    CONTRACTL_END;
+
+    DWORD oldCount = DebuggerSWBreakpoint::Count(type);
+    DWORD newCount = DebuggerSWBreakpoint::Enable(type);
+
+    LOG((LF_CORDB, LL_INFO10000, "DC:ASWB Activate SW breakpoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
+        DebuggerSWBreakpointTypeToString(type),
+        DebuggerSWBreakpoint::GetSWBreakpointAddress(type),
+        oldCount,
+        newCount));
+
+    _ASSERTE(!m_swBreakpoints[type]);
+    m_swBreakpoints[type] = true;
+
+    return true;
+}
+
+bool DebuggerController::DeactivateSWBreakpoint(DebuggerSWBreakpointType type)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        MODE_ANY;
+        GC_NOTRIGGER;
+        PRECONDITION(DebuggerSWBreakpoint::IsValid(type));
+    }
+    CONTRACTL_END;
+
+    if (m_swBreakpoints[type])
+    {
+        DWORD oldCount = DebuggerSWBreakpoint::Count(type);
+        DWORD newCount = DebuggerSWBreakpoint::Disable(type);
+
+        LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Deactivate SW breakpoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
+            DebuggerSWBreakpointTypeToString(type),
+            DebuggerSWBreakpoint::GetSWBreakpointAddress(type),
+            oldCount,
+            newCount));
+
+        m_swBreakpoints[type] = false;
+    }
+
+    return true;
+}
+
 void DebuggerController::RemovePatchesFromModule(Module *pModule, AppDomain *pAppDomain )
 {
     CONTRACTL
@@ -2304,6 +2363,7 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
     {
     case TRACE_ENTRY_STUB:  // fall through
     case TRACE_UNMANAGED:
+    {
         LOG((LF_CORDB, LL_INFO10000,
              "DC::PT: Setting unmanaged trace patch at 0x%p(%p)\n",
              trace->GetAddress(), fp.GetSPValue()));
@@ -2322,8 +2382,9 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
                 "place a patch in unmanaged code\n"));
             return false;
         }
-
+    }
     case TRACE_MANAGED:
+    {
         LOG((LF_CORDB, LL_INFO10000,
              "Setting managed trace patch at 0x%p(%p)\n", trace->GetAddress(), fp.GetSPValue()));
 
@@ -2355,8 +2416,9 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
 
 
         return true;
-
+    }
     case TRACE_UNJITTED_METHOD:
+    {
         // trace->address is actually a MethodDesc* of the method that we'll
         // soon JIT, so put a relative bp at offset zero in.
         LOG((LF_CORDB, LL_INFO10000,
@@ -2366,23 +2428,27 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
         // DebuggerJITInfo and thereby cause a JITComplete callback.
         AddPatchToStartOfLatestMethod(trace->GetMethodDesc());
         return true;
-
+    }
     case TRACE_FRAME_PUSH:
+    {
+        PTR_CORDB_ADDRESS_TYPE traceAddress = dac_cast<PTR_CORDB_ADDRESS_TYPE>(trace->GetAddress());
         LOG((LF_CORDB, LL_INFO10000,
-             "Setting frame patch at 0x%p(%p)\n", trace->GetAddress(), fp.GetSPValue()));
+             "Setting frame patch at 0x%p(%p)\n", traceAddress, fp.GetSPValue()));
 
-        AddAndActivateNativePatchForAddress((CORDB_ADDRESS_TYPE *)trace->GetAddress(),
+        AddAndActivateNativePatchForAddress(traceAddress,
                  fp,
                  TRUE,
                  TRACE_FRAME_PUSH);
         return true;
-
+    }
     case TRACE_MGR_PUSH:
+    {
+        PTR_CORDB_ADDRESS_TYPE traceAddress = dac_cast<PTR_CORDB_ADDRESS_TYPE>(trace->GetAddress());
         LOG((LF_CORDB, LL_INFO10000,
              "Setting frame patch (TRACE_MGR_PUSH) at 0x%p(%p)\n",
-             trace->GetAddress(), fp.GetSPValue()));
+             traceAddress, fp.GetSPValue()));
 
-        dcp = AddAndActivateNativePatchForAddress((CORDB_ADDRESS_TYPE *)trace->GetAddress(),
+        dcp = AddAndActivateNativePatchForAddress(traceAddress,
                        LEAF_MOST_FRAME, // But Mgr_push can't have fp affinity!
                        TRUE,
                        DPT_DEFAULT_TRACE_TYPE); // TRACE_OTHER
@@ -2394,15 +2460,23 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
         }
 
         return true;
-
+    }
+    case TRACE_SW_BREAKPOINT:
+    {
+        _ASSERTE(DebuggerSWBreakpoint::IsValid(trace->GetSWBreakpointType()));
+        return ActivateSWBreakpoint(trace->GetSWBreakpointType());
+    }
     case TRACE_OTHER:
+    {
         LOG((LF_CORDB, LL_INFO10000,
              "Can't set a trace patch for TRACE_OTHER...\n"));
         return false;
-
+    }
     default:
+    {
         _ASSERTE(0);
         return false;
+    }
     }
 }
 
@@ -3903,6 +3977,29 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
     _ASSERTE(g_cTotalMethodEnter == count);
 
+}
+
+void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpoint *swBreakpoint)
+{
+    _ASSERTE(swBreakpoint != NULL);
+
+    Thread * pThread = g_pEEInterface->GetThread();
+    _ASSERTE(pThread  != NULL);
+
+    ControllerLockHolder lockController;
+
+    DebuggerController *p = g_controllers;
+    while (p != NULL)
+    {
+        if (swBreakpoint->IsEnabled() && p->IsSWBreakpointEnabled(swBreakpoint->GetType()))
+        {
+            if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
+            {
+                swBreakpoint->Trigger(p);
+            }
+        }
+        p = p->m_next;
+    }
 }
 
 //

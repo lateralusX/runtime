@@ -89,6 +89,7 @@ struct DebuggerControllerPatch;
 class DebuggerEval;
 class DebuggerControllerQueue;
 class DebuggerController;
+class DebuggerSWBreakpoint;
 class Crst;
 
 typedef CUnorderedArray<DebuggerControllerPatch *, 17> PATCH_UNORDERED_ARRAY;
@@ -2353,6 +2354,7 @@ private:
 
 public:
     HRESULT DeoptimizeMethod(Module* pModule, mdMethodDef methodDef);
+    void DispatchSWBreakpoint(DebuggerSWBreakpoint *swBreakpoint);
 #endif //DACCESS_COMPILE
     HRESULT IsMethodDeoptimized(Module *pModule, mdMethodDef methodDef, BOOL *pResult);
     HRESULT UpdateForceCatchHandlerFoundTable(BOOL enableEvents, OBJECTREF exObj, AppDomain *pAppDomain);
@@ -4039,5 +4041,209 @@ HANDLE OpenWin32EventOrThrow(
 bool DbgIsSpecialILOffset(DWORD offset);
 
 void FixupDispatcherContext(T_DISPATCHER_CONTEXT* pDispatcherContext, T_CONTEXT* pContext, PEXCEPTION_ROUTINE pUnwindPersonalityRoutine = NULL);
+
+class DebuggerSWBreakpoint
+{
+public:
+
+    virtual void Trigger(DebuggerController *controller) = 0;
+
+    DebuggerSWBreakpointType GetType()
+    {
+        return m_type;
+    }
+
+    bool IsValid()
+    {
+        return IsValid(m_type);
+    }
+
+    bool IsEnabled()
+    {
+        return IsEnabled(m_type);
+    }
+
+    DWORD Enable()
+    {
+        return Enable(m_type);
+    }
+
+    DWORD Disable()
+    {
+        return Disable(m_type);
+    }
+
+    DWORD Count()
+    {
+        return Count(m_type);
+    }
+
+public:
+
+    static bool IsSWBreakpoint(PTR_CORDB_ADDRESS_TYPE address)
+    {
+#ifndef DACCESS_COMPILE
+        PTR_CORDB_ADDRESS_TYPE start = dac_cast<PTR_CORDB_ADDRESS_TYPE>(g_debuggerSWBreakpoints);
+        PTR_CORDB_ADDRESS_TYPE end = dac_cast<PTR_CORDB_ADDRESS_TYPE>(g_debuggerSWBreakpoints + DSWB_MAX);
+        return address >= start && address < end;
+#else
+        return false;
+#endif // !DACCESS_COMPILE
+    }
+
+    static DebuggerSWBreakpointType GetSWBreakpointType(PTR_CORDB_ADDRESS_TYPE address)
+    {
+#ifndef DACCESS_COMPILE
+        _ASSERTE(IsSWBreakpoint(address));
+        return (DebuggerSWBreakpointType)((dac_cast<PTR_DWORD>(address) - g_debuggerSWBreakpoints) / sizeof(DWORD));
+#else
+        return DSWB_MIN;
+#endif // !DACCESS_COMPILE
+    }
+
+    static PTR_CORDB_ADDRESS_TYPE GetSWBreakpointAddress(DebuggerSWBreakpointType type)
+    {
+#ifndef DACCESS_COMPILE
+        _ASSERTE(type >= 0 && type < DSWB_MAX);
+        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(g_debuggerSWBreakpoints + type);
+#else
+        return dac_cast<PTR_CORDB_ADDRESS_TYPE>(NULL);
+#endif // !DACCESS_COMPILE
+    }
+
+    static bool IsValid(DebuggerSWBreakpointType type)
+    {
+        return type >= 0 && type < DSWB_MAX;
+    }
+
+    static bool IsEnabled(DebuggerSWBreakpointType type)
+    {
+#ifndef DACCESS_COMPILE
+        _ASSERTE(type >= 0 && type < DSWB_MAX);
+        return VolatileLoadWithoutBarrier(dac_cast<PTR_DWORD>(g_debuggerSWBreakpoints + type)) != 0;
+#else
+        return false;
+#endif // !DACCESS_COMPILE
+    }
+
+    static DWORD Enable(DebuggerSWBreakpointType type)
+    {
+#ifndef DACCESS_COMPILE
+        _ASSERTE(type >= 0 && type < DSWB_MAX);
+        return InterlockedIncrement(dac_cast<PTR_DWORD>(g_debuggerSWBreakpoints + type));
+#else
+        return 0;
+#endif // !DACCESS_COMPILE
+    }
+
+    static DWORD Disable(DebuggerSWBreakpointType type)
+    {
+#ifndef DACCESS_COMPILE
+        _ASSERTE(type >= 0 && type < DSWB_MAX);
+        return InterlockedDecrement(dac_cast<PTR_DWORD>(g_debuggerSWBreakpoints + type));
+#else
+        return 0;
+#endif // !DACCESS_COMPILE
+    }
+
+    static DWORD Count(DebuggerSWBreakpointType type)
+    {
+#ifndef DACCESS_COMPILE
+        _ASSERTE(type >= 0 && type < DSWB_MAX);
+        return VolatileLoadWithoutBarrier(dac_cast<PTR_DWORD>(g_debuggerSWBreakpoints + type));
+#else
+        return 0;
+#endif // !DACCESS_COMPILE
+    }
+
+protected:
+
+    DebuggerSWBreakpointType m_type;
+};
+
+#ifndef DACCESS_COMPILE
+#define DEBUGGER_SW_BREAKPOINT_DISPACH_INTERNAL(swBreakpointName) \
+    static NOINLINE void DispatchInternal(swBreakpointName *swBreakpoint) \
+    { \
+        g_pDebugger->DispatchSWBreakpoint(swBreakpoint); \
+    }
+#else
+#define DEBUGGER_SW_BREAKPOINT_DISPACH_INTERNAL(swBreakpointName) \
+    static NOINLINE void DispatchInternal(swBreakpointName *swBreakpoint) {}
+#endif // !DACCESS_COMPILE
+
+#define START_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType) \
+class swBreakpointName : public DebuggerSWBreakpoint \
+{ \
+public: \
+    static void InitTrace(TraceDestination *trace) \
+    { \
+        trace->InitForSWBreakpoint(dac_cast<PCODE>(DispatchInternal), swBreakpointType); \
+    } \
+protected: \
+    DEBUGGER_SW_BREAKPOINT_DISPACH_INTERNAL(swBreakpointName) \
+    void Trigger(DebuggerController *controller) override;
+
+#define END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType) }
+
+#define DECLARE_DEBUGGER_SW_BREAKPOINT_NO_ARG(swBreakpointName, swBreakpointType) \
+START_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType) \
+public: \
+    static FORCEINLINE void Dispatch() \
+    { \
+        if (IsEnabled(swBreakpointType)) \
+        { \
+            swBreakpointName swBreakpoint; \
+            DispatchInternal(&swBreakpoint); \
+        } \
+    } \
+protected: \
+    swBreakpointName() \
+    { \
+        m_type = swBreakpointType; \
+    } \
+END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType)
+
+#define DECLARE_DEBUGGER_SW_BREAKPOINT_ONE_ARG(swBreakpointName, swBreakpointType, arg1Type, arg1Name) \
+START_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType) \
+public: \
+    static FORCEINLINE void Dispatch(arg1Type arg1Name) \
+    { \
+        if (IsEnabled(swBreakpointType)) \
+        { \
+            swBreakpointName swBreakpoint(arg1Name); \
+            DispatchInternal(&swBreakpoint); \
+        } \
+    } \
+protected: \
+    swBreakpointName(arg1Type arg1Name) \
+    { \
+        m_type = swBreakpointType; \
+        m_##arg1Name = arg1Name; \
+    } \
+    arg1Type m_##arg1Name; \
+END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType)
+
+#define DECLARE_DEBUGGER_SW_BREAKPOINT_TWO_ARGS(swBreakpointName, swBreakpointType, arg1Type, arg1Name, arg2Type, arg2Name) \
+START_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType) \
+public: \
+    static FORCEINLINE void Dispatch(arg1Type arg1Name) \
+    { \
+        if (IsEnabled(swBreakpointType)) \
+        { \
+            swBreakpointName swBreakpoint(arg1Name, arg2Name); \
+            DispatchInternal(&swBreakpoint); \
+        } \
+    } \
+protected: \
+    swBreakpointName(arg1Type arg1Name, arg2Type arg2Name) \
+    { \
+        m_type = swBreakpointType; \
+        m_##arg1Name = arg1Name; \
+        m_##arg2Name = arg2Name; \
+    } \
+    arg1Type m_##arg1Name; \
+    arg2Type m_##arg2Name; \
+END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType)
 
 #endif /* DEBUGGER_H_ */

@@ -61,7 +61,7 @@ enum TraceType
 
     TRACE_FRAME_PUSH,               // Don't know where stub goes, stop at address, and then ask the frame that is on the stack
     TRACE_MGR_PUSH,                 // Don't know where stub goes, stop at address then call TraceManager() below to find out
-
+    TRACE_SW_BREAKPOINT,            // Stub goes to a software breakpoint. The address is the location of the breakpoint dispatch.
     TRACE_OTHER                     // We are going somewhere you can't step into (eg. ee helper function)
 };
 
@@ -147,6 +147,14 @@ public:
         this->stubManager = NULL;
     }
 
+    void InitForSWBreakpoint(PCODE addr, DebuggerSWBreakpointType swBreakpointType)
+    {
+        this->type = TRACE_SW_BREAKPOINT;
+        this->address = addr;
+        this->swBreakpointType = swBreakpointType;
+        this->stubManager = NULL;
+    }
+
     // Nobody recognized the target address. We will not be able to step-in to it.
     // This is ok if the target just calls into mscorwks (such as an Fcall) because
     // there's no managed code to step in to, and we don't support debugging the CLR
@@ -178,6 +186,11 @@ public:
         return stubManager;
     }
 
+    DebuggerSWBreakpointType GetSWBreakpointType()
+    {
+        return swBreakpointType;
+    }
+
     // Expose this b/c DebuggerPatchTable::AddPatchForAddress() needs it.
     // Ideally we'd get rid of this.
     void Bad_SetTraceType(TraceType t)
@@ -189,6 +202,7 @@ private:
     PCODE                           address;            // Where the stub is going
     StubManager                     *stubManager;       // The manager that claims this stub
     MethodDesc                      *pDesc;
+    DebuggerSWBreakpointType        swBreakpointType;
 };
 
 // For logging

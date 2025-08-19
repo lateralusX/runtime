@@ -27,6 +27,7 @@ const char *GetTType( TraceType tt)
         case TRACE_MGR_PUSH:        return "TRACE_MGR_PUSH";
         case TRACE_OTHER:           return "TRACE_OTHER";
         case TRACE_UNJITTED_METHOD: return "TRACE_UNJITTED_METHOD";
+        case TRACE_SW_BREAKPOINT:   return "TRACE_SW_BREAKPOINT";
     }
     return "TRACE_REALLY_WACKED";
 }
@@ -120,6 +121,11 @@ const CHAR * TraceDestination::DbgToString(SString & buffer)
 
             case TRACE_OTHER:
                 pValue = "TRACE_OTHER";
+                break;
+
+            case TRACE_SW_BREAKPOINT:
+                buffer.Printf("TRACE_SW_BREAKPOINT(addr=%p, swBreakpointType=%s)", GetAddress(), DebuggerSWBreakpointTypeToString(GetSWBreakpointType()));
+                pValue = buffer.GetUTF8();
                 break;
         }
     }

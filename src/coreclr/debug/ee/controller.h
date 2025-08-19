@@ -1095,6 +1095,8 @@ class DebuggerController
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
 
+    static void DispatchSWBreakpoint(DebuggerSWBreakpoint *swBreakpoint);
+
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
     // If pAppDomain is specified, then only patches tied to the specified AppDomain are
@@ -1286,7 +1288,8 @@ public:
                                       bool managed,
                                       TraceType traceType);
 
-
+    bool ActivateSWBreakpoint(DebuggerSWBreakpointType type);
+    bool DeactivateSWBreakpoint(DebuggerSWBreakpointType type);
 
     bool PatchTrace(TraceDestination *trace, FramePointer fp, bool fStopInUnmanaged);
 
@@ -1357,6 +1360,8 @@ public:
                   DebuggerPatchKind kind,
                   FramePointer fp,
                   AppDomain *pAppDomain);
+
+    bool IsSWBreakpointEnabled(DebuggerSWBreakpointType type) { LIMITED_METHOD_CONTRACT; return m_swBreakpoints[type]; }
 
   protected:
 
@@ -1452,6 +1457,7 @@ private:
     int                 m_eventQueuedCount;
     bool                m_deleted;
     bool                m_fEnableMethodEnter;
+    bool                m_swBreakpoints[DSWB_MAX];
 
 #endif // !DACCESS_COMPILE
 };
