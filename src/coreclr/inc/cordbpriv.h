@@ -67,6 +67,7 @@ enum DebuggerAssemblyControlFlags
 enum DebuggerSWBreakpointType
 {
     DSWB_MIN = 0,
+    DSWB_PRE_STUB = DSWB_MIN,
     DSWB_MAX
 };
 
@@ -74,6 +75,7 @@ static inline const char * DebuggerSWBreakpointTypeToString(DebuggerSWBreakpoint
 {
     switch (type)
     {
+        case DSWB_PRE_STUB: return "DSWB_PRE_STUB";
         default: return "Unknown DebuggerSWBreakpointType";
     }
 }

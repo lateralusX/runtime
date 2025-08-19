@@ -4246,4 +4246,7 @@ protected: \
     arg2Type m_##arg2Name; \
 END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType)
 
+// Predefined SW breakpoints.
+DECLARE_DEBUGGER_SW_BREAKPOINT_ONE_ARG(DebuggerPreStubSWBreakpoint, DSWB_PRE_STUB, PCODE, target);
+
 #endif /* DEBUGGER_H_ */
