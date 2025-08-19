@@ -16857,8 +16857,24 @@ void DebuggerPreStubSWBreakpoint::Trigger(DebuggerController *controller)
     controller->PatchTrace(&trace, fp, false);
     controller->DeactivateSWBreakpoint(m_type);
 }
+
+void DebuggerExternalMethodFixupSWBreakpoint::Trigger(DebuggerController *controller)
+{
+    LOG((LF_CORDB, LL_INFO10000, "Trigger External SW breakpoint for controller %p.\n", controller));
+
+    TraceDestination trace;
+    FramePointer fp = LEAF_MOST_FRAME;
+    trace.InitForStub(m_target);
+    g_pEEInterface->FollowTrace(&trace);
+    controller->PatchTrace(&trace, fp, false);
+    controller->DeactivateSWBreakpoint(m_type);
+}
 #else
 void DebuggerPreStubSWBreakpoint::Trigger(DebuggerController *controller)
+{
+}
+
+void DebuggerExternalMethodFixupSWBreakpoint::Trigger(DebuggerController *controller)
 {
 }
 #endif // !DACCESS_COMPILE

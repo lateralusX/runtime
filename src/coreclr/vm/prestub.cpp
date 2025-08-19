@@ -3402,6 +3402,8 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(TransitionBlock * pTransitionBl
     // Force a GC on every jit if the stress level is high enough
     GCStress<cfg_any>::MaybeTrigger();
 
+    DebuggerExternalMethodFixupSWBreakpoint::Dispatch(pCode);
+
     // Ready to return
 
     UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;

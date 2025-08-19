@@ -1668,13 +1668,7 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 #ifdef DACCESS_COMPILE
         DacNotImpl();
 #else
-#if defined(TARGET_ARM64) && defined(__APPLE__)
-        // On ARM64 Mac, we cannot put a breakpoint inside of ExternalMethodFixupPatchLabel
-        LOG((LF_CORDB, LL_INFO10000, "RSM::DoTraceStub: Skipping on arm64-macOS\n"));
-        return FALSE;
-#else
-        trace->InitForManagerPush(GetEEFuncEntryPoint(ExternalMethodFixupPatchLabel), this);
-#endif //defined(TARGET_ARM64) && defined(__APPLE__)
+        DebuggerExternalMethodFixupSWBreakpoint::InitTrace(trace);
 #endif
         return TRUE;
 
@@ -1684,30 +1678,6 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 
     return FALSE;
 }
-
-#ifndef DACCESS_COMPILE
-BOOL RangeSectionStubManager::TraceManager(Thread *thread,
-                            TraceDestination *trace,
-                            CONTEXT *pContext,
-                            BYTE **pRetAddr)
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_NOTRIGGER;
-        MODE_ANY;
-    }
-    CONTRACTL_END;
-
-    _ASSERTE(GetIP(pContext) == GetEEFuncEntryPoint(ExternalMethodFixupPatchLabel));
-
-    *pRetAddr = (BYTE *)StubManagerHelpers::GetReturnAddress(pContext);
-
-    PCODE target = StubManagerHelpers::GetTailCallTarget(pContext);
-    trace->InitForStub(target);
-    return TRUE;
-}
-#endif
 
 #ifdef DACCESS_COMPILE
 LPCWSTR RangeSectionStubManager::GetStubManagerName(PCODE addr)

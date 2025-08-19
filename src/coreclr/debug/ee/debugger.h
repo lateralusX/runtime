@@ -4248,5 +4248,6 @@ END_DECLARE_DEBUGGER_SW_BREAKPOINT(swBreakpointName, swBreakpointType)
 
 // Predefined SW breakpoints.
 DECLARE_DEBUGGER_SW_BREAKPOINT_ONE_ARG(DebuggerPreStubSWBreakpoint, DSWB_PRE_STUB, PCODE, target);
+DECLARE_DEBUGGER_SW_BREAKPOINT_ONE_ARG(DebuggerExternalMethodFixupSWBreakpoint, DSWB_EXTERNAL_METHOD_FIXUP, PCODE, target);
 
 #endif /* DEBUGGER_H_ */
