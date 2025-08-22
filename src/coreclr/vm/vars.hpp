@@ -416,11 +416,6 @@ GPTR_DECL(DebugInterface,     g_pDebugInterface);
 GVAL_DECL(DWORD,              g_CORDebuggerControlFlags);
 #ifdef DEBUGGING_SUPPORTED
 GPTR_DECL(EEDbgInterfaceImpl, g_pEEDbgInterfaceImpl);
-
-#ifndef DACCESS_COMPILE
-// Predefined SW breakpoints.
-GARY_DECL(DWORD, g_debuggerSWBreakpoints, DSWB_MAX);
-#endif // !DACCESS_COMPILE
 #endif // DEBUGGING_SUPPORTED
 
 #ifdef PROFILING_SUPPORTED

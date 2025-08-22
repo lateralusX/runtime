@@ -147,10 +147,10 @@ public:
         this->stubManager = NULL;
     }
 
-    void InitForSWBreakpoint(PCODE addr, DebuggerSWBreakpointType swBreakpointType)
+    void InitForSWBreakpoint(DebuggerSWBreakpointType swBreakpointType)
     {
         this->type = TRACE_SW_BREAKPOINT;
-        this->address = addr;
+        this->address = NULL;
         this->swBreakpointType = swBreakpointType;
         this->stubManager = NULL;
     }

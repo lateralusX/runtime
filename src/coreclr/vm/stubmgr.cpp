@@ -125,7 +125,7 @@ const CHAR * TraceDestination::DbgToString(SString & buffer)
                 break;
 
             case TRACE_SW_BREAKPOINT:
-                buffer.Printf("TRACE_SW_BREAKPOINT(addr=%p, swBreakpointType=%s)", GetAddress(), DebuggerSWBreakpointTypeToString(GetSWBreakpointType()));
+                buffer.Printf("TRACE_SW_BREAKPOINT(addr=%p, swBreakpointType=%s)", GetAddress(), DebuggerSWBreakpointHelpers::ToString(GetSWBreakpointType()));
                 pValue = buffer.GetUTF8();
                 break;
         }
@@ -945,7 +945,7 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     // We cannot tell where the stub will end up
     // until after the prestub worker has been run.
     //
-    DebuggerPreStubSWBreakpoint::InitTrace(trace);
+    trace->InitForSWBreakpoint(DSWB_PRE_STUB);
     return TRUE;
 }
 
@@ -1668,7 +1668,7 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 #ifdef DACCESS_COMPILE
         DacNotImpl();
 #else
-        DebuggerExternalMethodFixupSWBreakpoint::InitTrace(trace);
+        trace->InitForSWBreakpoint(DSWB_EXTERNAL_METHOD_FIXUP);
 #endif
         return TRUE;
 
@@ -1782,22 +1782,19 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
     LOG((LF_CORDB, LL_EVERYTHING, "ILStubManager::DoTraceStub called\n"));
 
 #ifndef DACCESS_COMPILE
-
-    PCODE traceDestination = (PCODE)NULL;
-
     MethodDesc* pStubMD = ExecutionManager::GetCodeMethodDesc(stubStartAddress);
     if (pStubMD != NULL && pStubMD->AsDynamicMethodDesc()->IsMulticastStub())
     {
         // This call is going over the multicast delegate stub.
-        DebuggerMulticastDelgateSWBreakpoint::InitTrace(trace);
+        trace->InitForSWBreakpoint(DSWB_MULTICAST_DELEGATE);
     }
     else
     {
         // This call is going out to unmanaged code, either through pinvoke or COM interop.
-        trace->InitForManagerPush(traceDestination, this);
+        trace->InitForManagerPush(stubStartAddress, this);
     }
 
-    LOG_TRACE_DESTINATION(trace, traceDestination, "ILStubManager::DoTraceStub");
+    LOG_TRACE_DESTINATION(trace, stubStartAddress, "ILStubManager::DoTraceStub");
 
     return TRUE;
 

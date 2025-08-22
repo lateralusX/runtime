@@ -2136,16 +2136,20 @@ bool DebuggerController::ActivateSWBreakpoint(DebuggerSWBreakpointType type)
         NOTHROW;
         MODE_ANY;
         GC_NOTRIGGER;
-        PRECONDITION(DebuggerSWBreakpoint::IsValid(type));
     }
     CONTRACTL_END;
 
-    DWORD oldCount = DebuggerSWBreakpoint::Count(type);
-    DWORD newCount = DebuggerSWBreakpoint::Enable(type);
+    _ASSERTE(HasLock());
+
+    PTR_DWORD address = (PTR_DWORD)DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type);
+    _ASSERT(address != NULL);
+
+    DWORD oldCount = *address;
+    DWORD newCount = ++*address;
 
     LOG((LF_CORDB, LL_INFO10000, "DC:ASWB Activate SW breakpoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
-        DebuggerSWBreakpointTypeToString(type),
-        DebuggerSWBreakpoint::GetSWBreakpointAddress(type),
+        DebuggerSWBreakpointHelpers::ToString(type),
+        DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type),
         oldCount,
         newCount));
 
@@ -2162,18 +2166,22 @@ bool DebuggerController::DeactivateSWBreakpoint(DebuggerSWBreakpointType type)
         NOTHROW;
         MODE_ANY;
         GC_NOTRIGGER;
-        PRECONDITION(DebuggerSWBreakpoint::IsValid(type));
     }
     CONTRACTL_END;
 
+    _ASSERTE(HasLock());
+
     if (m_swBreakpoints[type])
     {
-        DWORD oldCount = DebuggerSWBreakpoint::Count(type);
-        DWORD newCount = DebuggerSWBreakpoint::Disable(type);
+        PTR_DWORD address = (PTR_DWORD)DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type);
+        _ASSERT(address != NULL);
+
+        DWORD oldCount = *address;
+        DWORD newCount = --*address;
 
         LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Deactivate SW breakpoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
-            DebuggerSWBreakpointTypeToString(type),
-            DebuggerSWBreakpoint::GetSWBreakpointAddress(type),
+            DebuggerSWBreakpointHelpers::ToString(type),
+            DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type),
             oldCount,
             newCount));
 
@@ -2463,7 +2471,6 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
     }
     case TRACE_SW_BREAKPOINT:
     {
-        _ASSERTE(DebuggerSWBreakpoint::IsValid(trace->GetSWBreakpointType()));
         return ActivateSWBreakpoint(trace->GetSWBreakpointType());
     }
     case TRACE_OTHER:
@@ -3979,10 +3986,8 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
 }
 
-void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpoint *swBreakpoint)
+void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *swBreakpointArgs)
 {
-    _ASSERTE(swBreakpoint != NULL);
-
     Thread * pThread = g_pEEInterface->GetThread();
     _ASSERTE(pThread  != NULL);
 
@@ -3991,11 +3996,45 @@ void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpoint *swBreakpoint
     DebuggerController *p = g_controllers;
     while (p != NULL)
     {
-        if (swBreakpoint->IsEnabled() && p->IsSWBreakpointEnabled(swBreakpoint->GetType()))
+        if (DebuggerSWBreakpointHelpers::IsEnabled(type) && p->IsSWBreakpointEnabled(type))
         {
             if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
             {
-                swBreakpoint->Trigger(p);
+                TraceDestination trace;
+                FramePointer fp = LEAF_MOST_FRAME;
+
+                LOG((LF_CORDB, LL_INFO10000, "Trigger '%s' SW breakpoint for controller %p.\n",
+                    DebuggerSWBreakpointHelpers::ToString(type), p));
+
+                switch (type)
+                {
+                    case DSWB_PRE_STUB:
+                    case DSWB_EXTERNAL_METHOD_FIXUP:
+                    {
+                        DebuggerSWBreakpointArgsT<PCODE> *swBreakpointArgsT = dac_cast<DebuggerSWBreakpointArgsT<PCODE> *>(swBreakpointArgs);
+                        _ASSERT(swBreakpointArgsT->arg1 != NULL);
+
+                        LOG((LF_CORDB, LL_INFO10000, "Value after %p.\n", swBreakpointArgsT->arg1));
+                        trace.InitForStub(swBreakpointArgsT->arg1);
+                        break;
+                    }
+                    case DSWB_MULTICAST_DELEGATE:
+                    {
+                        GCX_ASSERT_COOP();
+                        DebuggerSWBreakpointArgsT<DELEGATEREF, INT32> *swBreakpointArgsT = dac_cast<DebuggerSWBreakpointArgsT<DELEGATEREF, INT32> *>(swBreakpointArgs);
+                        DELEGATEREF delegate = swBreakpointArgsT->arg1;
+                        INT32 count = swBreakpointArgsT->arg2;
+
+                        PTRARRAYREF array = (PTRARRAYREF)delegate->GetInvocationList();
+                        DELEGATEREF target = (DELEGATEREF)array->GetAt(count);
+
+                        StubLinkStubManager::TraceDelegateObject((BYTE*)OBJECTREFToObject(target), &trace);
+                    }
+                }
+
+                g_pEEInterface->FollowTrace(&trace);
+                p->PatchTrace(&trace, fp, false);
+                p->DeactivateSWBreakpoint(type);
             }
         }
         p = p->m_next;
@@ -5743,6 +5782,11 @@ static bool IsTailCall(const BYTE * ip, ControllerStackInfo* info, TailCallFunct
 
     TraceDestination trace;
     if (!g_pEEInterface->TraceStub(ip, &trace) || !g_pEEInterface->FollowTrace(&trace))
+    {
+        return false;
+    }
+
+    if (trace.GetTraceType() == TRACE_SW_BREAKPOINT)
     {
         return false;
     }

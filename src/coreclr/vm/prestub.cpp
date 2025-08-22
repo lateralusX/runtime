@@ -2608,7 +2608,11 @@ static PCODE PreStubWorker_Preemptive(
         HardwareExceptionHolder;
 
         // Give debugger opportunity to stop here
-        DebuggerPreStubSWBreakpoint::Dispatch(pbRetVal);
+        if (DebuggerSWBreakpointHelpers::IsEnabled(DSWB_PRE_STUB))
+        {
+            DebuggerSWBreakpointArgsT<PCODE> args(pbRetVal);
+            g_pDebugger->DispatchSWBreakpoint(DSWB_PRE_STUB, &args);
+        }
     }
 
     return pbRetVal;
@@ -2713,7 +2717,11 @@ extern "C" PCODE STDCALL PreStubWorker(TransitionBlock* pTransitionBlock, Method
             HardwareExceptionHolder;
 
             // Give debugger opportunity to stop here
-            DebuggerPreStubSWBreakpoint::Dispatch(pbRetVal);
+            if (DebuggerSWBreakpointHelpers::IsEnabled(DSWB_PRE_STUB))
+            {
+                DebuggerSWBreakpointArgsT<PCODE> args(pbRetVal);
+                g_pDebugger->DispatchSWBreakpoint(DSWB_PRE_STUB, &args);
+            }
         }
 
         pPFrame->Pop(CURRENT_THREAD);
@@ -3402,7 +3410,11 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(TransitionBlock * pTransitionBl
     // Force a GC on every jit if the stress level is high enough
     GCStress<cfg_any>::MaybeTrigger();
 
-    DebuggerExternalMethodFixupSWBreakpoint::Dispatch(pCode);
+    if (DebuggerSWBreakpointHelpers::IsEnabled(DSWB_EXTERNAL_METHOD_FIXUP))
+    {
+        DebuggerSWBreakpointArgsT<PCODE> args(pCode);
+        g_pDebugger->DispatchSWBreakpoint(DSWB_EXTERNAL_METHOD_FIXUP, &args);
+    }
 
     // Ready to return
 

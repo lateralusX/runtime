@@ -826,7 +826,11 @@ extern "C" void QCALLTYPE StubHelpers_MulticastDebuggerTraceHelper(QCall::Object
 
     GCX_COOP();
 
-    DebuggerMulticastDelgateSWBreakpoint::Dispatch((DELEGATEREF)(element.Get()), count);
+    if (DebuggerSWBreakpointHelpers::IsEnabled(DSWB_MULTICAST_DELEGATE))
+    {
+        DebuggerSWBreakpointArgsT<OBJECTREF, INT32> args(element.Get(), count);
+        g_pDebugger->DispatchSWBreakpoint(DSWB_MULTICAST_DELEGATE, &args);
+    }
 
     END_QCALL;
 }

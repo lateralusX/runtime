@@ -70,6 +70,9 @@ InteropSafe interopsafe;
 
 DebuggerRCThread        *g_pRCThread = NULL;
 
+// Predefined SW breakpoints.
+GARY_IMPL(DWORD, g_debuggerSWBreakpoints, DSWB_MAX);
+
 #ifndef _PREFAST_
 // Do some compile time checking on the events in DbgIpcEventTypes.h
 // No one ever calls this. But the compiler should still compile it,
@@ -16839,66 +16842,9 @@ BOOL Debugger::IsOutOfProcessSetContextEnabled()
 #endif // DACCESS_COMPILE
 
 #ifndef DACCESS_COMPILE
-void Debugger::DispatchSWBreakpoint(DebuggerSWBreakpoint *swBreakpoint)
+void Debugger::DispatchSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *swBreakpointArgs)
 {
-    DebuggerController::DispatchSWBreakpoint(swBreakpoint);
-}
-#endif // !DACCESS_COMPILE
-
-#ifndef DACCESS_COMPILE
-void DebuggerPreStubSWBreakpoint::Trigger(DebuggerController *controller)
-{
-    LOG((LF_CORDB, LL_INFO10000, "Trigger PreStub SW breakpoint for controller %p.\n", controller));
-
-    TraceDestination trace;
-    FramePointer fp = LEAF_MOST_FRAME;
-    trace.InitForStub(m_target);
-    g_pEEInterface->FollowTrace(&trace);
-    controller->PatchTrace(&trace, fp, false);
-    controller->DeactivateSWBreakpoint(m_type);
-}
-
-void DebuggerExternalMethodFixupSWBreakpoint::Trigger(DebuggerController *controller)
-{
-    LOG((LF_CORDB, LL_INFO10000, "Trigger External SW breakpoint for controller %p.\n", controller));
-
-    TraceDestination trace;
-    FramePointer fp = LEAF_MOST_FRAME;
-    trace.InitForStub(m_target);
-    g_pEEInterface->FollowTrace(&trace);
-    controller->PatchTrace(&trace, fp, false);
-    controller->DeactivateSWBreakpoint(m_type);
-}
-
-void DebuggerMulticastDelgateSWBreakpoint::Trigger(DebuggerController *controller)
-{
-    GCX_ASSERT_COOP();
-
-    LOG((LF_CORDB, LL_INFO10000, "Trigger MultiDelegate SW breakpoint for controller %p.\n", controller));
-
-    TraceDestination trace;
-    FramePointer fp = LEAF_MOST_FRAME;
-
-    PTRARRAYREF array = (PTRARRAYREF) m_delegates->GetInvocationList();
-    DELEGATEREF delegate = (DELEGATEREF) array->GetAt(m_count);
-
-    StubLinkStubManager::TraceDelegateObject((BYTE*)OBJECTREFToObject(delegate), &trace);
-
-    g_pEEInterface->FollowTrace(&trace);
-    controller->PatchTrace(&trace, fp, false);
-    controller->DeactivateSWBreakpoint(m_type);
-}
-#else
-void DebuggerPreStubSWBreakpoint::Trigger(DebuggerController *controller)
-{
-}
-
-void DebuggerExternalMethodFixupSWBreakpoint::Trigger(DebuggerController *controller)
-{
-}
-
-void DebuggerMulticastDelegateSWBreakpoint::Trigger(DebuggerController *controller)
-{
+    DebuggerController::DispatchSWBreakpoint(type, swBreakpointArgs);
 }
 #endif // !DACCESS_COMPILE
 

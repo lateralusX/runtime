@@ -1095,7 +1095,7 @@ class DebuggerController
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
 
-    static void DispatchSWBreakpoint(DebuggerSWBreakpoint *swBreakpoint);
+    static void DispatchSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *swBreakpointArgs);
 
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.

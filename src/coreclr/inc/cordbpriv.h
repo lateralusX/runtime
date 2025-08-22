@@ -73,15 +73,55 @@ enum DebuggerSWBreakpointType
     DSWB_MAX
 };
 
-static inline const char * DebuggerSWBreakpointTypeToString(DebuggerSWBreakpointType type)
+struct DebuggerSWBreakpointArgs
 {
-    switch (type)
+};
+
+template<typename T1 = void*, typename T2 = void*, typename T3 = void*, typename T4 = void*>
+struct DebuggerSWBreakpointArgsT : public DebuggerSWBreakpointArgs
+{
+public:
+    DebuggerSWBreakpointArgsT(T1 arg1) { this->arg1 = arg1; this->arg2 = NULL; this->arg3 = NULL; this->arg4 = NULL; }
+    DebuggerSWBreakpointArgsT(T1 arg1, T2 arg2) { this->arg1 = arg1; this->arg2 = arg2; this->arg3 = NULL; this->arg4 = NULL; }
+    DebuggerSWBreakpointArgsT(T1 arg1, T2 arg2, T3 arg3) { this->arg1 = arg1; this->arg2 = arg2; this->arg3 = arg3; this->arg4 = NULL; }
+    DebuggerSWBreakpointArgsT(T1 arg1, T2 arg2, T3 arg3, T4 arg4) { this->arg1 = arg1; this->arg2 = arg2; this->arg3 = arg3; this->arg4 = arg4 }
+    T1 arg1;
+    T2 arg2;
+    T3 arg3;
+    T4 arg4;
+};
+
+#ifndef DACCESS_COMPILE
+
+GARY_DECL(DWORD, g_debuggerSWBreakpoints, DSWB_MAX);
+
+class DebuggerSWBreakpointHelpers
+{
+public:
+
+    static const char * ToString(DebuggerSWBreakpointType type)
     {
-        case DSWB_PRE_STUB: return "DSWB_PRE_STUB";
-        case DSWB_EXTERNAL_METHOD_FIXUP: return "DSWB_EXTERNAL_METHOD_FIXUP";
-        case DSWB_MULTICAST_DELEGATE: return "DSWB_MULTICAST_DELEGATE";
-        default: return "Unknown DebuggerSWBreakpointType";
+        switch (type)
+        {
+            case DSWB_PRE_STUB: return "DSWB_PRE_STUB";
+            case DSWB_EXTERNAL_METHOD_FIXUP: return "DSWB_EXTERNAL_METHOD_FIXUP";
+            case DSWB_MULTICAST_DELEGATE: return "DSWB_MULTICAST_DELEGATE";
+            default: return "Unknown DebuggerSWBreakpointType";
+        }
     }
-}
+
+    static DWORD_PTR GetSWBreakpointAddress(DebuggerSWBreakpointType type)
+    {
+        _ASSERTE(type >= 0 && type < DSWB_MAX);
+        return (DWORD_PTR)(g_debuggerSWBreakpoints + type);
+    }
+
+    static bool IsEnabled(DebuggerSWBreakpointType type)
+    {
+        return *(PTR_DWORD)(g_debuggerSWBreakpoints + type) != 0;
+    }
+};
+
+#endif // !DACCESS_COMPILE
 
 #endif /* _cordbpriv_h_ */
