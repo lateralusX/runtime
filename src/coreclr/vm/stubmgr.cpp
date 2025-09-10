@@ -591,6 +591,38 @@ BOOL StubManager::TraceStub(PCODE stubStartAddress, TraceDestination *trace)
     return FALSE;
 }
 
+BOOL StubManager::TraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        CAN_TAKE_LOCK;
+    }
+    CONTRACTL_END;
+
+    _ASSERTE(args != NULL && args->type == type && trace != NULL);
+
+    StubManagerIterator it;
+    while (it.Next())
+    {
+        StubManager * pCurrent = it.Current();
+        if (pCurrent->DoTraceSWBreakpoint(type, args, trace))
+        {
+            LOG((LF_CORDB, LL_INFO10000,
+                "StubManager::TraceSWBreakpoint: '%s' (%p) successfully traced SW breakpoint '%s'.\n",
+                pCurrent->DbgGetName(), pCurrent, DebuggerSWBreakpointHelpers::ToString(type)));
+            return TRUE;
+        }
+    }
+
+    LOG((LF_CORDB, LL_INFO10000,
+         "StubManager::TraceSWBreakpoint: SW breakpoint '%s' was not handled by any stub manager.\n",
+         DebuggerSWBreakpointHelpers::ToString(type)));
+
+    return FALSE;
+}
+
 //-----------------------------------------------------------
 //-----------------------------------------------------------
 BOOL StubManager::FollowTrace(TraceDestination *trace)
@@ -956,6 +988,23 @@ BOOL ThePreStubManager::CheckIsStub_Internal(PCODE stubStartAddress)
     return stubStartAddress == GetPreStubEntryPoint();
 }
 
+#ifndef DACCESS_COMPILE
+BOOL ThePreStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+{
+    LIMITED_METHOD_CONTRACT;
+
+    if (type != DSWB_PRE_STUB)
+        return FALSE;
+
+    _ASSERTE(args != NULL && args->type == type && trace != NULL);
+
+    DebuggerSWBreakpointArgsT1<PCODE> *swBreakpointArgs = (DebuggerSWBreakpointArgsT1<PCODE> *)args;
+    _ASSERT(swBreakpointArgs->arg1 != NULL);
+
+    trace->InitForStub(swBreakpointArgs->arg1);
+    return TRUE;
+}
+#endif // !DACCESS_COMPILE
 
 // -------------------------------------------------------
 // Stub manager functions & globals
@@ -1679,6 +1728,24 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
     return FALSE;
 }
 
+#ifndef DACCESS_COMPILE
+BOOL RangeSectionStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+{
+    LIMITED_METHOD_CONTRACT;
+
+    if (type != DSWB_EXTERNAL_METHOD_FIXUP)
+        return FALSE;
+
+    _ASSERTE(args != NULL && args->type == type && trace != NULL);
+
+    DebuggerSWBreakpointArgsT1<PCODE> *swBreakpointArgs = (DebuggerSWBreakpointArgsT1<PCODE> *)(args);
+    _ASSERT(swBreakpointArgs->arg1 != NULL);
+
+    trace->InitForStub(swBreakpointArgs->arg1);
+    return TRUE;
+}
+#endif // !DACCESS_COMPILE
+
 #ifdef DACCESS_COMPILE
 LPCWSTR RangeSectionStubManager::GetStubManagerName(PCODE addr)
 {
@@ -1806,6 +1873,28 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
 }
 
 #ifndef DACCESS_COMPILE
+BOOL ILStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+{
+    LIMITED_METHOD_CONTRACT;
+
+    if (type != DSWB_MULTICAST_DELEGATE)
+        return FALSE;
+
+    GCX_ASSERT_COOP();
+
+    _ASSERTE(args != NULL && args->type == type && trace != NULL);
+
+    DebuggerSWBreakpointArgsT2<DELEGATEREF, INT32> *swBreakpointArgs = (DebuggerSWBreakpointArgsT2<DELEGATEREF, INT32> *)(args);
+    DELEGATEREF delegate = swBreakpointArgs->arg1;
+    INT32 count = swBreakpointArgs->arg2;
+
+    PTRARRAYREF array = (PTRARRAYREF)delegate->GetInvocationList();
+    DELEGATEREF target = (DELEGATEREF)array->GetAt(count);
+
+    StubLinkStubManager::TraceDelegateObject((BYTE*)OBJECTREFToObject(target), trace);
+    return TRUE;
+}
+
 #ifdef FEATURE_COMINTEROP
 static PCODE GetCOMTarget(Object *pThis, CLRToCOMCallInfo *pCLRToCOMCallInfo)
 {

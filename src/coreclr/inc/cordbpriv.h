@@ -75,20 +75,27 @@ enum DebuggerSWBreakpointType
 
 struct DebuggerSWBreakpointArgs
 {
+public:
+    DebuggerSWBreakpointArgs(DebuggerSWBreakpointType type) { this->type = type; }
+    DebuggerSWBreakpointType type;
 };
 
-template<typename T1 = void*, typename T2 = void*, typename T3 = void*, typename T4 = void*>
-struct DebuggerSWBreakpointArgsT : public DebuggerSWBreakpointArgs
+template<typename T1>
+struct DebuggerSWBreakpointArgsT1 : public DebuggerSWBreakpointArgs
 {
 public:
-    DebuggerSWBreakpointArgsT(T1 arg1) { this->arg1 = arg1; this->arg2 = NULL; this->arg3 = NULL; this->arg4 = NULL; }
-    DebuggerSWBreakpointArgsT(T1 arg1, T2 arg2) { this->arg1 = arg1; this->arg2 = arg2; this->arg3 = NULL; this->arg4 = NULL; }
-    DebuggerSWBreakpointArgsT(T1 arg1, T2 arg2, T3 arg3) { this->arg1 = arg1; this->arg2 = arg2; this->arg3 = arg3; this->arg4 = NULL; }
-    DebuggerSWBreakpointArgsT(T1 arg1, T2 arg2, T3 arg3, T4 arg4) { this->arg1 = arg1; this->arg2 = arg2; this->arg3 = arg3; this->arg4 = arg4 }
+    DebuggerSWBreakpointArgsT1(DebuggerSWBreakpointType type, T1 arg1)
+        : DebuggerSWBreakpointArgs(type), arg1(arg1) {}
     T1 arg1;
+};
+
+template<typename T1, typename T2>
+struct DebuggerSWBreakpointArgsT2 : public DebuggerSWBreakpointArgsT1<T1>
+{
+public:
+    DebuggerSWBreakpointArgsT2(DebuggerSWBreakpointType type, T1 arg1, T2 arg2)
+        : DebuggerSWBreakpointArgsT1(type, arg1), arg2(arg2) {}
     T2 arg2;
-    T3 arg3;
-    T4 arg4;
 };
 
 #ifndef DACCESS_COMPILE

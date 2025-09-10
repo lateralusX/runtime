@@ -242,6 +242,8 @@ class StubManager
     // returns true if successful
     static BOOL FollowTrace(TraceDestination *trace);
 
+    static BOOL TraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+
 #ifdef DACCESS_COMPILE
     static void EnumMemoryRegions(CLRDataEnumMemoryFlags flags);
 #endif
@@ -344,6 +346,12 @@ public:
     virtual LPCWSTR GetStubManagerName(PCODE addr) = 0;
 #endif
 
+    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+    {
+        LIMITED_METHOD_CONTRACT;
+        return FALSE;
+    }
+
 private:
     SPTR_DECL(StubManager, g_pFirstManager);
     PTR_StubManager m_pNextManager;
@@ -372,6 +380,10 @@ class ThePreStubManager : public StubManager
     virtual BOOL CheckIsStub_Internal(PCODE stubStartAddress);
 
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
+
+#ifndef DACCESS_COMPILE
+    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+#endif
 
 #ifndef DACCESS_COMPILE
     static void Init(void);
@@ -620,6 +632,10 @@ class RangeSectionStubManager : public StubManager
 
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
+#ifndef DACCESS_COMPILE
+    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+#endif
+
 #ifdef DACCESS_COMPILE
     virtual void DoEnumMemoryRegions(CLRDataEnumMemoryFlags flags);
 
@@ -671,6 +687,8 @@ class ILStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
+    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+
     virtual BOOL TraceManager(Thread *thread,
                               TraceDestination *trace,
                               T_CONTEXT *pContext,

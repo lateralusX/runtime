@@ -3991,49 +3991,36 @@ void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type, Deb
     Thread * pThread = g_pEEInterface->GetThread();
     _ASSERTE(pThread  != NULL);
 
+    if (!DebuggerSWBreakpointHelpers::IsEnabled(type))
+    {
+        return;
+    }
+
     ControllerLockHolder lockController;
 
     DebuggerController *p = g_controllers;
     while (p != NULL)
     {
-        if (DebuggerSWBreakpointHelpers::IsEnabled(type) && p->IsSWBreakpointEnabled(type))
+        if (p->IsSWBreakpointEnabled(type))
         {
             if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
             {
                 TraceDestination trace;
-                FramePointer fp = LEAF_MOST_FRAME;
 
-                LOG((LF_CORDB, LL_INFO10000, "Trigger '%s' SW breakpoint for controller %p.\n",
+                LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Trace '%s' SW breakpoint for controller %p.\n",
                     DebuggerSWBreakpointHelpers::ToString(type), p));
 
-                switch (type)
+                if (StubManager::TraceSWBreakpoint(type, swBreakpointArgs, &trace))
                 {
-                    case DSWB_PRE_STUB:
-                    case DSWB_EXTERNAL_METHOD_FIXUP:
-                    {
-                        DebuggerSWBreakpointArgsT<PCODE> *swBreakpointArgsT = dac_cast<DebuggerSWBreakpointArgsT<PCODE> *>(swBreakpointArgs);
-                        _ASSERT(swBreakpointArgsT->arg1 != NULL);
-
-                        LOG((LF_CORDB, LL_INFO10000, "Value after %p.\n", swBreakpointArgsT->arg1));
-                        trace.InitForStub(swBreakpointArgsT->arg1);
-                        break;
-                    }
-                    case DSWB_MULTICAST_DELEGATE:
-                    {
-                        GCX_ASSERT_COOP();
-                        DebuggerSWBreakpointArgsT<DELEGATEREF, INT32> *swBreakpointArgsT = dac_cast<DebuggerSWBreakpointArgsT<DELEGATEREF, INT32> *>(swBreakpointArgs);
-                        DELEGATEREF delegate = swBreakpointArgsT->arg1;
-                        INT32 count = swBreakpointArgsT->arg2;
-
-                        PTRARRAYREF array = (PTRARRAYREF)delegate->GetInvocationList();
-                        DELEGATEREF target = (DELEGATEREF)array->GetAt(count);
-
-                        StubLinkStubManager::TraceDelegateObject((BYTE*)OBJECTREFToObject(target), &trace);
-                    }
+                    g_pEEInterface->FollowTrace(&trace);
+                    p->PatchTrace(&trace, LEAF_MOST_FRAME, false);
+                }
+                else
+                {
+                    LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Failed tracing '%s' SW breakpoint for controller %p.\n",
+                        DebuggerSWBreakpointHelpers::ToString(type), p));
                 }
 
-                g_pEEInterface->FollowTrace(&trace);
-                p->PatchTrace(&trace, fp, false);
                 p->DeactivateSWBreakpoint(type);
             }
         }

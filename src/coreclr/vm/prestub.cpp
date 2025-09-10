@@ -2610,7 +2610,7 @@ static PCODE PreStubWorker_Preemptive(
         // Give debugger opportunity to stop here
         if (DebuggerSWBreakpointHelpers::IsEnabled(DSWB_PRE_STUB))
         {
-            DebuggerSWBreakpointArgsT<PCODE> args(pbRetVal);
+            DebuggerSWBreakpointArgsT1<PCODE> args(DSWB_PRE_STUB, pbRetVal);
             g_pDebugger->DispatchSWBreakpoint(DSWB_PRE_STUB, &args);
         }
     }
@@ -2719,7 +2719,7 @@ extern "C" PCODE STDCALL PreStubWorker(TransitionBlock* pTransitionBlock, Method
             // Give debugger opportunity to stop here
             if (DebuggerSWBreakpointHelpers::IsEnabled(DSWB_PRE_STUB))
             {
-                DebuggerSWBreakpointArgsT<PCODE> args(pbRetVal);
+                DebuggerSWBreakpointArgsT1<PCODE> args(DSWB_PRE_STUB, pbRetVal);
                 g_pDebugger->DispatchSWBreakpoint(DSWB_PRE_STUB, &args);
             }
         }
@@ -3412,7 +3412,7 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(TransitionBlock * pTransitionBl
 
     if (DebuggerSWBreakpointHelpers::IsEnabled(DSWB_EXTERNAL_METHOD_FIXUP))
     {
-        DebuggerSWBreakpointArgsT<PCODE> args(pCode);
+        DebuggerSWBreakpointArgsT1<PCODE> args(DSWB_EXTERNAL_METHOD_FIXUP, pCode);
         g_pDebugger->DispatchSWBreakpoint(DSWB_EXTERNAL_METHOD_FIXUP, &args);
     }
 
