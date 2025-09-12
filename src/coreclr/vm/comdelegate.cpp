@@ -2174,14 +2174,10 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
             dwReturnValNum = pCode->NewLocal(sig.GetRetTypeHandleNT());
 
         ILCodeLabel *nextDelegate = pCode->NewCodeLabel();
-        ILCodeLabel *checkCount = pCode->NewCodeLabel();
 
         // initialize counter
         pCode->EmitLDC(0);
         pCode->EmitSTLOC(dwLoopCounterNum);
-
-        // Make the shape of the loop similar to what C# compiler emits
-        pCode->EmitBR(checkCount);
 
         //Label_nextDelegate:
         pCode->EmitLabel(nextDelegate);
