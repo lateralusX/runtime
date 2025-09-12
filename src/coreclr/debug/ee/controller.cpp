@@ -2139,7 +2139,7 @@ bool DebuggerController::ActivateSWBreakpoint(DebuggerSWBreakpointType type)
     }
     CONTRACTL_END;
 
-    _ASSERTE(HasLock());
+    ControllerLockHolder ch;
 
     PTR_DWORD address = (PTR_DWORD)DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type);
     _ASSERT(address != NULL);
@@ -2169,7 +2169,7 @@ bool DebuggerController::DeactivateSWBreakpoint(DebuggerSWBreakpointType type)
     }
     CONTRACTL_END;
 
-    _ASSERTE(HasLock());
+    ControllerLockHolder ch;
 
     if (m_swBreakpoints[type])
     {
