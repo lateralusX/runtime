@@ -3996,9 +3996,6 @@ void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type, Deb
         return;
     }
 
-    LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Dispatching '%s' SW breakpoint.\n",
-            DebuggerSWBreakpointHelpers::ToString(swBreakpointArgs->type)));
-
     ControllerLockHolder lockController;
 
     DebuggerController *p = g_controllers;
