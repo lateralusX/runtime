@@ -7863,6 +7863,7 @@ void DebuggerStepper::TriggerSWBreakpoint(DebuggerSWBreakpointArgs* args)
 {
     TraceDestination trace;
     BOOL traceResult = FALSE;
+    bool stopInUnmanaged = (m_rgfMappingStop & STOP_UNMANAGED) ? true : false;
 
     _ASSERT(args != NULL);
 
@@ -7876,7 +7877,7 @@ void DebuggerStepper::TriggerSWBreakpoint(DebuggerSWBreakpointArgs* args)
         traceResult = g_pEEInterface->FollowTrace(&trace);
         if (traceResult)
         {
-            traceResult = PatchTrace(&trace, LEAF_MOST_FRAME, false);
+            traceResult = PatchTrace(&trace, LEAF_MOST_FRAME, stopInUnmanaged);
         }
     }
 
