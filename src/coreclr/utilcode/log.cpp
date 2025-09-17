@@ -160,7 +160,10 @@ VOID EnterLogLock()
     {
         DWORD status;
         status = WaitForSingleObjectEx(LogFileMutex, INFINITE, FALSE);
-        _ASSERTE(WAIT_OBJECT_0 == status);
+
+        // WAIT_ABANDONED_0 might happen after phase 1 shutdown if there
+        // was a thread owning the mutex when terminated by OS.
+        _ASSERTE(WAIT_OBJECT_0 == status || WAIT_ABANDONED_0 == status);
     }
 }
 
