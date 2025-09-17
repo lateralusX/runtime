@@ -2174,28 +2174,16 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
             dwReturnValNum = pCode->NewLocal(sig.GetRetTypeHandleNT());
 
         ILCodeLabel *nextDelegate = pCode->NewCodeLabel();
+        ILCodeLabel *checkCount = pCode->NewCodeLabel();
 
         // initialize counter
         pCode->EmitLDC(0);
         pCode->EmitSTLOC(dwLoopCounterNum);
 
+        pCode->EmitBR(checkCount);
+
         //Label_nextDelegate:
         pCode->EmitLabel(nextDelegate);
-
-#ifdef DEBUGGING_SUPPORTED
-        ILCodeLabel *invokeTraceHelper = pCode->NewCodeLabel();
-        ILCodeLabel *debuggerCheckEnd = pCode->NewCodeLabel();
-
-        // Call MulticastDebuggerTraceHelper only if we have a controller subscribing to the event
-        pCode->EmitLDC(DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(DSWB_MULTICAST_DELEGATE));
-        pCode->EmitCONV_I();
-        pCode->EmitLDIND_I4();
-        pCode->EmitLDC(0);
-        pCode->EmitCEQ();
-        pCode->EmitBRFALSE(invokeTraceHelper);
-
-        pCode->EmitLabel(debuggerCheckEnd);
-#endif // DEBUGGING_SUPPORTED
 
         // Load next delegate from array using LoopCounter as index
         pCode->EmitLoadThis();
@@ -2220,6 +2208,25 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
         pCode->EmitADD();
         pCode->EmitSTLOC(dwLoopCounterNum);
 
+        //Label_checkCount:
+        pCode->EmitLabel(checkCount);
+
+#ifdef DEBUGGING_SUPPORTED
+        ILCodeLabel *invokeTraceHelper = pCode->NewCodeLabel();
+        ILCodeLabel *debuggerCheckEnd = pCode->NewCodeLabel();
+
+        // Call MulticastDebuggerTraceHelper only if we have a controller subscribing to the event
+        pCode->EmitLDC(DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(DSWB_MULTICAST_DELEGATE));
+        pCode->EmitCONV_I();
+        pCode->EmitLDIND_I4();
+        pCode->EmitLDC(0);
+        pCode->EmitCEQ();
+        pCode->EmitBRFALSE(invokeTraceHelper);
+
+        //Label_debuggerCheckEnd:
+        pCode->EmitLabel(debuggerCheckEnd);
+#endif // DEBUGGING_SUPPORTED
+
         // compare LoopCounter with InvocationCount. If less then branch to nextDelegate
         pCode->EmitLDLOC(dwLoopCounterNum);
         pCode->EmitLoadThis();
@@ -2235,6 +2242,7 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
 
 #ifdef DEBUGGING_SUPPORTED
         // Emit debugging support at the end of the method for better perf
+        //Label_invokeTraceHelper:
         pCode->EmitLabel(invokeTraceHelper);
 
         pCode->EmitLoadThis();

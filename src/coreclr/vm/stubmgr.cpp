@@ -1914,7 +1914,18 @@ BOOL ILStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerS
 
     DebuggerSWBreakpointArgsT2<DELEGATEREF, INT32> *swBreakpointArgs = (DebuggerSWBreakpointArgsT2<DELEGATEREF, INT32> *)(args);
     DELEGATEREF delegate = swBreakpointArgs->arg1;
-    INT32 count = swBreakpointArgs->arg2;
+    SIZE_T count = swBreakpointArgs->arg2;
+    SIZE_T totalCount = delegate->GetInvocationCount();
+
+    LOG((LF_CORDB, LL_INFO10000,
+        "ILStubManager::DoTraceSWBreakpoint: count=%d, totalCount=%d.\n",
+        count,
+        totalCount));
+
+    if (count == totalCount)
+    {
+        return FALSE;
+    }
 
     PTRARRAYREF array = (PTRARRAYREF)delegate->GetInvocationList();
     DELEGATEREF target = (DELEGATEREF)array->GetAt(count);
