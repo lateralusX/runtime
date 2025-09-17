@@ -346,6 +346,12 @@ public:
     virtual LPCWSTR GetStubManagerName(PCODE addr) = 0;
 #endif
 
+    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args)
+    {
+        LIMITED_METHOD_CONTRACT;
+        return FALSE;
+    }
+
     virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
     {
         LIMITED_METHOD_CONTRACT;
@@ -382,6 +388,7 @@ class ThePreStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
+    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args);
     virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
 #endif
 
@@ -633,6 +640,7 @@ class RangeSectionStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
+    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args);
     virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
 #endif
 
@@ -687,6 +695,7 @@ class ILStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
+    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args);
     virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
 
     virtual BOOL TraceManager(Thread *thread,

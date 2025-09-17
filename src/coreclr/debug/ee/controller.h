@@ -1441,6 +1441,8 @@ public:
     // Returns true if send an event, false elsewise.
     virtual bool SendEvent(Thread *thread, bool fInterruptedBySetIp);
 
+    virtual void TriggerSWBreakpoint(DebuggerSWBreakpointArgs *swBreakpointArgs);
+
     AppDomain           *m_pAppDomain;
 
   private:
@@ -1692,7 +1694,7 @@ protected:
                       CorDebugStepReason unwindReason);
     void TriggerTraceCall(Thread *thread, const BYTE *ip);
     bool SendEvent(Thread *thread, bool fInterruptedBySetIp);
-
+    void TriggerSWBreakpoint(DebuggerSWBreakpointArgs *swBreakpointArgs);
 
     virtual void TriggerMethodEnter(Thread * thread, DebuggerJitInfo * dji, const BYTE * ip, FramePointer fp);
 

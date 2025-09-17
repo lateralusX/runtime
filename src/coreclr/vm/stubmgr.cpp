@@ -607,12 +607,22 @@ BOOL StubManager::TraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBre
     while (it.Next())
     {
         StubManager * pCurrent = it.Current();
-        if (pCurrent->DoTraceSWBreakpoint(type, args, trace))
+        if (pCurrent->HandlesSWBreakpoint(args))
         {
-            LOG((LF_CORDB, LL_INFO10000,
-                "StubManager::TraceSWBreakpoint: '%s' (%p) successfully traced SW breakpoint '%s'.\n",
-                pCurrent->DbgGetName(), pCurrent, DebuggerSWBreakpointHelpers::ToString(type)));
-            return TRUE;
+            if (pCurrent->DoTraceSWBreakpoint(type, args, trace))
+            {
+                LOG((LF_CORDB, LL_INFO10000,
+                    "StubManager::TraceSWBreakpoint: '%s' (%p) successfully traced SW breakpoint '%s'.\n",
+                    pCurrent->DbgGetName(), pCurrent, DebuggerSWBreakpointHelpers::ToString(type)));
+                return TRUE;
+            }
+            else
+            {
+                LOG((LF_CORDB, LL_INFO10000,
+                    "StubManager::TraceSWBreakpoint: '%s' (%p) failed tracing SW breakpoint '%s'.\n",
+                    pCurrent->DbgGetName(), pCurrent, DebuggerSWBreakpointHelpers::ToString(type)));
+                return FALSE;
+            }
         }
     }
 
@@ -989,6 +999,12 @@ BOOL ThePreStubManager::CheckIsStub_Internal(PCODE stubStartAddress)
 }
 
 #ifndef DACCESS_COMPILE
+BOOL ThePreStubManager::HandlesSWBreakpoint(DebuggerSWBreakpointArgs* args)
+{
+    LIMITED_METHOD_CONTRACT;
+    return args != NULL && args->type == DSWB_PRE_STUB;
+}
+
 BOOL ThePreStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
 {
     LIMITED_METHOD_CONTRACT;
@@ -1729,6 +1745,12 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 }
 
 #ifndef DACCESS_COMPILE
+BOOL RangeSectionStubManager::HandlesSWBreakpoint(DebuggerSWBreakpointArgs* args)
+{
+    LIMITED_METHOD_CONTRACT;
+    return args != NULL && args->type == DSWB_EXTERNAL_METHOD_FIXUP;
+}
+
 BOOL RangeSectionStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
 {
     LIMITED_METHOD_CONTRACT;
@@ -1873,6 +1895,12 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
 }
 
 #ifndef DACCESS_COMPILE
+BOOL ILStubManager::HandlesSWBreakpoint(DebuggerSWBreakpointArgs* args)
+{
+    LIMITED_METHOD_CONTRACT;
+    return args != NULL && args->type == DSWB_MULTICAST_DELEGATE;
+}
+
 BOOL ILStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
 {
     LIMITED_METHOD_CONTRACT;

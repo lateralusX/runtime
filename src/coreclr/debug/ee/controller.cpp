@@ -3996,6 +3996,9 @@ void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type, Deb
         return;
     }
 
+    LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Dispatching '%s' SW breakpoint.\n",
+            DebuggerSWBreakpointHelpers::ToString(swBreakpointArgs->type)));
+
     ControllerLockHolder lockController;
 
     DebuggerController *p = g_controllers;
@@ -4005,22 +4008,7 @@ void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type, Deb
         {
             if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
             {
-                TraceDestination trace;
-
-                LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Trace '%s' SW breakpoint for controller %p.\n",
-                    DebuggerSWBreakpointHelpers::ToString(type), p));
-
-                if (StubManager::TraceSWBreakpoint(type, swBreakpointArgs, &trace))
-                {
-                    g_pEEInterface->FollowTrace(&trace);
-                    p->PatchTrace(&trace, LEAF_MOST_FRAME, false);
-                }
-                else
-                {
-                    LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Failed tracing '%s' SW breakpoint for controller %p.\n",
-                        DebuggerSWBreakpointHelpers::ToString(type), p));
-                }
-
+                p->TriggerSWBreakpoint(swBreakpointArgs);
                 p->DeactivateSWBreakpoint(type);
             }
         }
@@ -4131,6 +4119,10 @@ bool DebuggerController::SendEvent(Thread *thread, bool fIpChanged)
     return false;
 }
 
+void DebuggerController::TriggerSWBreakpoint(DebuggerSWBreakpointArgs *swBreakpointArgs)
+{
+    LOG((LF_CORDB, LL_INFO10000, "DC::TSWBP: in default TriggerSWBreakpoint\n"));
+}
 
 // Dispacth Func-Eval Enter & Exit notifications.
 void DebuggerController::DispatchFuncEvalEnter(Thread * thread)
@@ -7865,6 +7857,70 @@ bool DebuggerStepper::SendEvent(Thread *thread, bool fIpChanged)
 #endif
 
     return true;
+}
+
+void DebuggerStepper::TriggerSWBreakpoint(DebuggerSWBreakpointArgs* args)
+{
+    TraceDestination trace;
+    BOOL traceResult = FALSE;
+
+    _ASSERT(args != NULL);
+
+    LOG((LF_CORDB, LL_INFO10000,
+        "DS:TSWB Triggering '%s' SW breakpoint for 'DebuggerStepper' controller.\n",
+        DebuggerSWBreakpointHelpers::ToString(args->type)));
+
+    traceResult = StubManager::TraceSWBreakpoint(args->type, args, &trace);
+    if (traceResult)
+    {
+        traceResult = g_pEEInterface->FollowTrace(&trace);
+        if (traceResult)
+        {
+            traceResult = PatchTrace(&trace, LEAF_MOST_FRAME, false);
+        }
+    }
+
+    m_reason = STEP_CALL;
+
+    if (!traceResult)
+    {
+        DebuggerControllerPatch patch;
+        memset(&patch, 0, sizeof(patch));
+        patch.trace.InitForSWBreakpoint(args->type);
+
+        StackTraceTicket ticket(&patch);
+        ControllerStackInfo info;
+        info.GetStackInfo(ticket, GetThread(), LEAF_MOST_FRAME, NULL);
+
+        while (info.HasReturnFrame(true))
+        {
+            FrameInfo &returnFrame = info.GetReturnFrame(true);
+            if (returnFrame.HasMethodFrame() && returnFrame.managed)
+            {
+                MethodDesc *md = returnFrame.md;
+                if (md->IsILStub())
+                {
+                    info.GetStackInfo(ticket, GetThread(), returnFrame.fp, NULL);
+                }
+                break;
+            }
+
+            info.GetStackInfo(ticket, GetThread(), returnFrame.fp, NULL);
+        }
+
+        FrameInfo &activeFrame = info.m_activeFrame;
+        TrapStepOut(&info);
+
+        EnableJMCBackStop(NULL);
+        EnableTraceCall(activeFrame.fp);
+        EnableUnwind(activeFrame.fp);
+
+        m_reason = STEP_NORMAL;
+
+        LOG((LF_CORDB, LL_INFO10000,
+            "DS:TSWB Failed triggering '%s' SW breakpoint for controller %p.\n",
+            DebuggerSWBreakpointHelpers::ToString(args->type), this));
+    }
 }
 
 void DebuggerStepper::ResetRange()
