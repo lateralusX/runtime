@@ -1145,7 +1145,15 @@ void WaitForEndOfShutdown()
         pThread->SetThreadStateNC(Thread::TSNC_BlockedForShutdown);
     }
 
-    for (;;) g_pEEShutDownEvent->Wait(INFINITE, TRUE);
+    for (;;)
+    {
+        EX_TRY
+        {
+            // Alertable wait can throw.
+            g_pEEShutDownEvent->Wait(INFINITE, TRUE);
+        }
+        EX_CATCH{} EX_END_CATCH(SwallowAllExceptions);
+    }
 }
 
 // ---------------------------------------------------------------------------
