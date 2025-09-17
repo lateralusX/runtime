@@ -1139,9 +1139,9 @@ void DebuggerController::DisableAll()
         if (m_fEnableMethodEnter)
             DisableMethodEnter();
 
-        for (DebuggerSWBreakpointType type = DSWB_MIN; type < DSWB_MAX; type = (DebuggerSWBreakpointType)(type + 1))
+        for (DebuggerTracepointType type = DEBUGGER_TRACEPOINT_MIN; type < DEBUGGER_TRACEPOINT_MAX; type = (DebuggerTracepointType)(type + 1))
         {
-            DeactivateSWBreakpoint(type);
+            DeactivateTracepoint(type);
         }
     }
 }
@@ -2129,7 +2129,7 @@ DebuggerControllerPatch *DebuggerController::AddAndActivateNativePatchForAddress
     return patch;
 }
 
-bool DebuggerController::ActivateSWBreakpoint(DebuggerSWBreakpointType type)
+bool DebuggerController::ActivateTracepoint(DebuggerTracepointType type)
 {
     CONTRACTL
     {
@@ -2141,25 +2141,25 @@ bool DebuggerController::ActivateSWBreakpoint(DebuggerSWBreakpointType type)
 
     ControllerLockHolder ch;
 
-    PTR_DWORD address = (PTR_DWORD)DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type);
+    PTR_DWORD address = (PTR_DWORD)DebuggerTracepointHelpers::GetCounterAddress(type);
     _ASSERT(address != NULL);
 
     DWORD oldCount = *address;
     DWORD newCount = ++*address;
 
-    LOG((LF_CORDB, LL_INFO10000, "DC:ASWB Activate SW breakpoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
-        DebuggerSWBreakpointHelpers::ToString(type),
-        DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type),
+    LOG((LF_CORDB, LL_INFO10000, "DC:ATP Activate tracepoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
+        DebuggerTracepointHelpers::ToString(type),
+        DebuggerTracepointHelpers::GetCounterAddress(type),
         oldCount,
         newCount));
 
-    _ASSERTE(!m_swBreakpoints[type]);
-    m_swBreakpoints[type] = true;
+    _ASSERTE(!m_tracepoints[type]);
+    m_tracepoints[type] = true;
 
     return true;
 }
 
-bool DebuggerController::DeactivateSWBreakpoint(DebuggerSWBreakpointType type)
+bool DebuggerController::DeactivateTracepoint(DebuggerTracepointType type)
 {
     CONTRACTL
     {
@@ -2171,21 +2171,21 @@ bool DebuggerController::DeactivateSWBreakpoint(DebuggerSWBreakpointType type)
 
     ControllerLockHolder ch;
 
-    if (m_swBreakpoints[type])
+    if (m_tracepoints[type])
     {
-        PTR_DWORD address = (PTR_DWORD)DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type);
+        PTR_DWORD address = (PTR_DWORD)DebuggerTracepointHelpers::GetCounterAddress(type);
         _ASSERT(address != NULL);
 
         DWORD oldCount = *address;
         DWORD newCount = --*address;
 
-        LOG((LF_CORDB, LL_INFO10000, "DC:DSWB Deactivate SW breakpoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
-            DebuggerSWBreakpointHelpers::ToString(type),
-            DebuggerSWBreakpointHelpers::GetSWBreakpointAddress(type),
+        LOG((LF_CORDB, LL_INFO10000, "DC:TTP Deactivate tracepoint '%s' at addr:%p, oldCount:%d, newCount:%d.\n",
+            DebuggerTracepointHelpers::ToString(type),
+            DebuggerTracepointHelpers::GetCounterAddress(type),
             oldCount,
             newCount));
 
-        m_swBreakpoints[type] = false;
+        m_tracepoints[type] = false;
     }
 
     return true;
@@ -2469,9 +2469,9 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
 
         return true;
     }
-    case TRACE_SW_BREAKPOINT:
+    case TRACE_TRACEPOINT:
     {
-        return ActivateSWBreakpoint(trace->GetSWBreakpointType());
+        return ActivateTracepoint(trace->GetTracepointType());
     }
     case TRACE_OTHER:
     {
@@ -3986,12 +3986,12 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
 }
 
-void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *swBreakpointArgs)
+void DebuggerController::DispatchTracepoint(DebuggerTracepointArgs *args)
 {
     Thread * pThread = g_pEEInterface->GetThread();
-    _ASSERTE(pThread  != NULL);
+    _ASSERTE(pThread  != NULL && args != NULL);
 
-    if (!DebuggerSWBreakpointHelpers::IsEnabled(type))
+    if (!DebuggerTracepointHelpers::IsEnabled(args->type))
     {
         return;
     }
@@ -4001,12 +4001,12 @@ void DebuggerController::DispatchSWBreakpoint(DebuggerSWBreakpointType type, Deb
     DebuggerController *p = g_controllers;
     while (p != NULL)
     {
-        if (p->IsSWBreakpointEnabled(type))
+        if (p->IsTracepointEnabled(args->type))
         {
             if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
             {
-                p->TriggerSWBreakpoint(swBreakpointArgs);
-                p->DeactivateSWBreakpoint(type);
+                p->TriggerTracepoint(args);
+                p->DeactivateTracepoint(args->type);
             }
         }
         p = p->m_next;
@@ -4116,9 +4116,9 @@ bool DebuggerController::SendEvent(Thread *thread, bool fIpChanged)
     return false;
 }
 
-void DebuggerController::TriggerSWBreakpoint(DebuggerSWBreakpointArgs *swBreakpointArgs)
+void DebuggerController::TriggerTracepoint(DebuggerTracepointArgs *args)
 {
-    LOG((LF_CORDB, LL_INFO10000, "DC::TSWBP: in default TriggerSWBreakpoint\n"));
+    LOG((LF_CORDB, LL_INFO10000, "DC::TTP: in default TriggerTracepoint\n"));
 }
 
 // Dispacth Func-Eval Enter & Exit notifications.
@@ -5762,7 +5762,7 @@ static bool IsTailCall(const BYTE * ip, ControllerStackInfo* info, TailCallFunct
         return false;
     }
 
-    if (trace.GetTraceType() == TRACE_SW_BREAKPOINT)
+    if (trace.GetTraceType() == TRACE_TRACEPOINT)
     {
         return false;
     }
@@ -7856,7 +7856,7 @@ bool DebuggerStepper::SendEvent(Thread *thread, bool fIpChanged)
     return true;
 }
 
-void DebuggerStepper::TriggerSWBreakpoint(DebuggerSWBreakpointArgs* args)
+void DebuggerStepper::TriggerTracepoint(DebuggerTracepointArgs *args)
 {
     TraceDestination trace;
     BOOL traceResult = FALSE;
@@ -7865,10 +7865,10 @@ void DebuggerStepper::TriggerSWBreakpoint(DebuggerSWBreakpointArgs* args)
     _ASSERT(args != NULL);
 
     LOG((LF_CORDB, LL_INFO10000,
-        "DS:TSWB Triggering '%s' SW breakpoint for 'DebuggerStepper' controller.\n",
-        DebuggerSWBreakpointHelpers::ToString(args->type)));
+        "DS:TTP Triggering '%s' tracepoint for 'DebuggerStepper' controller.\n",
+        DebuggerTracepointHelpers::ToString(args->type)));
 
-    traceResult = StubManager::TraceSWBreakpoint(args->type, args, &trace);
+    traceResult = StubManager::TraceTracepoint(args, &trace);
     if (traceResult)
     {
         traceResult = g_pEEInterface->FollowTrace(&trace);
@@ -7884,7 +7884,7 @@ void DebuggerStepper::TriggerSWBreakpoint(DebuggerSWBreakpointArgs* args)
     {
         DebuggerControllerPatch patch;
         memset(&patch, 0, sizeof(patch));
-        patch.trace.InitForSWBreakpoint(args->type);
+        patch.trace.InitForTracepoint(args->type);
 
         StackTraceTicket ticket(&patch);
         ControllerStackInfo info;
@@ -7916,8 +7916,8 @@ void DebuggerStepper::TriggerSWBreakpoint(DebuggerSWBreakpointArgs* args)
         m_reason = STEP_NORMAL;
 
         LOG((LF_CORDB, LL_INFO10000,
-            "DS:TSWB Failed triggering '%s' SW breakpoint for controller %p.\n",
-            DebuggerSWBreakpointHelpers::ToString(args->type), this));
+            "DS:TTP Failed triggering '%s' tracepoint for controller %p.\n",
+            DebuggerTracepointHelpers::ToString(args->type), this));
     }
 }
 

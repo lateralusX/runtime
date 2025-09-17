@@ -64,68 +64,74 @@ enum DebuggerAssemblyControlFlags
     DACF_MISC_FLAGS_MASK            = 0x10,
 };
 
-enum DebuggerSWBreakpointType
+enum DebuggerTracepointType
 {
-    DSWB_MIN = 0,
-    DSWB_PRE_STUB = DSWB_MIN,
-    DSWB_EXTERNAL_METHOD_FIXUP,
-    DSWB_MULTICAST_DELEGATE,
-    DSWB_MAX
+    DEBUGGER_TRACEPOINT_MIN = 0,
+    DEBUGGER_TRACEPOINT_PRE_STUB = DEBUGGER_TRACEPOINT_MIN,
+    DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP,
+    DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE,
+    DEBUGGER_TRACEPOINT_MAX
 };
 
-struct DebuggerSWBreakpointArgs
+struct DebuggerTracepointArgs
 {
 public:
-    DebuggerSWBreakpointArgs(DebuggerSWBreakpointType type) { this->type = type; }
-    DebuggerSWBreakpointType type;
+    DebuggerTracepointArgs(DebuggerTracepointType type) { this->type = type; }
+    DebuggerTracepointType type;
 };
 
 template<typename T1>
-struct DebuggerSWBreakpointArgsT1 : public DebuggerSWBreakpointArgs
+struct DebuggerTracepointArgsT1 : public DebuggerTracepointArgs
 {
 public:
-    DebuggerSWBreakpointArgsT1(DebuggerSWBreakpointType type, T1 arg1)
-        : DebuggerSWBreakpointArgs(type), arg1(arg1) {}
+    DebuggerTracepointArgsT1(DebuggerTracepointType type, T1 arg1)
+        : DebuggerTracepointArgs(type), arg1(arg1) {}
     T1 arg1;
 };
 
 template<typename T1, typename T2>
-struct DebuggerSWBreakpointArgsT2 : public DebuggerSWBreakpointArgsT1<T1>
+struct DebuggerTracepointArgsT2 : public DebuggerTracepointArgsT1<T1>
 {
 public:
-    DebuggerSWBreakpointArgsT2(DebuggerSWBreakpointType type, T1 arg1, T2 arg2)
-        : DebuggerSWBreakpointArgsT1(type, arg1), arg2(arg2) {}
+    DebuggerTracepointArgsT2(DebuggerTracepointType type, T1 arg1, T2 arg2)
+        : DebuggerTracepointArgsT1(type, arg1), arg2(arg2) {}
     T2 arg2;
 };
 
 #ifndef DACCESS_COMPILE
 
-GARY_DECL(DWORD, g_debuggerSWBreakpoints, DSWB_MAX);
+GARY_DECL(DWORD, g_debuggerTracepointCounters, DEBUGGER_TRACEPOINT_MAX);
 
-class DebuggerSWBreakpointHelpers
+class DebuggerTracepointHelpers
 {
 public:
 
-    static const char * ToString(DebuggerSWBreakpointType type)
+    static const char * ToString(DebuggerTracepointType type)
     {
         switch (type)
         {
-            case DSWB_PRE_STUB: return "DSWB_PRE_STUB";
-            case DSWB_EXTERNAL_METHOD_FIXUP: return "DSWB_EXTERNAL_METHOD_FIXUP";
-            case DSWB_MULTICAST_DELEGATE: return "DSWB_MULTICAST_DELEGATE";
-            default: return "Unknown DebuggerSWBreakpointType";
+            case DEBUGGER_TRACEPOINT_PRE_STUB: return "DEBUGGER_TRACEPOINT_PRE_STUB";
+            case DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP: return "DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP";
+            case DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE: return "DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE";
+            default: return "Unknown DebuggerTracepointType";
         }
     }
 
-    static DWORD_PTR GetSWBreakpointAddress(DebuggerSWBreakpointType type)
+    static DWORD_PTR GetCounterAddress(DebuggerTracepointType type)
     {
-        _ASSERTE(type >= 0 && type < DSWB_MAX);
-        return (DWORD_PTR)(g_debuggerSWBreakpoints + type);
+        _ASSERTE(type >= DEBUGGER_TRACEPOINT_MIN && type < DEBUGGER_TRACEPOINT_MAX);
+        return (DWORD_PTR)(g_debuggerTracepointCounters + type);
     }
 
-    static bool IsEnabled(DebuggerSWBreakpointType type)
+    static DWORD GetCounterValue(DebuggerTracepointType type)
     {
-        return *(PTR_DWORD)(g_debuggerSWBreakpoints + type) != 0;
+        _ASSERTE(type >= DEBUGGER_TRACEPOINT_MIN && type < DEBUGGER_TRACEPOINT_MAX);
+        return *(PTR_DWORD)(g_debuggerTracepointCounters + type);
+    }
+
+    static bool IsEnabled(DebuggerTracepointType type)
+    {
+        return GetCounterValue(type) != 0;
     }
 };
 

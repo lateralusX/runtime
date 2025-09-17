@@ -70,8 +70,8 @@ InteropSafe interopsafe;
 
 DebuggerRCThread        *g_pRCThread = NULL;
 
-// Predefined SW breakpoints.
-GARY_IMPL(DWORD, g_debuggerSWBreakpoints, DSWB_MAX);
+// Predefined tracepoint counters.
+GARY_IMPL(DWORD, g_debuggerTracepointCounters, DEBUGGER_TRACEPOINT_MAX);
 
 #ifndef _PREFAST_
 // Do some compile time checking on the events in DbgIpcEventTypes.h
@@ -16842,9 +16842,9 @@ BOOL Debugger::IsOutOfProcessSetContextEnabled()
 #endif // DACCESS_COMPILE
 
 #ifndef DACCESS_COMPILE
-void Debugger::DispatchSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *swBreakpointArgs)
+void Debugger::DispatchTracepoint(DebuggerTracepointArgs *args)
 {
-    DebuggerController::DispatchSWBreakpoint(type, swBreakpointArgs);
+    DebuggerController::DispatchTracepoint(args);
 }
 #endif // !DACCESS_COMPILE
 

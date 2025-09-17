@@ -2353,7 +2353,7 @@ private:
 
 public:
     HRESULT DeoptimizeMethod(Module* pModule, mdMethodDef methodDef);
-    void DispatchSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *swBreakpointArgs);
+    void DispatchTracepoint(DebuggerTracepointArgs *args);
 #endif //DACCESS_COMPILE
     HRESULT IsMethodDeoptimized(Module *pModule, mdMethodDef methodDef, BOOL *pResult);
     HRESULT UpdateForceCatchHandlerFoundTable(BOOL enableEvents, OBJECTREF exObj, AppDomain *pAppDomain);

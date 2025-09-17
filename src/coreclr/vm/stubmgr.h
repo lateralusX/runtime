@@ -61,7 +61,7 @@ enum TraceType
 
     TRACE_FRAME_PUSH,               // Don't know where stub goes, stop at address, and then ask the frame that is on the stack
     TRACE_MGR_PUSH,                 // Don't know where stub goes, stop at address then call TraceManager() below to find out
-    TRACE_SW_BREAKPOINT,            // Stub goes to a software breakpoint. The address is the location of the breakpoint dispatch.
+    TRACE_TRACEPOINT,               // Stub goes to a tracepoint
     TRACE_OTHER                     // We are going somewhere you can't step into (eg. ee helper function)
 };
 
@@ -147,11 +147,11 @@ public:
         this->stubManager = NULL;
     }
 
-    void InitForSWBreakpoint(DebuggerSWBreakpointType swBreakpointType)
+    void InitForTracepoint(DebuggerTracepointType type)
     {
-        this->type = TRACE_SW_BREAKPOINT;
+        this->type = TRACE_TRACEPOINT;
         this->address = NULL;
-        this->swBreakpointType = swBreakpointType;
+        this->tracepointType = type;
         this->stubManager = NULL;
     }
 
@@ -186,9 +186,9 @@ public:
         return stubManager;
     }
 
-    DebuggerSWBreakpointType GetSWBreakpointType()
+    DebuggerTracepointType GetTracepointType()
     {
-        return swBreakpointType;
+        return tracepointType;
     }
 
     // Expose this b/c DebuggerPatchTable::AddPatchForAddress() needs it.
@@ -202,7 +202,7 @@ private:
     PCODE                           address;            // Where the stub is going
     StubManager                     *stubManager;       // The manager that claims this stub
     MethodDesc                      *pDesc;
-    DebuggerSWBreakpointType        swBreakpointType;
+    DebuggerTracepointType          tracepointType;
 };
 
 // For logging
@@ -242,7 +242,7 @@ class StubManager
     // returns true if successful
     static BOOL FollowTrace(TraceDestination *trace);
 
-    static BOOL TraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+    static BOOL TraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
 
 #ifdef DACCESS_COMPILE
     static void EnumMemoryRegions(CLRDataEnumMemoryFlags flags);
@@ -346,13 +346,13 @@ public:
     virtual LPCWSTR GetStubManagerName(PCODE addr) = 0;
 #endif
 
-    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args)
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args)
     {
         LIMITED_METHOD_CONTRACT;
         return FALSE;
     }
 
-    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
     {
         LIMITED_METHOD_CONTRACT;
         return FALSE;
@@ -388,8 +388,8 @@ class ThePreStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
-    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args);
-    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args);
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
 #endif
 
 #ifndef DACCESS_COMPILE
@@ -640,8 +640,8 @@ class RangeSectionStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
-    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args);
-    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args);
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
 #endif
 
 #ifdef DACCESS_COMPILE
@@ -695,8 +695,8 @@ class ILStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
-    virtual BOOL HandlesSWBreakpoint(DebuggerSWBreakpointArgs *args);
-    virtual BOOL DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace);
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args);
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
 
     virtual BOOL TraceManager(Thread *thread,
                               TraceDestination *trace,

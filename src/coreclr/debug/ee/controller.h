@@ -1095,7 +1095,7 @@ class DebuggerController
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
 
-    static void DispatchSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *swBreakpointArgs);
+    static void DispatchTracepoint(DebuggerTracepointArgs *args);
 
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
@@ -1288,8 +1288,8 @@ public:
                                       bool managed,
                                       TraceType traceType);
 
-    bool ActivateSWBreakpoint(DebuggerSWBreakpointType type);
-    bool DeactivateSWBreakpoint(DebuggerSWBreakpointType type);
+    bool ActivateTracepoint(DebuggerTracepointType type);
+    bool DeactivateTracepoint(DebuggerTracepointType type);
 
     bool PatchTrace(TraceDestination *trace, FramePointer fp, bool fStopInUnmanaged);
 
@@ -1361,7 +1361,7 @@ public:
                   FramePointer fp,
                   AppDomain *pAppDomain);
 
-    bool IsSWBreakpointEnabled(DebuggerSWBreakpointType type) { LIMITED_METHOD_CONTRACT; return m_swBreakpoints[type]; }
+    bool IsTracepointEnabled(DebuggerTracepointType type) { LIMITED_METHOD_CONTRACT; return m_tracepoints[type]; }
 
   protected:
 
@@ -1441,7 +1441,7 @@ public:
     // Returns true if send an event, false elsewise.
     virtual bool SendEvent(Thread *thread, bool fInterruptedBySetIp);
 
-    virtual void TriggerSWBreakpoint(DebuggerSWBreakpointArgs *swBreakpointArgs);
+    virtual void TriggerTracepoint(DebuggerTracepointArgs *args);
 
     AppDomain           *m_pAppDomain;
 
@@ -1459,7 +1459,7 @@ private:
     int                 m_eventQueuedCount;
     bool                m_deleted;
     bool                m_fEnableMethodEnter;
-    bool                m_swBreakpoints[DSWB_MAX];
+    bool                m_tracepoints[DEBUGGER_TRACEPOINT_MAX];
 
 #endif // !DACCESS_COMPILE
 };
@@ -1694,7 +1694,7 @@ protected:
                       CorDebugStepReason unwindReason);
     void TriggerTraceCall(Thread *thread, const BYTE *ip);
     bool SendEvent(Thread *thread, bool fInterruptedBySetIp);
-    void TriggerSWBreakpoint(DebuggerSWBreakpointArgs *swBreakpointArgs);
+    void TriggerTracepoint(DebuggerTracepointArgs *args);
 
     virtual void TriggerMethodEnter(Thread * thread, DebuggerJitInfo * dji, const BYTE * ip, FramePointer fp);
 

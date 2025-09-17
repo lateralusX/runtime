@@ -28,7 +28,7 @@ const char *GetTType( TraceType tt)
         case TRACE_MGR_PUSH:        return "TRACE_MGR_PUSH";
         case TRACE_OTHER:           return "TRACE_OTHER";
         case TRACE_UNJITTED_METHOD: return "TRACE_UNJITTED_METHOD";
-        case TRACE_SW_BREAKPOINT:   return "TRACE_SW_BREAKPOINT";
+        case TRACE_TRACEPOINT:      return "TRACE_TRACEPOINT";
     }
     return "TRACE_REALLY_WACKED";
 }
@@ -124,8 +124,8 @@ const CHAR * TraceDestination::DbgToString(SString & buffer)
                 pValue = "TRACE_OTHER";
                 break;
 
-            case TRACE_SW_BREAKPOINT:
-                buffer.Printf("TRACE_SW_BREAKPOINT(addr=%p, swBreakpointType=%s)", GetAddress(), DebuggerSWBreakpointHelpers::ToString(GetSWBreakpointType()));
+            case TRACE_TRACEPOINT:
+                buffer.Printf("TRACE_TRACEPOINT(tracepointType=%s)", DebuggerTracepointHelpers::ToString(GetTracepointType()));
                 pValue = buffer.GetUTF8();
                 break;
         }
@@ -591,7 +591,7 @@ BOOL StubManager::TraceStub(PCODE stubStartAddress, TraceDestination *trace)
     return FALSE;
 }
 
-BOOL StubManager::TraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+BOOL StubManager::TraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
 {
     CONTRACTL
     {
@@ -601,34 +601,34 @@ BOOL StubManager::TraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBre
     }
     CONTRACTL_END;
 
-    _ASSERTE(args != NULL && args->type == type && trace != NULL);
+    _ASSERTE(args != NULL && trace != NULL);
 
     StubManagerIterator it;
     while (it.Next())
     {
         StubManager * pCurrent = it.Current();
-        if (pCurrent->HandlesSWBreakpoint(args))
+        if (pCurrent->HandlesTracepoint(args))
         {
-            if (pCurrent->DoTraceSWBreakpoint(type, args, trace))
+            if (pCurrent->DoTraceTracepoint(args, trace))
             {
                 LOG((LF_CORDB, LL_INFO10000,
-                    "StubManager::TraceSWBreakpoint: '%s' (%p) successfully traced SW breakpoint '%s'.\n",
-                    pCurrent->DbgGetName(), pCurrent, DebuggerSWBreakpointHelpers::ToString(type)));
+                    "StubManager::TraceTracepoint: '%s' (%p) successfully traced tracepoint '%s'.\n",
+                    pCurrent->DbgGetName(), pCurrent, DebuggerTracepointHelpers::ToString(args->type)));
                 return TRUE;
             }
             else
             {
                 LOG((LF_CORDB, LL_INFO10000,
-                    "StubManager::TraceSWBreakpoint: '%s' (%p) failed tracing SW breakpoint '%s'.\n",
-                    pCurrent->DbgGetName(), pCurrent, DebuggerSWBreakpointHelpers::ToString(type)));
+                    "StubManager::TraceTracepoint: '%s' (%p) failed tracing tracepoint '%s'.\n",
+                    pCurrent->DbgGetName(), pCurrent, DebuggerTracepointHelpers::ToString(args->type)));
                 return FALSE;
             }
         }
     }
 
     LOG((LF_CORDB, LL_INFO10000,
-         "StubManager::TraceSWBreakpoint: SW breakpoint '%s' was not handled by any stub manager.\n",
-         DebuggerSWBreakpointHelpers::ToString(type)));
+         "StubManager::TraceTracepoint: Tracepoint '%s' was not handled by any stub manager.\n",
+         DebuggerTracepointHelpers::ToString(args->type)));
 
     return FALSE;
 }
@@ -987,7 +987,7 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     // We cannot tell where the stub will end up
     // until after the prestub worker has been run.
     //
-    trace->InitForSWBreakpoint(DSWB_PRE_STUB);
+    trace->InitForTracepoint(DEBUGGER_TRACEPOINT_PRE_STUB);
     return TRUE;
 }
 
@@ -999,25 +999,25 @@ BOOL ThePreStubManager::CheckIsStub_Internal(PCODE stubStartAddress)
 }
 
 #ifndef DACCESS_COMPILE
-BOOL ThePreStubManager::HandlesSWBreakpoint(DebuggerSWBreakpointArgs* args)
+BOOL ThePreStubManager::HandlesTracepoint(DebuggerTracepointArgs* args)
 {
     LIMITED_METHOD_CONTRACT;
-    return args != NULL && args->type == DSWB_PRE_STUB;
+    return args != NULL && args->type == DEBUGGER_TRACEPOINT_PRE_STUB;
 }
 
-BOOL ThePreStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+BOOL ThePreStubManager::DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
 {
     LIMITED_METHOD_CONTRACT;
 
-    if (type != DSWB_PRE_STUB)
+    _ASSERTE(args != NULL && trace != NULL);
+
+    if (args->type != DEBUGGER_TRACEPOINT_PRE_STUB)
         return FALSE;
 
-    _ASSERTE(args != NULL && args->type == type && trace != NULL);
+    DebuggerTracepointArgsT1<PCODE> *argsT1 = (DebuggerTracepointArgsT1<PCODE> *)args;
+    _ASSERT(argsT1->arg1 != NULL);
 
-    DebuggerSWBreakpointArgsT1<PCODE> *swBreakpointArgs = (DebuggerSWBreakpointArgsT1<PCODE> *)args;
-    _ASSERT(swBreakpointArgs->arg1 != NULL);
-
-    trace->InitForStub(swBreakpointArgs->arg1);
+    trace->InitForStub(argsT1->arg1);
     return TRUE;
 }
 #endif // !DACCESS_COMPILE
@@ -1733,7 +1733,7 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 #ifdef DACCESS_COMPILE
         DacNotImpl();
 #else
-        trace->InitForSWBreakpoint(DSWB_EXTERNAL_METHOD_FIXUP);
+        trace->InitForTracepoint(DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP);
 #endif
         return TRUE;
 
@@ -1745,25 +1745,25 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 }
 
 #ifndef DACCESS_COMPILE
-BOOL RangeSectionStubManager::HandlesSWBreakpoint(DebuggerSWBreakpointArgs* args)
+BOOL RangeSectionStubManager::HandlesTracepoint(DebuggerTracepointArgs* args)
 {
     LIMITED_METHOD_CONTRACT;
-    return args != NULL && args->type == DSWB_EXTERNAL_METHOD_FIXUP;
+    return args != NULL && args->type == DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP;
 }
 
-BOOL RangeSectionStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+BOOL RangeSectionStubManager::DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
 {
     LIMITED_METHOD_CONTRACT;
 
-    if (type != DSWB_EXTERNAL_METHOD_FIXUP)
+    _ASSERTE(args != NULL && trace != NULL);
+
+    if (args->type != DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP)
         return FALSE;
 
-    _ASSERTE(args != NULL && args->type == type && trace != NULL);
+    DebuggerTracepointArgsT1<PCODE> *argsT1 = (DebuggerTracepointArgsT1<PCODE> *)(args);
+    _ASSERT(argsT1->arg1 != NULL);
 
-    DebuggerSWBreakpointArgsT1<PCODE> *swBreakpointArgs = (DebuggerSWBreakpointArgsT1<PCODE> *)(args);
-    _ASSERT(swBreakpointArgs->arg1 != NULL);
-
-    trace->InitForStub(swBreakpointArgs->arg1);
+    trace->InitForStub(argsT1->arg1);
     return TRUE;
 }
 #endif // !DACCESS_COMPILE
@@ -1875,7 +1875,7 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
     if (pStubMD != NULL && pStubMD->AsDynamicMethodDesc()->IsMulticastStub())
     {
         // This call is going over the multicast delegate stub.
-        trace->InitForSWBreakpoint(DSWB_MULTICAST_DELEGATE);
+        trace->InitForTracepoint(DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE);
     }
     else
     {
@@ -1895,30 +1895,30 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
 }
 
 #ifndef DACCESS_COMPILE
-BOOL ILStubManager::HandlesSWBreakpoint(DebuggerSWBreakpointArgs* args)
+BOOL ILStubManager::HandlesTracepoint(DebuggerTracepointArgs* args)
 {
     LIMITED_METHOD_CONTRACT;
-    return args != NULL && args->type == DSWB_MULTICAST_DELEGATE;
+    return args != NULL && args->type == DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE;
 }
 
-BOOL ILStubManager::DoTraceSWBreakpoint(DebuggerSWBreakpointType type, DebuggerSWBreakpointArgs *args, TraceDestination *trace)
+BOOL ILStubManager::DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
 {
     LIMITED_METHOD_CONTRACT;
 
-    if (type != DSWB_MULTICAST_DELEGATE)
+    _ASSERTE(args != NULL && trace != NULL);
+
+    if (args->type != DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE)
         return FALSE;
 
     GCX_ASSERT_COOP();
 
-    _ASSERTE(args != NULL && args->type == type && trace != NULL);
-
-    DebuggerSWBreakpointArgsT2<DELEGATEREF, INT32> *swBreakpointArgs = (DebuggerSWBreakpointArgsT2<DELEGATEREF, INT32> *)(args);
-    DELEGATEREF delegate = swBreakpointArgs->arg1;
-    SIZE_T count = swBreakpointArgs->arg2;
+    DebuggerTracepointArgsT2<DELEGATEREF, INT32> *argsT2 = (DebuggerTracepointArgsT2<DELEGATEREF, INT32> *)(args);
+    DELEGATEREF delegate = argsT2->arg1;
+    SIZE_T count = argsT2->arg2;
     SIZE_T totalCount = delegate->GetInvocationCount();
 
     LOG((LF_CORDB, LL_INFO10000,
-        "ILStubManager::DoTraceSWBreakpoint: count=%d, totalCount=%d.\n",
+        "ILStubManager::DoTraceTracepoint: count=%d, totalCount=%d.\n",
         count,
         totalCount));
 
