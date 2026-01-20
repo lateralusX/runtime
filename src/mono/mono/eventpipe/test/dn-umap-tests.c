@@ -832,7 +832,7 @@ test_umap_ptr_uint32_find_erase (void)
 	const void *data = items [3];
 	dn_umap_ptr_uint32_insert (map, (void *)data, 4);
 
-	dn_umap_it_t found = dn_umap_ptr_uint32_find (map, data);
+	dn_umap_it_t found = dn_umap_ptr_uint32_find (map, (void *)data);
 
 	if (dn_umap_it_key_ptr (found) != (void *)data)
 		return FAILED ("find failed #1");
@@ -862,7 +862,7 @@ test_umap_ptr_uint32_find_erase_insert (void)
 	dn_umap_ptr_uint32_insert (map, (char *)items [1], 2);
 	dn_umap_ptr_uint32_insert (map, (char *)items [0], 1);
 
-	dn_umap_it_t found = dn_umap_ptr_uint32_find (map, items [1]);
+	dn_umap_it_t found = dn_umap_ptr_uint32_find (map, (void *)items [1]);
 
 	if (dn_umap_it_end (found))
 		return FAILED ("find failed #1");

@@ -8,13 +8,14 @@
 #include <eventpipe/ep-event.h>
 #include <eventpipe/ep-event-payload.h>
 #include <eventpipe/ep-session.h>
+#include <eventpipe/ep-buffer-manager.h>
 #include <eglib/test/test.h>
 
 #define TEST_PROVIDER_NAME "MyTestProvider"
 #define TEST_FILE "./ep_test_create_file.txt"
 #define TEST_EVENT_DATA "Dummy data for perf test."
 
-//#define TEST_PERF
+#define TEST_PERF
 
 #ifdef _CRTDBG_MAP_ALLOC
 static _CrtMemState eventpipe_memory_start_snapshot;
@@ -26,23 +27,16 @@ static const gchar event_instance_data[] = "Dummy event test data %u.";
 
 static
 void
-buffer_free (
-	EventPipeBuffer *buffer,
-	EventPipeThread *thread)
+buffer_free (EventPipeBuffer *buffer)
 {
 	ep_return_void_if_nok (buffer);
 
 	// Buffer must be read only when freed.
 	if (ep_buffer_get_volatile_state (buffer) == EP_BUFFER_STATE_WRITABLE) {
-		EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 		ep_buffer_convert_to_read_only (buffer);
-		EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 	}
 
 	ep_buffer_free (buffer);
-	return;
-
-ep_on_error:
 	return;
 }
 
@@ -86,6 +80,7 @@ load_buffer_with_events_init (
 			NULL,
 			EP_SESSION_TYPE_FILE,
 			EP_SERIALIZATION_FORMAT_NETTRACE_V4,
+			0,
 			false,
 			1,
 			current_provider_config,
@@ -218,12 +213,10 @@ test_create_free_buffer (void)
 
 	test_location = 2;
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 ep_on_exit:
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -257,12 +250,10 @@ test_write_event_to_buffer (void)
 
 	test_location = 3;
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 ep_on_exit:
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -296,16 +287,14 @@ test_read_event_from_buffer (void)
 
 	test_location = 3;
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 	test_location = 4;
 	EventPipeEventInstance *current_event = ep_buffer_get_current_read_event (buffer);
 	ep_raise_error_if_nok (current_event != NULL);
 
 ep_on_exit:
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -341,9 +330,7 @@ test_read_events_from_buffer (void)
 
 	test_location = 3;
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 	test_location = 4;
 
@@ -367,7 +354,7 @@ test_read_events_from_buffer (void)
 	ep_raise_error_if_nok (ep_buffer_get_current_sequence_number (buffer) == max_events);
 
 ep_on_exit:
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -407,15 +394,13 @@ test_check_buffer_state (void)
 
 	ep_raise_error_if_nok (ep_buffer_get_volatile_state (buffer) == EP_BUFFER_STATE_WRITABLE);
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 	test_location = 5;
 	ep_raise_error_if_nok (ep_buffer_get_volatile_state (buffer) == EP_BUFFER_STATE_READ_ONLY);
 
 ep_on_exit:
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -452,9 +437,7 @@ test_check_buffer_event_instances (void)
 	result = load_buffer_with_events (buffer, 100);
 	ep_raise_error_if_nok (result == NULL);
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 	test_location = 4;
 
@@ -493,7 +476,7 @@ test_check_buffer_event_instances (void)
 
 ep_on_exit:
 	g_free (template_data);
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -537,9 +520,7 @@ test_check_buffer_oom (void)
 
 	ep_raise_error_if_nok (ep_buffer_get_volatile_state (buffer) == EP_BUFFER_STATE_WRITABLE);
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 	test_location = 5;
 
@@ -559,7 +540,7 @@ test_check_buffer_oom (void)
 	}
 
 ep_on_exit:
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -615,7 +596,7 @@ test_check_buffer_perf (void)
 		if (load_result || (total_events_written > 10 * 1000 * 1000)) {
 			done = true;
 		} else {
-			buffer_free (buffer, thread);
+			buffer_free (buffer);
 			buffer = ep_buffer_alloc (1024 *1024, thread, 0);
 			number_of_buffers++;
 		}
@@ -624,7 +605,7 @@ test_check_buffer_perf (void)
 	test_location = 4;
 
 	float accumulated_time_sec = ((float)accumulated_time_ticks / (float)ep_perf_frequency_query ());
-	float events_per_sec = (float)total_events_written / (accumulated_time_sec ? accumulated_time_sec : 1.0);
+	float events_per_sec = (float)total_events_written / (accumulated_time_sec ? accumulated_time_sec : (float)1.0);
 
 	// Measured number of events/second for one thread.
 	// Only measure loading data into pre-allocated buffer.
@@ -637,7 +618,7 @@ test_check_buffer_perf (void)
 
 ep_on_exit:
 	load_buffer_with_events_fini (session, provider, ep_event);
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 
@@ -675,16 +656,14 @@ test_check_buffer_consistency (void)
 	result = load_buffer_with_events (buffer, 100);
 	ep_raise_error_if_nok (result == NULL);
 
-	EP_SPIN_LOCK_ENTER (ep_thread_get_rt_lock_ref (thread), section1)
 	ep_buffer_convert_to_read_only (buffer);
-	EP_SPIN_LOCK_EXIT (ep_thread_get_rt_lock_ref (thread), section1)
 
 	test_location = 4;
 
 	ep_raise_error_if_nok (ep_buffer_ensure_consistency (buffer) == true);
 
 ep_on_exit:
-	buffer_free (buffer, thread);
+	buffer_free (buffer);
 	ep_thread_free (thread);
 	return result;
 

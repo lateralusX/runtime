@@ -960,11 +960,11 @@ test_list_find_erase (void)
 
 	dn_list_t *list = dn_list_alloc ();
 
-	dn_list_push_front (list, items [2]);
-	dn_list_push_front (list, items [1]);
-	dn_list_push_front (list, items [0]);
+	dn_list_push_front (list, (char *)items [2]);
+	dn_list_push_front (list, (char *)items [1]);
+	dn_list_push_front (list, (char *)items [0]);
 
-	dn_list_insert (dn_list_end (list), items [3]);
+	dn_list_insert (dn_list_end (list), (char *)items [3]);
 
 	dn_list_it_t found = dn_list_find (list, items [1]);
 	if (dn_list_it_end (found))

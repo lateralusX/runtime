@@ -15,13 +15,15 @@
 #define TEST_FILE "./ep_test_create_file.txt"
 #define TEST_FILE_2 "./ep_test_create_file_2.txt"
 
-//#define TEST_PERF
+#define TEST_PERF
 
 #ifdef _CRTDBG_MAP_ALLOC
 static _CrtMemState eventpipe_memory_start_snapshot;
 static _CrtMemState eventpipe_memory_end_snapshot;
 static _CrtMemState eventpipe_memory_diff_snapshot;
 #endif
+
+extern void ep_rt_mono_thread_exited (void);
 
 static RESULT
 test_eventpipe_setup (void)
@@ -661,6 +663,9 @@ ep_on_exit:
 	ep_delete_provider (test_provider);
 	ep_disable (session_id);
 	ep_provider_config_fini (current_provider_config);
+	// https://github.com/dotnet/runtime/commit/c4624d0a3c91fb1496b0910b22c9d9fc197247e8 removed freeing deferred providers causing memory leaks in this test.
+	// Add conifg_delete_deferred_providers here to fix the leak reported by test. Could be remove if/when the deferred providers are freed elsewhere.
+	ep_config_delete_deferred_providers (ep_config_get());
 	return result;
 
 ep_on_error:
@@ -796,7 +801,9 @@ test_session_write_event (void)
 
 	EventPipeEventPayload payload;;
 	ep_event_payload_init (&payload, NULL, 0);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), ep_session_get_index ((EventPipeSession *)(uintptr_t)session_id));
 	write_result = ep_session_write_event ((EventPipeSession *)(uintptr_t)session_id, ep_rt_thread_get_handle (), ep_event, &payload, NULL, NULL, NULL, NULL);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), UINT32_MAX);
 	ep_event_payload_fini (&payload);
 
 	ep_raise_error_if_nok (write_result == true);
@@ -849,7 +856,9 @@ test_session_write_event_seq_point (void)
 
 	EventPipeEventPayload payload;;
 	ep_event_payload_init (&payload, NULL, 0);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), ep_session_get_index ((EventPipeSession *)(uintptr_t)session_id));
 	write_result = ep_session_write_event ((EventPipeSession *)(uintptr_t)session_id, ep_rt_thread_get_handle (), ep_event, &payload, NULL, NULL, NULL, NULL);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), UINT32_MAX);
 	ep_event_payload_fini (&payload);
 
 	ep_raise_error_if_nok (write_result == true);
@@ -906,7 +915,9 @@ test_session_write_wait_get_next_event (void)
 
 	EventPipeEventPayload payload;;
 	ep_event_payload_init (&payload, NULL, 0);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), ep_session_get_index ((EventPipeSession *)(uintptr_t)session_id));
 	write_result = ep_session_write_event ((EventPipeSession *)(uintptr_t)session_id, ep_rt_thread_get_handle (), ep_event, &payload, NULL, NULL, NULL, NULL);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), UINT32_MAX);
 	ep_event_payload_fini (&payload);
 
 	ep_raise_error_if_nok (write_result == true);
@@ -978,7 +989,9 @@ test_session_write_get_next_event (void)
 
 	EventPipeEventPayload payload;;
 	ep_event_payload_init (&payload, NULL, 0);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), ep_session_get_index ((EventPipeSession *)(uintptr_t)session_id));
 	write_result = ep_session_write_event ((EventPipeSession *)(uintptr_t)session_id, ep_rt_thread_get_handle (), ep_event, &payload, NULL, NULL, NULL, NULL);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), UINT32_MAX);
 	ep_event_payload_fini (&payload);
 
 	ep_raise_error_if_nok (write_result == true);
@@ -1048,7 +1061,9 @@ test_session_write_suspend_event (void)
 
 	EventPipeEventPayload payload;;
 	ep_event_payload_init (&payload, NULL, 0);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), ep_session_get_index ((EventPipeSession *)(uintptr_t)session_id));
 	write_result = ep_session_write_event ((EventPipeSession *)(uintptr_t)session_id, ep_rt_thread_get_handle (), ep_event, &payload, NULL, NULL, NULL, NULL);
+	ep_thread_set_session_use_in_progress (ep_thread_get (), UINT32_MAX);
 	ep_event_payload_fini (&payload);
 
 	ep_raise_error_if_nok (write_result == true);
@@ -1315,7 +1330,7 @@ test_write_event_perf (void)
 	ep_event_data_fini (data);
 
 	float accumulated_write_time_sec = ((float)accumulated_write_time_ticks / (float)ep_perf_frequency_query ());
-	float events_written_per_sec = (float)events_written / (accumulated_write_time_sec ? accumulated_write_time_sec : 1.0);
+	float events_written_per_sec = (float)events_written / (accumulated_write_time_sec ? accumulated_write_time_sec : (float)1.0);
 
 	// Measured number of events/second for one thread.
 	// TODO: Setup acceptable pass/failure metrics.
@@ -1346,7 +1361,6 @@ test_eventpipe_mem_checkpoint (void)
 #ifdef _CRTDBG_MAP_ALLOC
 	// Need to emulate a thread exit to make sure TLS gets cleaned up for current thread
 	// or we will get memory leaks reported.
-	extern void ep_rt_mono_thread_exited (void);
 	ep_rt_mono_thread_exited ();
 
 	_CrtMemCheckpoint (&eventpipe_memory_end_snapshot);

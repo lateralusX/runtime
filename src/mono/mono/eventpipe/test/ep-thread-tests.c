@@ -15,6 +15,8 @@ static _CrtMemState eventpipe_memory_end_snapshot;
 static _CrtMemState eventpipe_memory_diff_snapshot;
 #endif
 
+extern void ep_rt_mono_thread_exited (void);
+
 static RESULT
 test_thread_setup (void)
 {
@@ -128,7 +130,6 @@ test_get_or_create_thread (void)
 
 	// Need to emulate a thread exit to make sure TLS gets cleaned up for current thread
 	// or we will get memory leaks reported.
-	extern void ep_rt_mono_thread_exited (void);
 	ep_rt_mono_thread_exited ();
 
 	thread = ep_thread_get ();
@@ -273,40 +274,6 @@ ep_on_error:
 }
 
 static RESULT
-test_thread_lock (void)
-{
-	RESULT result = NULL;
-	uint32_t test_location = 0;
-
-	EventPipeThread *thread = ep_thread_alloc ();
-	if (!thread) {
-		result = FAILED ("Failed to create thread");
-		ep_raise_error ();
-	}
-
-	test_location = 1;
-
-	ep_thread_requires_lock_not_held (thread);
-
-	ep_rt_spin_lock_acquire (ep_thread_get_rt_lock_ref (thread));
-
-	ep_thread_requires_lock_held (thread);
-
-	ep_rt_spin_lock_release (ep_thread_get_rt_lock_ref (thread));
-
-	ep_thread_requires_lock_not_held (thread);
-
-ep_on_exit:
-	ep_thread_free (thread);
-	return result;
-
-ep_on_error:
-	if (!result)
-		result = FAILED ("Failed at test location=%i", test_location);
-	ep_exit_error_handler ();
-}
-
-static RESULT
 test_thread_session_write (void)
 {
 	RESULT result = NULL;
@@ -320,136 +287,34 @@ test_thread_session_write (void)
 
 	test_location = 1;
 
-	uint32_t session_write = ep_thread_get_session_write_in_progress (thread);
+	uint32_t session_write = ep_thread_get_session_use_in_progress (thread);
 	if (session_write < EP_MAX_NUMBER_OF_SESSIONS) {
-		result = FAILED ("Session write is in progress");
+		result = FAILED ("Session is in use");
 		ep_raise_error ();
 	}
 
 	test_location = 2;
 
-	ep_thread_set_session_write_in_progress (thread, 1);
+	ep_thread_set_session_use_in_progress (thread, 1);
 
-	session_write = ep_thread_get_session_write_in_progress (thread);
+	session_write = ep_thread_get_session_use_in_progress (thread);
 	if (session_write != 1) {
-		result = FAILED ("Wrong session id in write progress");
+		result = FAILED ("Wrong session id in use");
 		ep_raise_error ();
 	}
 
 	test_location = 3;
 
-	ep_thread_set_session_write_in_progress (thread, 0);
+	ep_thread_set_session_use_in_progress (thread, UINT32_MAX);
 
-	session_write = ep_thread_get_session_write_in_progress (thread);
-	if (session_write != 0) {
-		result = FAILED ("Session write is in progress");
+	session_write = ep_thread_get_session_use_in_progress (thread);
+	if (session_write != UINT32_MAX) {
+		result = FAILED ("Session is in use");
 		ep_raise_error ();
 	}
 
 ep_on_exit:
 	ep_thread_free (thread);
-	return result;
-
-ep_on_error:
-	if (!result)
-		result = FAILED ("Failed at test location=%i", test_location);
-	ep_exit_error_handler ();
-}
-
-static RESULT
-test_thread_session_state (void)
-{
-	RESULT result = NULL;
-	uint32_t test_location = 0;
-	EventPipeThread *thread = NULL;
-	EventPipeProviderConfiguration *provider_config = NULL;
-	EventPipeSession *session = NULL;
-	EventPipeThreadSessionState *session_state = NULL;
-
-	thread = ep_thread_alloc ();
-	if (!thread) {
-		result = FAILED ("Failed to create thread");
-		ep_raise_error ();
-	}
-
-	ep_thread_addref (thread);
-
-	test_location = 1;
-
-	{
-		EventPipeProviderConfiguration dummy_config;
-		if (!ep_provider_config_init (&dummy_config, "DummyProvider", 0, 0, "")) {
-			result = FAILED ("Failed to init provider config");
-			ep_raise_error ();
-		}
-		provider_config = &dummy_config;
-	}
-
-	test_location = 2;
-
-	EP_LOCK_ENTER (section1)
-		session = ep_session_alloc (
-			1,
-			TEST_FILE,
-			NULL,
-			EP_SESSION_TYPE_FILE,
-			EP_SERIALIZATION_FORMAT_NETTRACE_V4,
-			false,
-			1,
-			provider_config,
-			1,
-			NULL,
-			NULL,
-			0);
-	EP_LOCK_EXIT (section1)
-
-	if (!session) {
-		result = FAILED ("Failed to alloc session");
-		ep_raise_error ();
-	}
-
-	test_location = 3;
-
-	ep_rt_spin_lock_acquire (ep_thread_get_rt_lock_ref (thread));
-	session_state = ep_thread_get_or_create_session_state (thread, session);
-	ep_rt_spin_lock_release (ep_thread_get_rt_lock_ref (thread));
-
-	if (!session_state) {
-		result = FAILED ("Failed to alloc session state");
-		ep_raise_error ();
-	}
-
-	test_location = 4;
-
-	ep_rt_spin_lock_acquire (ep_thread_get_rt_lock_ref (thread));
-	EventPipeThreadSessionState *current_session_state = ep_thread_get_or_create_session_state (thread, session);
-	ep_rt_spin_lock_release (ep_thread_get_rt_lock_ref (thread));
-
-	if (current_session_state != session_state) {
-		result = FAILED ("Second call to get_or_create_session_state allocated new session_state");
-		ep_raise_error ();
-	}
-
-	test_location = 5;
-
-	ep_rt_spin_lock_acquire (ep_thread_get_rt_lock_ref (thread));
-	current_session_state = ep_thread_get_session_state (thread, session);
-	ep_rt_spin_lock_release (ep_thread_get_rt_lock_ref (thread));
-
-	if (current_session_state != session_state) {
-		result = FAILED ("Call to get_session_state allocated returned unexpected session");
-		ep_raise_error ();
-	}
-
-ep_on_exit:
-	if (thread && session_state) {
-		ep_rt_spin_lock_acquire (ep_thread_get_rt_lock_ref (thread));
-		ep_thread_delete_session_state (thread, session);
-		ep_rt_spin_lock_release (ep_thread_get_rt_lock_ref (thread));
-	}
-	ep_session_dec_ref (session);
-	ep_provider_config_fini (provider_config);
-	ep_thread_release (thread);
 	return result;
 
 ep_on_error:
@@ -478,9 +343,7 @@ static Test ep_thread_tests [] = {
 	{"test_get_or_create_thread", test_get_or_create_thread},
 	{"test_thread_activity_id", test_thread_activity_id},
 	{"test_thread_is_rundown_thread", test_thread_is_rundown_thread},
-	{"test_thread_lock", test_thread_lock},
 	{"test_thread_session_write", test_thread_session_write},
-	{"test_thread_session_state", test_thread_session_state},
 	{"test_thread_teardown", test_thread_teardown},
 	{NULL, NULL}
 };

@@ -8,7 +8,6 @@
 #include <eventpipe/ep-event.h>
 #include <eventpipe/ep-event-payload.h>
 #include <eventpipe/ep-session.h>
-#include <eventpipe/ep-buffer-manager.h>
 #include <eventpipe/ep-file.h>
 #include <eglib/test/test.h>
 
@@ -16,13 +15,15 @@
 #define TEST_FILE "./ep_test_create_file.txt"
 #define TEST_EVENT_DATA "Dummy data for perf test."
 
-//#define TEST_PERF
+#define TEST_PERF
 
 #ifdef _CRTDBG_MAP_ALLOC
 static _CrtMemState eventpipe_memory_start_snapshot;
 static _CrtMemState eventpipe_memory_end_snapshot;
 static _CrtMemState eventpipe_memory_diff_snapshot;
 #endif
+
+extern void ep_rt_mono_thread_exited (void);
 
 static
 void
@@ -61,6 +62,7 @@ buffer_manager_fini (
 
 	// buffer_manager owned by session.
 	EP_ASSERT (buffer_manager == NULL || buffer_manager == ep_session_get_buffer_manager (session));
+	ep_session_close (session);
 	ep_session_dec_ref (session);
 }
 
@@ -98,6 +100,7 @@ buffer_manager_init (
 			NULL,
 			EP_SESSION_TYPE_FILE,
 			format,
+			0,
 			false,
 			1,
 			current_provider_config,
@@ -153,7 +156,8 @@ static
 bool
 write_events (
 	EventPipeBufferManager *buffer_manager,
-	ep_rt_thread_handle_t thread,
+	EventPipeThread *thread,
+	ep_rt_thread_handle_t thread_handle,
 	EventPipeSession *session,
 	EventPipeEvent *ep_event,
 	uint32_t event_count,
@@ -164,7 +168,9 @@ write_events (
 	for (; i < event_count; ++i) {
 		EventPipeEventPayload payload;
 		ep_event_payload_init (&payload, (uint8_t *)TEST_EVENT_DATA, ARRAY_SIZE (TEST_EVENT_DATA));
-		result = ep_buffer_manager_write_event (buffer_manager, thread, session, ep_event, &payload, NULL, NULL, thread, NULL);
+		ep_thread_set_session_use_in_progress (thread, ep_session_get_index (session));
+		result = ep_buffer_manager_write_event (buffer_manager, thread_handle, session, ep_event, &payload, NULL, NULL, thread_handle, NULL);
+		ep_thread_set_session_use_in_progress (thread, UINT32_MAX);
 		ep_event_payload_fini (&payload);
 
 		if (!result)
@@ -277,10 +283,10 @@ test_buffer_manager_write_event (void)
 
 	test_location = 2;
 
-	ep_raise_error_if_nok (write_events (buffer_manager, thread_handle, session, ep_event, 1, NULL) == true);
+	ep_raise_error_if_nok (write_events (buffer_manager, thread, thread_handle, session, ep_event, 1, NULL) == true);
 
 	EP_LOCK_ENTER (section1)
-		ep_buffer_manager_suspend_write_event (buffer_manager, ep_session_get_index (session));
+		ep_session_suspend_write_event (session);
 	EP_LOCK_EXIT (section1)
 
 ep_on_exit:
@@ -316,10 +322,10 @@ test_buffer_manager_read_event (void)
 
 	test_location = 2;
 
-	ep_raise_error_if_nok (write_events (buffer_manager, thread_handle, session, ep_event, 1, NULL) == true);
+	ep_raise_error_if_nok (write_events (buffer_manager, thread, thread_handle, session, ep_event, 1, NULL) == true);
 
 	EP_LOCK_ENTER (section1)
-		ep_buffer_manager_suspend_write_event (buffer_manager, ep_session_get_index (session));
+		ep_session_suspend_write_event (session);
 	EP_LOCK_EXIT (section1)
 
 	ep_event_instance = ep_buffer_manager_get_next_event (buffer_manager);
@@ -369,13 +375,13 @@ test_buffer_manager_deallocate_buffers (void)
 
 	test_location = 2;
 
-	ep_raise_error_if_nok (write_events (buffer_manager, thread_handle, session, ep_event, 1, NULL) == true);
+	ep_raise_error_if_nok (write_events (buffer_manager, thread, thread_handle, session, ep_event, 1, NULL) == true);
 
 	EP_LOCK_ENTER (section1)
-		ep_buffer_manager_suspend_write_event (buffer_manager, ep_session_get_index (session));
+		ep_session_suspend_write_event (session);
 	EP_LOCK_EXIT (section1)
 
-	ep_buffer_manager_deallocate_buffers (buffer_manager);
+	ep_buffer_manager_close (buffer_manager);
 
 ep_on_exit:
 	buffer_manager_fini (buffer_manager,thread, session, provider, ep_event);
@@ -410,7 +416,7 @@ test_buffer_manager_write_events_to_file (EventPipeSerializationFormat format)
 
 	test_location = 2;
 
-	ep_raise_error_if_nok (write_events (buffer_manager, thread_handle, session, ep_event, 10, NULL) == true);
+	ep_raise_error_if_nok (write_events (buffer_manager, thread, thread_handle, session, ep_event, 10, NULL) == true);
 
 	test_location = 3;
 
@@ -470,10 +476,10 @@ test_buffer_manager_oom (void)
 
 	test_location = 2;
 
-	ep_raise_error_if_nok (write_events (buffer_manager, thread_handle, session, ep_event, 1000 * 1000, NULL) == false);
+	ep_raise_error_if_nok (write_events (buffer_manager, thread, thread_handle, session, ep_event, 1000 * 1000, NULL) == false);
 
 	EP_LOCK_ENTER (section1)
-		ep_buffer_manager_suspend_write_event (buffer_manager, ep_session_get_index (session));
+		ep_session_suspend_write_event (session);
 	EP_LOCK_EXIT (section1)
 
 ep_on_exit:
@@ -526,7 +532,7 @@ test_buffer_manager_perf (void)
 
 	while (!done) {
 		int64_t start_write_events = ep_perf_timestamp_get ();
-		write_result = write_events (buffer_manager, thread_handle, session, ep_event, 10 * 1000 * 1000, &events_written);
+		write_result = write_events (buffer_manager, thread, thread_handle, session, ep_event, 10 * 1000 * 1000, &events_written);
 		int64_t stop_write_events = ep_perf_timestamp_get ();
 
 		accumulated_buffer_manager_write_time_ticks += stop_write_events - start_write_events;
@@ -544,19 +550,19 @@ test_buffer_manager_perf (void)
 	}
 
 	EP_LOCK_ENTER (section1)
-		ep_buffer_manager_suspend_write_event (buffer_manager, ep_session_get_index (session));
+		ep_session_suspend_write_event (session);
 	EP_LOCK_EXIT (section1)
 
 	test_location = 4;
 
 	float accumulated_buffer_manager_write_time_sec = ((float)accumulated_buffer_manager_write_time_ticks / (float)ep_perf_frequency_query ());
-	float buffer_manager_events_written_per_sec = (float)total_events_written / (accumulated_buffer_manager_write_time_sec ? accumulated_buffer_manager_write_time_sec : 1.0);
+	float buffer_manager_events_written_per_sec = (float)total_events_written / (accumulated_buffer_manager_write_time_sec ? accumulated_buffer_manager_write_time_sec : (float)1.0);
 
 	float accumulated_buffer_to_null_file_time_sec = ((float)accumulated_buffer_to_null_file_time_ticks / (float)ep_perf_frequency_query ());
-	float null_file_events_written_per_sec = (float)total_events_written / (accumulated_buffer_to_null_file_time_sec ? accumulated_buffer_to_null_file_time_sec : 1.0);
+	float null_file_events_written_per_sec = (float)total_events_written / (accumulated_buffer_to_null_file_time_sec ? accumulated_buffer_to_null_file_time_sec : (float)1.0);
 
 	float total_accumulated_time_sec = accumulated_buffer_manager_write_time_sec + accumulated_buffer_to_null_file_time_sec;
-	float total_events_written_per_sec = (float)total_events_written / (total_accumulated_time_sec ? total_accumulated_time_sec : 1.0);
+	float total_events_written_per_sec = (float)total_events_written / (total_accumulated_time_sec ? total_accumulated_time_sec : (float)1.0);
 
 	// Measured number of events/second for one thread.
 	// TODO: Setup acceptable pass/failure metrics.
@@ -586,7 +592,6 @@ test_buffer_manager_teardown (void)
 #ifdef _CRTDBG_MAP_ALLOC
 	// Need to emulate a thread exit to make sure TLS gets cleaned up for current thread
 	// or we will get memory leaks reported.
-	extern void ep_rt_mono_thread_exited (void);
 	ep_rt_mono_thread_exited ();
 
 	_CrtMemCheckpoint (&eventpipe_memory_end_snapshot);
