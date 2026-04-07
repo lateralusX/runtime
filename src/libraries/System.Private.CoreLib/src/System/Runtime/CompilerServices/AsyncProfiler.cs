@@ -51,7 +51,7 @@ namespace System.Runtime.CompilerServices
 
         internal static partial class Config
         {
-            public static Lock ConfigLock { get; private set; } = new Lock();
+            public static readonly Lock ConfigLock = new();
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static bool Changed(AsyncThreadContext context) => context.ConfigRevision != Revision;
@@ -94,6 +94,21 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+            public static void EmitAsyncEventsMetadataIfNeeded()
+            {
+                if (s_metadataRevision != Revision)
+                {
+                    lock (s_metadataRevisionLock)
+                    {
+                        if (s_metadataRevision != Revision)
+                        {
+                            Log.AsyncEventsMetadata(Stopwatch.GetTimestamp(), Stopwatch.Frequency, ContinuationWrapper.GetContinuationWrapperIPs());
+                            s_metadataRevision = Revision;
+                        }
+                    }
+                }
+            }
+
             private static void UpdateFlags()
             {
                 AsyncInstrumentation.Flags flags = AsyncInstrumentation.Flags.Disabled;
@@ -118,6 +133,10 @@ namespace System.Runtime.CompilerServices
 
             // Use system page size as default bulk buffer size - 256 to cover for additional event headers.
             public static int BulkBufferSize { get; private set; } = Environment.SystemPageSize - 256;
+
+            private static readonly Lock s_metadataRevisionLock = new();
+
+            private static uint s_metadataRevision;
         }
 
         internal struct BulkBuffer
@@ -993,6 +1012,7 @@ namespace System.Runtime.CompilerServices
 
                 if (IsEventKeywordEnabled.AnyBulkAsyncEvents(Config.ActiveEventKeywords))
                 {
+                    Config.EmitAsyncEventsMetadataIfNeeded();
                     BulkEvent(context);
                 }
 

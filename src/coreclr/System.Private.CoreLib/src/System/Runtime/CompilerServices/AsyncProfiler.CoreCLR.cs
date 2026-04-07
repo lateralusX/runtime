@@ -103,6 +103,16 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+            internal static long[] GetContinuationWrapperIPs()
+            {
+                long[] ips = new long[COUNT];
+                for (int i = 0; i < COUNT; i++)
+                {
+                    ips[i] = Unsafe.Add(ref Unsafe.As<ContinuationWrapperTable, nint>(ref _continuationWrappers), i);
+                }
+                return ips;
+            }
+
             [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.AggressiveOptimization)]
             private static unsafe Continuation? Continuation_Wrapper_0(Continuation continuation, ref byte resultLoc)
             {

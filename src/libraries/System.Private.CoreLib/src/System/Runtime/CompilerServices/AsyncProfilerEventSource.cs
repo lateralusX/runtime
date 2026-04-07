@@ -23,6 +23,7 @@ namespace System.Runtime.CompilerServices
 
         public static class Keywords // this name is important for EventSource
         {
+            //TODO add bulk event for create async context.
             public const EventKeywords BulkResumeAsyncContext = (EventKeywords)0x1;
             public const EventKeywords BulkSuspendAsyncContext = (EventKeywords)0x2;
             public const EventKeywords BulkCompleteAsyncContext = (EventKeywords)0x4;
@@ -44,6 +45,7 @@ namespace System.Runtime.CompilerServices
         public static class Tasks
         {
             public const EventTask BulkAsyncEvents = (EventTask)1;
+            public const EventTask AsyncEventsMetadata = (EventTask)2;
         }
 
         public enum AsyncType : byte
@@ -57,6 +59,7 @@ namespace System.Runtime.CompilerServices
         //----------------------- Event IDs (must be unique) -----------------------
         // IDs 10 - 20 are reserved for future use and matches AsyncProfiler.BulkEventID.
         public const int BULK_ASYNC_EVENTS_ID = 1;
+        public const int ASYNC_EVENTS_METADATA_ID = 2;
 
         //-----------------------------------------------------------------------------------
         //
@@ -96,13 +99,51 @@ namespace System.Runtime.CompilerServices
             }
         }
 
+        [Event(
+            ASYNC_EVENTS_METADATA_ID,
+            Task = Tasks.AsyncEventsMetadata,
+            Version = 1,
+            Opcode = EventOpcode.Info,
+            Level = EventLevel.Informational,
+            Keywords = BulkAsyncEventKeywords,
+            Message = "")]
+        public void AsyncEventsMetadata(long qpc, long qpcFrequency, byte[] continuationWrapperIPs)
+        {
+            throw new NotImplementedException("This method is only for EventSource manifest generation and should not be called directly.");
+        }
+
+        [NonEvent]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern", Justification = EventSourceSuppressMessage)]
+        public void AsyncEventsMetadata(long qpc, long qpcFrequency, long[] continuationWrapperIPs)
+        {
+            unsafe
+            {
+                fixed (long* cwIPs = continuationWrapperIPs)
+                {
+                    int length = continuationWrapperIPs.Length * sizeof(long);
+                    EventData* eventPayload = stackalloc EventData[4];
+                    eventPayload[0].Size = sizeof(long);
+                    eventPayload[0].DataPointer = ((IntPtr)(&qpc));
+                    eventPayload[0].Reserved = 0;
+                    eventPayload[1].Size = sizeof(long);
+                    eventPayload[1].DataPointer = ((IntPtr)(&qpcFrequency));
+                    eventPayload[1].Reserved = 0;
+                    eventPayload[2].Size = sizeof(int);
+                    eventPayload[2].DataPointer = ((IntPtr)(&length));
+                    eventPayload[2].Reserved = 0;
+                    eventPayload[3].Size = length;
+                    eventPayload[3].DataPointer = ((IntPtr)cwIPs);
+                    eventPayload[3].Reserved = 0;
+                    WriteEventCore(ASYNC_EVENTS_METADATA_ID, 4, eventPayload);
+                }
+            }
+        }
+
         /// <summary>
         /// Get callbacks when the ETW sends us commands`
         /// </summary>
         protected override void OnEventCommand(EventCommandEventArgs command)
         {
-            Debug.WriteLine($"OnEventCommand fired");
-
             if (command.Command == (EventCommand)FlushBulkBuffersCommand || command.Command == EventCommand.SendManifest)
             {
                 AsyncProfiler.Config.CaptureState();

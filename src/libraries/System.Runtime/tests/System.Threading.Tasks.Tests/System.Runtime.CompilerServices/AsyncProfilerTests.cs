@@ -19,6 +19,7 @@ namespace System.Threading.Tasks.Tests
 
         private const string AsyncProfilerEventSourceName = "System.Runtime.CompilerServices.AsyncProfilerEventSource";
         private const int BulkAsyncEventsId = 1;
+        private const int AsyncEventsMetadataId = 2;
 
         // AsyncProfilerEventSource Keywords matching the event source definition
         private const EventKeywords BulkResumeAsyncContext = (EventKeywords)0x1;
@@ -488,6 +489,14 @@ namespace System.Threading.Tasks.Tests
         {
             Task.Run(scenario).GetAwaiter().GetResult();
             SendFlushCommand();
+        }
+
+        private static long[] DeserializeWrapperIPs(byte[] rawBytes)
+        {
+            Assert.True(rawBytes.Length % sizeof(long) == 0, $"Wrapper IPs byte length {rawBytes.Length} is not a multiple of {sizeof(long)}");
+            long[] ips = new long[rawBytes.Length / sizeof(long)];
+            Buffer.BlockCopy(rawBytes, 0, ips, 0, rawBytes.Length);
+            return ips;
         }
 
         private static void RunScenario(Func<Task> scenario)
@@ -1054,6 +1063,96 @@ namespace System.Threading.Tasks.Tests
             Assert.True(unexpected.Count == 0,
                 $"Keyword 0x{(long)kw:X}: unexpected event IDs [{string.Join(", ", unexpected)}], " +
                 $"allowed [{string.Join(", ", allowed)}]");
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_MetadataEventEmittedOnEnable()
+        {
+            var events = CollectEvents(AllBulkKeywords, () =>
+            {
+                RunScenarioAndFlush(async () =>
+                {
+                    await Func();
+                });
+            });
+
+            var metadataEvents = events.Where(e => e.EventId == AsyncEventsMetadataId).ToList();
+            Assert.True(metadataEvents.Count >= 1, "Expected at least one metadata event");
+
+            var meta = metadataEvents[0];
+            Assert.NotNull(meta.Payload);
+            Assert.True(meta.Payload.Count >= 3, $"Expected at least 3 payload fields, got {meta.Payload.Count}");
+
+            long qpc = (long)meta.Payload[0];
+            long freq = (long)meta.Payload[1];
+            long[] wrapperIPs = DeserializeWrapperIPs((byte[])meta.Payload[2]);
+
+            Assert.True(qpc > 0, $"QPC timestamp should be positive, got {qpc}");
+            Assert.True(freq > 0, $"QPC frequency should be positive, got {freq}");
+            Assert.True(wrapperIPs.Length > 0, "Wrapper IPs array should not be empty");
+            Assert.All(wrapperIPs, ip => Assert.True(ip != 0, "Each wrapper IP should be non-zero"));
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_MetadataEventEmittedOnceAcrossThreads()
+        {
+            const int threadCount = 8;
+
+            var events = CollectEvents(AllBulkKeywords, () =>
+            {
+                using var barrier = new Barrier(threadCount);
+                var tasks = new Task[threadCount];
+                for (int i = 0; i < threadCount; i++)
+                {
+                    tasks[i] = Task.Factory.StartNew(() =>
+                    {
+                        barrier.SignalAndWait();
+                        Func().GetAwaiter().GetResult();
+                    }, TaskCreationOptions.LongRunning);
+                }
+                Task.WaitAll(tasks);
+                SendFlushCommand();
+            });
+
+            int metadataCount = events.Count(e => e.EventId == AsyncEventsMetadataId);
+            Assert.True(metadataCount == 1, $"Expected exactly 1 metadata event across {threadCount} threads, got {metadataCount}");
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_MetadataWrapperIPsMatchMethods()
+        {
+            var events = CollectEvents(AllBulkKeywords, () =>
+            {
+                RunScenarioAndFlush(async () =>
+                {
+                    await Func();
+                });
+            });
+
+            var metadataEvents = events.Where(e => e.EventId == AsyncEventsMetadataId).ToList();
+            Assert.True(metadataEvents.Count >= 1, "Expected at least one metadata event");
+
+            long[] wrapperIPs = DeserializeWrapperIPs((byte[])metadataEvents[0].Payload[2]);
+
+            Type cwType = typeof(object).Assembly.GetType("System.Runtime.CompilerServices.AsyncProfiler+ContinuationWrapper");
+            Assert.NotNull(cwType);
+
+            for (int i = 0; i < wrapperIPs.Length; i++)
+            {
+                string expectedName = $"Continuation_Wrapper_{i}";
+                MethodInfo method = cwType.GetMethod(expectedName, BindingFlags.NonPublic | BindingFlags.Static);
+                Assert.True(method is not null, $"Expected method '{expectedName}' to exist on ContinuationWrapper type");
+
+                System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
+                long expectedIP = method.MethodHandle.GetFunctionPointer().ToInt64();
+
+                Assert.True(wrapperIPs[i] == expectedIP,
+                    $"Wrapper IP mismatch at index {i}: metadata has 0x{wrapperIPs[i]:X}, " +
+                    $"method '{expectedName}' has 0x{expectedIP:X}");
+            }
         }
     }
 }
