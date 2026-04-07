@@ -3903,7 +3903,6 @@ namespace System.Diagnostics.Tracing
 #if !TARGET_BROWSER
             _ = RuntimeEventSource.Log;
 #endif
-            _ = AsyncProfilerEventSource.Log;
 #endif
             // System.Diagnostics.MetricsEventSource allows listening to Meters and indirectly
             // also creates the System.Runtime Meter.

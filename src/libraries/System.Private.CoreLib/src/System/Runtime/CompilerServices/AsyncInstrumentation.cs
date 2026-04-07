@@ -103,6 +103,7 @@ namespace System.Runtime.CompilerServices
         private static Flags InitializeFlags()
         {
             _ = TplEventSource.Log; // Touch TplEventSource to trigger static constructor which will initialize TPL flags if EventSource is supported.
+            _ = AsyncProfilerEventSource.Log; // Touch AsyncProfilerEventSource to trigger static constructor which will initialize async profiler flags if EventSource is supported.
 
             lock (s_lock)
             {
