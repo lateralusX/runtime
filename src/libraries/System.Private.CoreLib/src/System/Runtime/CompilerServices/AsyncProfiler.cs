@@ -362,7 +362,7 @@ namespace System.Runtime.CompilerServices
                     return true;
                 }
 
-                public static void Callstack(ref BulkBuffer bulkBuffer, ulong id, AsyncType type, byte callstackFrameCount, ReadOnlySpan<byte> callstackData, int callstackDataByteCount)
+                public static void Callstack(ref BulkBuffer bulkBuffer, ulong id, AsyncCallstackType type, byte callstackFrameCount, ReadOnlySpan<byte> callstackData, int callstackDataByteCount)
                 {
                     byte[] buffer = bulkBuffer.Data;
                     ref int index = ref bulkBuffer.Index;
@@ -372,6 +372,7 @@ namespace System.Runtime.CompilerServices
                     ref byte dst = ref MemoryMarshal.GetArrayDataReference(buffer);
 
                     Unsafe.Add(ref dst, index++) = (byte)type;
+                    Unsafe.Add(ref dst, index++) = 0; // Reserved callstack ID for future callstack interning.
                     Unsafe.Add(ref dst, index++) = callstackFrameCount;
 
                     Unsafe.CopyBlockUnaligned(ref Unsafe.Add(ref dst, index), ref MemoryMarshal.GetReference(callstackData), (uint)callstackDataByteCount);
@@ -1107,16 +1108,19 @@ namespace System.Runtime.CompilerServices
             {
                 ulong id;
                 byte type;
+                byte callstackId;
                 byte asyncCallstackLength;
                 int index = 0;
 
                 BulkBuffer.Deserializer.CompressedUInt64(buffer, ref index, out id);
                 type = buffer[index++];
+                callstackId = buffer[index++];
                 asyncCallstackLength = buffer[index++];
 
                 Debug.WriteLine($"--- {eventName} ---");
                 Debug.WriteLine($"ID: {id}");
                 Debug.WriteLine($"Type: {type}");
+                Debug.WriteLine($"CallstackId: {callstackId}");
                 Debug.WriteLine($"Length: {asyncCallstackLength}");
 
                 if (asyncCallstackLength == 0)

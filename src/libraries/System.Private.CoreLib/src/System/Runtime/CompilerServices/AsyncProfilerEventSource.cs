@@ -51,10 +51,12 @@ namespace System.Runtime.CompilerServices
             public const EventTask AsyncEventsMetadata = (EventTask)2;
         }
 
-        public enum AsyncType : byte
+        [Flags]
+        public enum AsyncCallstackType : byte
         {
-            Compiler = 1,
-            Runtime = 2
+            Compiler = 0x1,
+            Runtime = 0x2,
+            Cached = 0x80
         }
 
         public const int FlushBulkBuffersCommand = 1;

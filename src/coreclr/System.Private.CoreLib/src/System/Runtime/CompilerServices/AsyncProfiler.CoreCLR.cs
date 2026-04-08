@@ -461,21 +461,21 @@ namespace System.Runtime.CompilerServices
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void BulkEvent(AsyncThreadContext context, long currentTimestamp, ulong id, Continuation? asyncCallstack)
             {
-                BulkEvent(context, currentTimestamp, BulkEventID.ResumeAsyncCallstack, id, AsyncType.Runtime, asyncCallstack);
+                BulkEvent(context, currentTimestamp, BulkEventID.ResumeAsyncCallstack, id, AsyncCallstackType.Runtime, asyncCallstack);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void BulkEvent(AsyncThreadContext context, long currentTimestamp, BulkEventID eventID, ulong id, Continuation? asyncCallstack)
             {
-                BulkEvent(context, currentTimestamp, eventID, id, AsyncType.Runtime, asyncCallstack);
+                BulkEvent(context, currentTimestamp, eventID, id, AsyncCallstackType.Runtime, asyncCallstack);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void BulkEvent(AsyncThreadContext context, long currentTimestamp, BulkEventID eventID, ulong id, AsyncType type, Continuation? asyncCallstack)
+            public static void BulkEvent(AsyncThreadContext context, long currentTimestamp, BulkEventID eventID, ulong id, AsyncCallstackType type, Continuation? asyncCallstack)
             {
                 BulkEvent(context, currentTimestamp, currentTimestamp - context.LastBulkEventTimestamp, eventID, id, type, asyncCallstack);
             }
-            public static void BulkEvent(AsyncThreadContext context, long currentTimestamp, long delta, BulkEventID eventID, ulong id, AsyncType type, Continuation? asyncCallstack)
+            public static void BulkEvent(AsyncThreadContext context, long currentTimestamp, long delta, BulkEventID eventID, ulong id, AsyncCallstackType type, Continuation? asyncCallstack)
             {
                 CaptureRuntimeAsyncCallstackState state = default;
                 Span<byte> stackBuffer = stackalloc byte[64 * BULK_ASYNC_METHOD_INFO_SIZE];
@@ -508,8 +508,8 @@ namespace System.Runtime.CompilerServices
                     buffer = Array.Empty<byte>().AsSpan();
                 }
 
-                // id (max 10 bytes compressed) + type (1 byte) + index bytes.
-                int maxEventSize = sizeof(ulong) + 2 + sizeof(byte) + index;
+                // id (max 10 bytes compressed) + type (1 byte) + callstackId (1 byte) + frameCount (1 byte) + frame data bytes.
+                int maxEventSize = sizeof(ulong) + 2 + sizeof(byte) + sizeof(byte) + sizeof(byte) + index;
 
                 if (BulkBuffer.Serializer.AsyncEventHeader(context, ref bulkBuffer, currentTimestamp, delta, eventID, maxEventSize))
                 {

@@ -332,7 +332,8 @@ namespace System.Threading.Tasks.Tests
             out ulong taskId, out byte frameCount, out List<(ulong NativeIP, int State)> frames)
         {
             taskId = ReadCompressedUInt64(buffer, ref index);
-            index++;
+            index++; // type
+            index++; // callstack ID (reserved)
             frameCount = buffer[index++];
             frames = new List<(ulong, int)>(frameCount);
 
