@@ -482,6 +482,15 @@ namespace System.Runtime.CompilerServices
                 {
                     if (AsyncInstrumentation.IsEnabled.CreateAsyncContext(flags))
                     {
+                        if (AsyncInstrumentation.IsEnabled.AsyncProfiler(flags))
+                        {
+                            Continuation? nc = t_runtimeAsyncAwaitState.SentinelContinuation!.Next;
+                            if (nc != null)
+                            {
+                                AsyncProfiler.CreateAsyncContext.Create((ulong)task.Id, nc);
+                            }
+                        }
+
                         if (AsyncInstrumentation.IsEnabled.DebuggerOrTpl(flags))
                         {
                             CreateRuntimeAsyncContextDebuggerOrTpl(task, flags);

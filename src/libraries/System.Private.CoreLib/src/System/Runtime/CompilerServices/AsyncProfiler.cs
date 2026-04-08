@@ -10,28 +10,23 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using static System.Runtime.CompilerServices.AsyncProfilerEventSource;
 
-//TODO: Implement AsyncV1 async method support.
-//TODO: ETW can use EVENT_CONTROL_CODE_CAPTURE_STATE to flush on session end, but we need to implement flush on EventPipe session end as well covering EventPipe+UserEvents.
-//TODO: QPC is the major cost on bulk scenarios, ~ 15-20 ns per event. Possible to do direct call to __rdtsc, but it will still be ~10 ns per event.
-//TODO: Deep callstacks are more expensive, investigate callstack folding as done on EventPipe to reduce serialization cost and size for identical resume callstacks.
-//TODO: Emit a sync event to match clocks + additional metadata for bulk scenario.
-//TODO: Maybe we would need some metadata on the ResumeAsyncCallstack around the dispatcher loop address, its generic so we won't be able to precompute all.
-
 namespace System.Runtime.CompilerServices
 {
     internal static partial class AsyncProfiler
     {
         internal enum BulkEventID : byte
         {
-            ResumeAsyncContext = 10,
-            SuspendAsyncContext = 11,
-            CompleteAsyncContext = 12,
-            UnwindAsyncException = 13,
-            ResumeAsyncCallstack = 14,
-            ResumeAsyncMethod = 15,
-            CompleteAsyncMethod = 16,
-            ResetAsyncThreadContext = 17,
-            ResetContinuationWrapperIndex = 18
+            CreateAsyncContext = 10,
+            ResumeAsyncContext = 11,
+            SuspendAsyncContext = 12,
+            CompleteAsyncContext = 13,
+            UnwindAsyncException = 14,
+            CreateAsyncCallstack = 15,
+            ResumeAsyncCallstack = 16,
+            ResumeAsyncMethod = 17,
+            CompleteAsyncMethod = 18,
+            ResetAsyncThreadContext = 19,
+            ResetContinuationWrapperIndex = 20
         }
 
         internal ref struct Info
@@ -112,12 +107,13 @@ namespace System.Runtime.CompilerServices
             private static void UpdateFlags()
             {
                 AsyncInstrumentation.Flags flags = AsyncInstrumentation.Flags.Disabled;
-                flags |= IsEventKeywordEnabled.BulkResumeAsyncContextEvent(ActiveEventKeywords) || IsEventKeywordEnabled.BulkResumeAsyncCallstackEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.ResumeAsyncContext : 0;
-                flags |= IsEventKeywordEnabled.BulkSuspendAsyncContextEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.SuspendAsyncContext : 0;
-                flags |= IsEventKeywordEnabled.BulkCompleteAsyncContextEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.CompleteAsyncContext : 0;
-                flags |= IsEventKeywordEnabled.BulkUnwindAsyncExceptionEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.UnwindAsyncException : 0;
-                flags |= IsEventKeywordEnabled.BulkResumeAsyncMethodEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.ResumeAsyncMethod : 0;
-                flags |= IsEventKeywordEnabled.BulkCompleteAsyncMethodEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.CompleteAsyncMethod : 0;
+                flags |= IsEventKeywordEnabled.BulkCreateAsyncContextEvent(ActiveEventKeywords) || IsEventKeywordEnabled.BulkCreateAsyncCallstackEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.CreateAsyncContext : AsyncInstrumentation.Flags.Disabled;
+                flags |= IsEventKeywordEnabled.BulkResumeAsyncContextEvent(ActiveEventKeywords) || IsEventKeywordEnabled.BulkResumeAsyncCallstackEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.ResumeAsyncContext : AsyncInstrumentation.Flags.Disabled;
+                flags |= IsEventKeywordEnabled.BulkSuspendAsyncContextEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.SuspendAsyncContext : AsyncInstrumentation.Flags.Disabled;
+                flags |= IsEventKeywordEnabled.BulkCompleteAsyncContextEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.CompleteAsyncContext : AsyncInstrumentation.Flags.Disabled;
+                flags |= IsEventKeywordEnabled.BulkUnwindAsyncExceptionEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.UnwindAsyncException : AsyncInstrumentation.Flags.Disabled;
+                flags |= IsEventKeywordEnabled.BulkResumeAsyncMethodEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.ResumeAsyncMethod : AsyncInstrumentation.Flags.Disabled;
+                flags |= IsEventKeywordEnabled.BulkCompleteAsyncMethodEvent(ActiveEventKeywords) ? AsyncInstrumentation.Flags.CompleteAsyncMethod : AsyncInstrumentation.Flags.Disabled;
 
                 AsyncInstrumentation.UpdateAsyncProfilerFlags(flags);
             }
@@ -145,7 +141,7 @@ namespace System.Runtime.CompilerServices
 
             public int Index;
 
-            public int EventCount;
+            public uint EventCount;
 
             public static class Serializer
             {
@@ -190,6 +186,9 @@ namespace System.Runtime.CompilerServices
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 private static void UInt32(ref byte buffer, ref int index, uint value)
                 {
+                    if (!BitConverter.IsLittleEndian)
+                        value = BinaryPrimitives.ReverseEndianness(value);
+
                     Unsafe.WriteUnaligned(ref Unsafe.Add(ref buffer, index), value);
                     index += 4;
                 }
@@ -260,6 +259,9 @@ namespace System.Runtime.CompilerServices
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 private static void UInt64(ref byte buffer, ref int index, ulong value)
                 {
+                    if (!BitConverter.IsLittleEndian)
+                        value = BinaryPrimitives.ReverseEndianness(value);
+
                     Unsafe.WriteUnaligned(ref Unsafe.Add(ref buffer, index), value);
                     index += 8;
                 }
@@ -308,8 +310,11 @@ namespace System.Runtime.CompilerServices
 
                     //Write header to buffer
                     Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(buffer), index++) = 1; // Bulk version
-                    CompressedUInt64(buffer, ref index, Thread.CurrentOSThreadId); // OS Thread ID
-                    CompressedUInt64(buffer, ref index, (ulong)context.LastBulkEventTimestamp); // Timestamp
+                    UInt32(buffer, ref index, 0); // Total size in bytes, will be updated on flush.
+                    UInt32(buffer, ref index, 0); // Total event count, will be updated on flush.
+                    UInt64(buffer, ref index, Thread.CurrentOSThreadId); // OS Thread ID
+                    UInt64(buffer, ref index, (ulong)context.LastBulkEventTimestamp); // Start timestamp
+                    UInt64(buffer, ref index, 0); // End timestamp, will be updated on flush.
                 }
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -400,14 +405,20 @@ namespace System.Runtime.CompilerServices
                         return index;
                     }
 
-                    CompressedUInt64(buffer, ref index, out ulong osThreadId);
-                    CompressedUInt64(buffer, ref index, out ulong timestamp);
+                    UInt32(buffer, ref index, out uint totalSize);
+                    UInt32(buffer, ref index, out uint totalEventCount);
+                    UInt64(buffer, ref index, out ulong osThreadId);
+                    UInt64(buffer, ref index, out ulong startTimestamp);
+                    UInt64(buffer, ref index, out ulong endTimestamp);
 
+                    Debug.WriteLine($"TotalSize (bytes): {totalSize}");
+                    Debug.WriteLine($"TotalEventCount: {totalEventCount}");
                     Debug.WriteLine($"OSThreadId: {osThreadId}");
-                    Debug.WriteLine($"Timestamp: 0x{timestamp:X16}");
+                    Debug.WriteLine($"StartTimestamp: 0x{startTimestamp:X16}");
+                    Debug.WriteLine($"EndTimestamp: 0x{endTimestamp:X16}");
 
                     int eventCount = 0;
-                    ulong currentTimestamp = timestamp;
+                    ulong currentTimestamp = startTimestamp;
 
                     while (index < buffer.Length)
                     {
@@ -429,11 +440,13 @@ namespace System.Runtime.CompilerServices
                         {
                             index += eventId switch
                             {
+                                BulkEventID.CreateAsyncContext => CreateAsyncContext.DumpEvent(),
                                 BulkEventID.ResumeAsyncContext => ResumeAsyncContext.DumpEvent(),
                                 BulkEventID.SuspendAsyncContext => SuspendAsyncContext.DumpEvent(),
                                 BulkEventID.CompleteAsyncContext => CompleteAsyncContext.DumpEvent(),
                                 BulkEventID.UnwindAsyncException => AsyncMethodException.DumpEvent(buffer.Slice(index)),
-                                BulkEventID.ResumeAsyncCallstack => AsyncCallstack.DumpEvent(buffer.Slice(index)),
+                                BulkEventID.CreateAsyncCallstack => AsyncCallstack.DumpEvent("CreateAsyncCallstack", buffer.Slice(index)),
+                                BulkEventID.ResumeAsyncCallstack => AsyncCallstack.DumpEvent("ResumeAsyncCallstack", buffer.Slice(index)),
                                 BulkEventID.ResumeAsyncMethod => ResumeAsyncMethod.DumpEvent(),
                                 BulkEventID.CompleteAsyncMethod => CompleteAsyncMethod.DumpEvent(),
                                 BulkEventID.ResetAsyncThreadContext => SyncPoint.DumpEvent(),
@@ -639,6 +652,17 @@ namespace System.Runtime.CompilerServices
                     return;
                 }
 
+                int index = 1; // Skip version
+
+                // Fill in total size and event count in header before flushing.
+                BulkBuffer.Serializer.UInt32(bulkBuffer.Data, ref index, (uint)bulkBuffer.Index);
+                BulkBuffer.Serializer.UInt32(bulkBuffer.Data, ref index, bulkBuffer.EventCount);
+
+                index += sizeof(ulong) + sizeof(ulong); // Skip OSThreadId and start timestamp
+
+                // Fill in end timestamp in header before flushing.
+                BulkBuffer.Serializer.UInt64(bulkBuffer.Data, ref index, (ulong)LastBulkEventTimestamp);
+
                 LogEvent(bulkBuffer.Data.AsSpan().Slice(0, bulkBuffer.Index));
                 BulkBuffer.Serializer.Header(this, ref bulkBuffer);
             }
@@ -669,6 +693,33 @@ namespace System.Runtime.CompilerServices
 
             [ThreadStatic]
             private static AsyncThreadContext? t_asyncThreadContext;
+        }
+
+        internal static partial class CreateAsyncContext
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void BulkEvent(AsyncThreadContext context)
+            {
+                BulkBuffer.Serializer.AsyncEventHeader(context, ref context.BulkBuffer, BulkEventID.CreateAsyncContext, 0);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void BulkEvent(AsyncThreadContext context, long currentTimestamp)
+            {
+                BulkBuffer.Serializer.AsyncEventHeader(context, ref context.BulkBuffer, currentTimestamp, BulkEventID.CreateAsyncContext, 0);
+            }
+
+#if DEBUG
+            public static int DumpEvent()
+            {
+                Debug.WriteLine("--- CreateAsyncContext ---");
+                Debug.WriteLine("----------------------------");
+                return 0;
+            }
+#else
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static int DumpEvent() => 0;
+#endif
         }
 
         internal static partial class ResumeAsyncContext
@@ -1047,12 +1098,12 @@ namespace System.Runtime.CompilerServices
 #pragma warning restore CA1823
 
 #if DEBUG
-            public static int DumpEvent(ReadOnlySpan<byte> buffer)
+            public static int DumpEvent(string eventName, ReadOnlySpan<byte> buffer)
             {
-                return DumpAsyncCallstackEvent(buffer);
+                return DumpAsyncCallstackEvent(eventName, buffer);
             }
 
-            private static int DumpAsyncCallstackEvent(ReadOnlySpan<byte> buffer)
+            private static int DumpAsyncCallstackEvent(string eventName, ReadOnlySpan<byte> buffer)
             {
                 ulong id;
                 byte type;
@@ -1063,7 +1114,7 @@ namespace System.Runtime.CompilerServices
                 type = buffer[index++];
                 asyncCallstackLength = buffer[index++];
 
-                Debug.WriteLine($"--- ResumeAsyncCallstack ---");
+                Debug.WriteLine($"--- {eventName} ---");
                 Debug.WriteLine($"ID: {id}");
                 Debug.WriteLine($"Type: {type}");
                 Debug.WriteLine($"Length: {asyncCallstackLength}");
@@ -1119,10 +1170,12 @@ namespace System.Runtime.CompilerServices
 
         private static class IsEventKeywordEnabled
         {
+            public static bool BulkCreateAsyncContextEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkCreateAsyncContext) != 0;
             public static bool BulkResumeAsyncContextEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkResumeAsyncContext) != 0;
             public static bool BulkSuspendAsyncContextEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkSuspendAsyncContext) != 0;
             public static bool BulkCompleteAsyncContextEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkCompleteAsyncContext) != 0;
             public static bool BulkUnwindAsyncExceptionEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkUnwindAsyncException) != 0;
+            public static bool BulkCreateAsyncCallstackEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkCreateAsyncCallstack) != 0;
             public static bool BulkResumeAsyncCallstackEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkResumeAsyncCallstack) != 0;
             public static bool BulkResumeAsyncMethodEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkResumeAsyncMethod) != 0;
             public static bool BulkCompleteAsyncMethodEvent(EventKeywords eventKeywords) => (eventKeywords & Keywords.BulkCompleteAsyncMethod) != 0;

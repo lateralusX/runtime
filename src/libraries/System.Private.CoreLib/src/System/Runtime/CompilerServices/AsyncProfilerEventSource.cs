@@ -23,20 +23,23 @@ namespace System.Runtime.CompilerServices
 
         public static class Keywords // this name is important for EventSource
         {
-            //TODO add bulk event for create async context.
-            public const EventKeywords BulkResumeAsyncContext = (EventKeywords)0x1;
-            public const EventKeywords BulkSuspendAsyncContext = (EventKeywords)0x2;
-            public const EventKeywords BulkCompleteAsyncContext = (EventKeywords)0x4;
-            public const EventKeywords BulkUnwindAsyncException = (EventKeywords)0x8;
-            public const EventKeywords BulkResumeAsyncCallstack = (EventKeywords)0x10;
-            public const EventKeywords BulkResumeAsyncMethod = (EventKeywords)0x20;
-            public const EventKeywords BulkCompleteAsyncMethod = (EventKeywords)0x40;
+            public const EventKeywords BulkCreateAsyncContext = (EventKeywords)0x1;
+            public const EventKeywords BulkResumeAsyncContext = (EventKeywords)0x2;
+            public const EventKeywords BulkSuspendAsyncContext = (EventKeywords)0x4;
+            public const EventKeywords BulkCompleteAsyncContext = (EventKeywords)0x8;
+            public const EventKeywords BulkUnwindAsyncException = (EventKeywords)0x10;
+            public const EventKeywords BulkCreateAsyncCallstack = (EventKeywords)0x20;
+            public const EventKeywords BulkResumeAsyncCallstack = (EventKeywords)0x40;
+            public const EventKeywords BulkResumeAsyncMethod = (EventKeywords)0x80;
+            public const EventKeywords BulkCompleteAsyncMethod = (EventKeywords)0x100;
         }
 
         public const EventKeywords BulkAsyncEventKeywords =
+            Keywords.BulkCreateAsyncContext |
             Keywords.BulkResumeAsyncContext |
             Keywords.BulkSuspendAsyncContext |
             Keywords.BulkCompleteAsyncContext |
+            Keywords.BulkCreateAsyncCallstack |
             Keywords.BulkResumeAsyncCallstack |
             Keywords.BulkUnwindAsyncException |
             Keywords.BulkResumeAsyncMethod |

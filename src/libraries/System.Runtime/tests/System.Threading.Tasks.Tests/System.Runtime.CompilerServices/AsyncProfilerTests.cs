@@ -22,48 +22,50 @@ namespace System.Threading.Tasks.Tests
         private const int AsyncEventsMetadataId = 2;
 
         // AsyncProfilerEventSource Keywords matching the event source definition
-        private const EventKeywords BulkResumeAsyncContext = (EventKeywords)0x1;
-        private const EventKeywords BulkSuspendAsyncContext = (EventKeywords)0x2;
-        private const EventKeywords BulkCompleteAsyncContext = (EventKeywords)0x4;
-        private const EventKeywords BulkUnwindAsyncException = (EventKeywords)0x8;
-        private const EventKeywords BulkResumeAsyncCallstack = (EventKeywords)0x10;
-        private const EventKeywords BulkResumeAsyncMethod = (EventKeywords)0x20;
-        private const EventKeywords BulkCompleteAsyncMethod = (EventKeywords)0x40;
+        private const EventKeywords BulkCreateAsyncContext = (EventKeywords)0x1;
+        private const EventKeywords BulkResumeAsyncContext = (EventKeywords)0x2;
+        private const EventKeywords BulkSuspendAsyncContext = (EventKeywords)0x4;
+        private const EventKeywords BulkCompleteAsyncContext = (EventKeywords)0x8;
+        private const EventKeywords BulkUnwindAsyncException = (EventKeywords)0x10;
+        private const EventKeywords BulkCreateAsyncCallstack = (EventKeywords)0x20;
+        private const EventKeywords BulkResumeAsyncCallstack = (EventKeywords)0x40;
+        private const EventKeywords BulkResumeAsyncMethod = (EventKeywords)0x80;
+        private const EventKeywords BulkCompleteAsyncMethod = (EventKeywords)0x100;
 
         private const EventKeywords AllBulkKeywords =
-            BulkResumeAsyncContext | BulkSuspendAsyncContext | BulkCompleteAsyncContext |
-            BulkUnwindAsyncException | BulkResumeAsyncCallstack |
+            BulkCreateAsyncContext | BulkResumeAsyncContext | BulkSuspendAsyncContext |
+            BulkCompleteAsyncContext | BulkUnwindAsyncException |
+            BulkCreateAsyncCallstack | BulkResumeAsyncCallstack |
             BulkResumeAsyncMethod | BulkCompleteAsyncMethod;
 
         private const EventKeywords CoreKeywords =
-            BulkResumeAsyncContext | BulkSuspendAsyncContext | BulkCompleteAsyncContext;
+            BulkCreateAsyncContext | BulkResumeAsyncContext | BulkSuspendAsyncContext | BulkCompleteAsyncContext;
 
         private const EventKeywords MethodKeywords =
             BulkResumeAsyncMethod | BulkCompleteAsyncMethod;
 
+        private const EventKeywords CallstackKeywords =
+            BulkCreateAsyncContext | BulkCreateAsyncCallstack |
+            BulkResumeAsyncContext | BulkResumeAsyncCallstack | BulkCompleteAsyncContext |
+            BulkCompleteAsyncMethod | BulkUnwindAsyncException;
 
         // Bulk event IDs matching AsyncProfiler.BulkEventID
-        private const byte ResumeAsyncContext = 10;
-        private const byte SuspendAsyncContext = 11;
-        private const byte CompleteAsyncContext = 12;
-        private const byte UnwindAsyncException = 13;
-        private const byte ResumeAsyncCallstack = 14;
-        private const byte ResumeAsyncMethod = 15;
-        private const byte CompleteAsyncMethod = 16;
-        private const byte ResetAsyncThreadContext = 17;
-        private const byte ResetContinuationWrapperIndex = 18;
+        private const byte CreateAsyncContext = 10;
+        private const byte ResumeAsyncContext = 11;
+        private const byte SuspendAsyncContext = 12;
+        private const byte CompleteAsyncContext = 13;
+        private const byte UnwindAsyncException = 14;
+        private const byte CreateAsyncCallstack = 15;
+        private const byte ResumeAsyncCallstack = 16;
+        private const byte ResumeAsyncMethod = 17;
+        private const byte CompleteAsyncMethod = 18;
+        private const byte ResetAsyncThreadContext = 19;
+        private const byte ResetContinuationWrapperIndex = 20;
 
         [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(true)]
         static async Task Func()
         {
             await Task.Yield();
-        }
-
-        [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(true)]
-        static async Task FuncThatThrows()
-        {
-            await Task.Yield();
-            throw new InvalidOperationException("test exception");
         }
 
         [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(true)]
@@ -238,8 +240,12 @@ namespace System.Threading.Tasks.Tests
             if (buffer.Length < 1 || buffer[index++] != 1)
                 return;
 
-            SkipCompressedUInt64(buffer, ref index);
-            long baseTimestamp = (long)ReadCompressedUInt64(buffer, ref index);
+            index += sizeof(uint); // skip totalSize
+            index += sizeof(uint); // skip eventCount
+            index += sizeof(ulong); // skip OS Thread ID
+            long baseTimestamp = (long)BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(index));
+            index += sizeof(ulong);
+            index += sizeof(ulong); // skip end timestamp
 
             while (index < buffer.Length)
             {
@@ -260,6 +266,7 @@ namespace System.Threading.Tasks.Tests
         {
             switch (eventId)
             {
+                case CreateAsyncContext:
                 case ResumeAsyncContext:
                 case SuspendAsyncContext:
                 case CompleteAsyncContext:
@@ -271,17 +278,13 @@ namespace System.Threading.Tasks.Tests
                 case UnwindAsyncException:
                     ReadCompressedUInt32(buffer, ref index);
                     return true;
+                case CreateAsyncCallstack:
                 case ResumeAsyncCallstack:
                     SkipCallstackPayload(buffer, ref index);
                     return true;
                 default:
                     return false;
             }
-        }
-
-        private static void SkipCompressedUInt64(ReadOnlySpan<byte> buffer, ref int index)
-        {
-            while (index < buffer.Length && (buffer[index++] & 0x80) != 0) { }
         }
 
         private static uint ReadCompressedUInt32(ReadOnlySpan<byte> buffer, ref int index)
@@ -322,7 +325,13 @@ namespace System.Threading.Tasks.Tests
         private static void ReadCallstackPayload(ReadOnlySpan<byte> buffer, ref int index,
             out byte frameCount, out List<(ulong NativeIP, int State)> frames)
         {
-            ReadCompressedUInt64(buffer, ref index);
+            ReadCallstackPayload(buffer, ref index, out _, out frameCount, out frames);
+        }
+
+        private static void ReadCallstackPayload(ReadOnlySpan<byte> buffer, ref int index,
+            out ulong taskId, out byte frameCount, out List<(ulong NativeIP, int State)> frames)
+        {
+            taskId = ReadCompressedUInt64(buffer, ref index);
             index++;
             frameCount = buffer[index++];
             frames = new List<(ulong, int)>(frameCount);
@@ -357,11 +366,30 @@ namespace System.Threading.Tasks.Tests
 
         private static ulong ParseOsThreadId(ReadOnlySpan<byte> buffer)
         {
-            if (buffer.Length < 2 || buffer[0] != 1)
+            // Header: version(1) + totalSize(4) + eventCount(4) + threadId(8)
+            const int threadIdOffset = 1 + sizeof(uint) + sizeof(uint);
+            if (buffer.Length < threadIdOffset + sizeof(ulong) || buffer[0] != 1)
                 return 0;
 
+            return BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(threadIdOffset));
+        }
+
+        private readonly record struct BulkHeader(byte Version, uint TotalSize, uint EventCount, ulong OsThreadId, ulong StartTimestamp, ulong EndTimestamp);
+
+        private static BulkHeader? ParseBulkHeader(ReadOnlySpan<byte> buffer)
+        {
+            const int HeaderSize = 1 + sizeof(uint) + sizeof(uint) + sizeof(ulong) + sizeof(ulong) + sizeof(ulong);
+            if (buffer.Length < HeaderSize || buffer[0] != 1)
+                return null;
+
             int index = 1;
-            return ReadCompressedUInt64(buffer, ref index);
+            uint totalSize = BinaryPrimitives.ReadUInt32LittleEndian(buffer.Slice(index)); index += sizeof(uint);
+            uint eventCount = BinaryPrimitives.ReadUInt32LittleEndian(buffer.Slice(index)); index += sizeof(uint);
+            ulong threadId = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(index)); index += sizeof(ulong);
+            ulong startTs = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(index)); index += sizeof(ulong);
+            ulong endTs = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(index));
+
+            return new BulkHeader(buffer[0], totalSize, eventCount, threadId, startTs, endTs);
         }
 
         private static List<byte> CollectBulkEventIds(ConcurrentQueue<EventWrittenEventArgs> events)
@@ -408,16 +436,28 @@ namespace System.Threading.Tasks.Tests
             return frameCounts;
         }
 
-        private static List<(byte FrameCount, List<(ulong NativeIP, int State)> Frames)> CollectCallstacks(
+        private static List<(ulong TaskId, byte FrameCount, List<(ulong NativeIP, int State)> Frames)> CollectCallstacks(
             ConcurrentQueue<EventWrittenEventArgs> events)
         {
-            return CollectCallstacks(events, threadId: null);
+            return CollectCallstacks(events, ResumeAsyncCallstack, threadId: null);
         }
 
-        private static List<(byte FrameCount, List<(ulong NativeIP, int State)> Frames)> CollectCallstacks(
+        private static List<(ulong TaskId, byte FrameCount, List<(ulong NativeIP, int State)> Frames)> CollectCallstacks(
             ConcurrentQueue<EventWrittenEventArgs> events, ulong? threadId)
         {
-            var callstacks = new List<(byte, List<(ulong, int)>)>();
+            return CollectCallstacks(events, ResumeAsyncCallstack, threadId);
+        }
+
+        private static List<(ulong TaskId, byte FrameCount, List<(ulong NativeIP, int State)> Frames)> CollectCallstacks(
+            ConcurrentQueue<EventWrittenEventArgs> events, byte callstackEventId)
+        {
+            return CollectCallstacks(events, callstackEventId, threadId: null);
+        }
+
+        private static List<(ulong TaskId, byte FrameCount, List<(ulong NativeIP, int State)> Frames)> CollectCallstacks(
+            ConcurrentQueue<EventWrittenEventArgs> events, byte callstackEventId, ulong? threadId)
+        {
+            var callstacks = new List<(ulong, byte, List<(ulong, int)>)>();
             ForEachBulkPayload(events, buffer =>
             {
                 if (threadId.HasValue)
@@ -429,10 +469,10 @@ namespace System.Threading.Tasks.Tests
 
                 ParseBulkBuffer(buffer, (byte eventId, ReadOnlySpan<byte> buf, ref int idx) =>
                 {
-                    if (eventId == ResumeAsyncCallstack)
+                    if (eventId == callstackEventId)
                     {
-                        ReadCallstackPayload(buf, ref idx, out byte frameCount, out var frames);
-                        callstacks.Add((frameCount, frames));
+                        ReadCallstackPayload(buf, ref idx, out ulong taskId, out byte frameCount, out var frames);
+                        callstacks.Add((taskId, frameCount, frames));
                         return true;
                     }
                     return SkipEventPayload(eventId, buf, ref idx);
@@ -554,6 +594,48 @@ namespace System.Threading.Tasks.Tests
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_BulkHeaderFormat()
+        {
+            var events = CollectEvents(CoreKeywords, () =>
+            {
+                RunScenarioAndFlush(async () =>
+                {
+                    await Func();
+                });
+            });
+
+            int buffersChecked = 0;
+            ForEachBulkPayload(events, buffer =>
+            {
+                BulkHeader? parsed = ParseBulkHeader(buffer);
+                Assert.NotNull(parsed);
+                BulkHeader header = parsed.Value;
+
+                Assert.Equal(1, header.Version);
+                Assert.Equal((uint)buffer.Length, header.TotalSize);
+                Assert.True(header.OsThreadId != 0, "OS thread ID should be non-zero");
+                Assert.True(header.StartTimestamp > 0, "Start timestamp should be positive");
+                Assert.True(header.EndTimestamp >= header.StartTimestamp,
+                    $"End timestamp ({header.EndTimestamp}) should be >= start timestamp ({header.StartTimestamp})");
+
+                int eventCount = 0;
+                ParseBulkBuffer(buffer, (byte eventId, ReadOnlySpan<byte> buf, ref int idx) =>
+                {
+                    eventCount++;
+                    return SkipEventPayload(eventId, buf, ref idx);
+                });
+
+                Assert.Equal(header.EventCount, (uint)eventCount);
+                Assert.True(header.EventCount > 0, "Expected at least one event in bulk buffer");
+
+                buffersChecked++;
+            });
+
+            Assert.True(buffersChecked > 0, "Expected at least one bulk buffer");
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
         public void RuntimeAsync_BulkEventsEmitted()
         {
             var events = CollectEvents(AllBulkKeywords, () =>
@@ -615,125 +697,13 @@ namespace System.Threading.Tasks.Tests
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
-        public void RuntimeAsync_UnhandledExceptionUnwind()
-        {
-            var events = CollectEvents(BulkUnwindAsyncException | CoreKeywords, () =>
-            {
-                // lambda -> DeepUnhandledOuter -> DeepUnhandledMiddle -> DeepUnhandledInnerThrows (4 levels).
-                // No try/catch in the chain — UnwindToPossibleHandler returns null,
-                // triggering the unhandled exception path which faults the task.
-                // unwindedFrames starts at 1 (current) + walks 2 more continuations = 3.
-                try
-                {
-                    RunScenario(async () =>
-                    {
-                        await DeepUnhandledOuter();
-                    });
-                }
-                catch (InvalidOperationException)
-                {
-                }
-
-                SendFlushCommand();
-            });
-
-            var eventIds = CollectBulkEventIds(events);
-            var frameCounts = CollectUnwindFrameCounts(events);
-
-            Assert.Contains(ResumeAsyncContext, eventIds);
-            Assert.Contains(UnwindAsyncException, eventIds);
-            Assert.Contains(CompleteAsyncContext, eventIds);
-
-            Assert.NotEmpty(frameCounts);
-            Assert.All(frameCounts, count => Assert.Equal(4u, count));
-        }
-
-        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
-        public void RuntimeAsync_HandledExceptionUnwind()
-        {
-            var events = CollectEvents(BulkUnwindAsyncException | CoreKeywords, () =>
-            {
-                // DeepOuterCatches -> DeepMiddle -> DeepInnerThrows (3 levels).
-                // DeepOuterCatches has try/catch — UnwindToPossibleHandler finds the handler.
-                // unwindedFrames starts at 1 (current) + walks 1 to find handler = 2.
-                RunScenarioAndFlush(async () =>
-                {
-                    await DeepOuterCatches();
-                });
-            });
-
-            var eventIds = CollectBulkEventIds(events);
-            var frameCounts = CollectUnwindFrameCounts(events);
-
-            Assert.Contains(ResumeAsyncContext, eventIds);
-            Assert.Contains(UnwindAsyncException, eventIds);
-            Assert.Contains(CompleteAsyncContext, eventIds);
-
-            Assert.NotEmpty(frameCounts);
-            Assert.All(frameCounts, count => Assert.Equal(2u, count));
-        }
-
-        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
-        public void RuntimeAsync_ResetAsyncThreadContextEvent()
-        {
-            var events = CollectEvents(CoreKeywords, () =>
-            {
-                RunScenarioAndFlush(async () =>
-                {
-                    await Func();
-                });
-            });
-
-            var eventIds = CollectBulkEventIds(events);
-
-            Assert.Contains(ResetAsyncThreadContext, eventIds);
-        }
-
-        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
-        public void RuntimeAsync_NoEventsWhenDisabled()
-        {
-            // Run async work WITHOUT a listener attached
-            Task.Run(async () =>
-            {
-                for (int i = 0; i < 50; i++)
-                {
-                    await Func();
-                }
-            }).GetAwaiter().GetResult();
-
-            // Now attach listener and verify no stale events are emitted
-            var events = CollectEvents(CoreKeywords, () =>
-            {
-                // Don't run any async work - just check nothing comes through from before
-                Thread.Sleep(100);
-            });
-
-            // There may be a ResetAsyncThreadContext from the SyncPoint when keywords change,
-            // but there should be no suspend/resume/complete events from the earlier work.
-            var eventIds = CollectBulkEventIds(events);
-            int contextEvents = eventIds.FindAll(id => id == ResumeAsyncContext || id == SuspendAsyncContext || id == CompleteAsyncContext).Count;
-
-            Assert.Equal(0, contextEvents);
-        }
-
-        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
         public void RuntimeAsync_EventSequenceOrder()
         {
             var events = CollectEvents(CoreKeywords, () =>
             {
+                // Same scenario as SuspendResumeCompleteEvents; here we verify ordering.
                 RunScenarioAndFlush(async () =>
                 {
-                    // If not Yield here there won't be a SuspendAsyncContext.
-                    // First call is a regular sync invocation (no continuation chain).
-                    // Yield in Func will create an RuntimeAsyncTask with continuation chain
-                    // and schedule on thread pool. When chain is resumed there will be
-                    // ResumeAsyncContext and CompleteAsyncContext since the chain won't suspend again.
-                    // The first Yield fixes that creating and schedule the RuntimeAsyncTask and Func
-                    // will be called from the dispatch loop triggering the expected sequence of events.
                     await Task.Yield();
                     await Func();
                 });
@@ -750,92 +720,100 @@ namespace System.Threading.Tasks.Tests
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
-        public void RuntimeAsync_PeriodicTimerFlush()
+        public void RuntimeAsync_CreateAsyncContextEmittedOnFirstAwait()
         {
-            var events = CollectEvents(CoreKeywords, () =>
+            var events = CollectEvents(BulkCreateAsyncContext | BulkCompleteAsyncContext, () =>
             {
-                // Run scenario — do NOT flush explicitly afterwards.
-                RunScenario(async () =>
+                RunScenarioAndFlush(async () =>
                 {
                     await Func();
                 });
-
-                // Wait for the periodic flush timer (1s interval) to detect the idle
-                // buffer and flush it automatically.
-                Thread.Sleep(2000);
             });
 
             var eventIds = CollectBulkEventIds(events);
-            int coreEventCount = eventIds.FindAll(id => id == ResumeAsyncContext || id == SuspendAsyncContext || id == CompleteAsyncContext).Count;
-
-            Assert.True(coreEventCount > 0, "Expected periodic timer to flush bulk buffer with core lifecycle events");
+            Assert.Contains(CreateAsyncContext, eventIds);
         }
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
-        public void RuntimeAsync_MultiThreadFlush()
+        public void RuntimeAsync_CreateAsyncCallstackEmittedOnFirstAwait()
         {
-            const int threadCount = 4;
-            var events = CollectEvents(CoreKeywords, () =>
+            var events = CollectEvents(BulkCreateAsyncCallstack | BulkCompleteAsyncContext, () =>
             {
-                // Ensure enough thread pool threads are available for concurrent execution.
-                ThreadPool.GetMinThreads(out int prevWorker, out int prevIO);
-                ThreadPool.SetMinThreads(threadCount, prevIO);
-
-                var tasks = new Task[threadCount];
-                for (int i = 0; i < threadCount; i++)
+                RunScenarioAndFlush(async () =>
                 {
-                    tasks[i] = Task.Run(async () =>
-                    {
-                        await Func();
-                    });
-                }
-
-                Task.WhenAll(tasks).GetAwaiter().GetResult();
-                ThreadPool.SetMinThreads(prevWorker, prevIO);
-                SendFlushCommand();
+                    await Func();
+                });
             });
 
-            var threadIds = CollectOsThreadIds(events);
+            var callstacks = CollectCallstacks(events, CreateAsyncCallstack);
 
-            Assert.True(threadIds.Count > 1, $"Expected events from multiple threads, got {threadIds.Count} distinct OS thread ID(s)");
+            Assert.NotEmpty(callstacks);
+            Assert.All(callstacks, cs =>
+            {
+                Assert.True(cs.FrameCount > 0, "Expected at least one frame in create callstack");
+                Assert.True(cs.Frames[0].NativeIP != 0, "Expected non-zero NativeIP in first frame");
+            });
         }
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
-        public void RuntimeAsync_DeadThreadFlush()
+        public void RuntimeAsync_CreateCallstackPrecedesResumeCallstack()
         {
-            var events = CollectEvents(CoreKeywords, () =>
-            {
-                // Spawn a dedicated thread that runs async work then exits.
-                // Its thread-local bulk buffer becomes orphaned when the thread dies.
-                var thread = new Thread(() =>
+            var events = CollectEvents(
+                BulkCreateAsyncContext | BulkCreateAsyncCallstack |
+                BulkResumeAsyncContext | BulkResumeAsyncCallstack |
+                BulkCompleteAsyncContext, () =>
                 {
-                    RunScenario(async () =>
+                    RunScenarioAndFlush(async () =>
                     {
                         await Func();
                     });
                 });
 
-                thread.IsBackground = true;
-                thread.Start();
-                thread.Join(TimeSpan.FromSeconds(10));
-
-                // Do NOT send a flush command.
-                // Wait for the periodic flush timer to detect the dead thread
-                // and flush its orphaned buffer.
-                Thread.Sleep(2000);
-            });
-
             var eventIds = CollectBulkEventIds(events);
-            int coreEventCount = eventIds.FindAll(id => id == ResumeAsyncContext || id == SuspendAsyncContext || id == CompleteAsyncContext).Count;
 
-            Assert.True(coreEventCount > 0, "Expected periodic timer to flush dead thread's bulk buffer");
+            int createIdx = eventIds.IndexOf(CreateAsyncCallstack);
+            int resumeIdx = eventIds.IndexOf(ResumeAsyncCallstack);
+
+            Assert.True(createIdx >= 0, "Expected CreateAsyncCallstack event");
+            Assert.True(resumeIdx >= 0, "Expected ResumeAsyncCallstack event");
+            Assert.True(createIdx < resumeIdx,
+                $"CreateAsyncCallstack (index {createIdx}) should precede ResumeAsyncCallstack (index {resumeIdx})");
         }
 
-        private const EventKeywords CallstackKeywords =
-            BulkResumeAsyncContext | BulkResumeAsyncCallstack | BulkCompleteAsyncContext |
-            BulkCompleteAsyncMethod | BulkUnwindAsyncException;
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_CreateAndFirstResumeCallstacksMatch()
+        {
+            var events = CollectEvents(
+                BulkCreateAsyncCallstack | BulkResumeAsyncCallstack | BulkCompleteAsyncContext, () =>
+                {
+                    RunScenarioAndFlush(async () =>
+                    {
+                        await Func();
+                    });
+                });
+
+            var createStacks = CollectCallstacks(events, CreateAsyncCallstack);
+            var resumeStacks = CollectCallstacks(events, ResumeAsyncCallstack);
+
+            Assert.NotEmpty(createStacks);
+            Assert.NotEmpty(resumeStacks);
+
+            foreach (var (taskId, _, createFrames) in createStacks)
+            {
+                var matchingResume = resumeStacks.FirstOrDefault(r => r.TaskId == taskId);
+                Assert.True(matchingResume.Frames is not null,
+                    $"Expected a ResumeAsyncCallstack for task {taskId}");
+
+                Assert.Equal(createFrames.Count, matchingResume.Frames!.Count);
+                for (int i = 0; i < createFrames.Count; i++)
+                {
+                    Assert.Equal(createFrames[i].NativeIP, matchingResume.Frames[i].NativeIP);
+                }
+            }
+        }
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
@@ -934,6 +912,67 @@ namespace System.Threading.Tasks.Tests
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_UnhandledExceptionUnwind()
+        {
+            var events = CollectEvents(BulkUnwindAsyncException | CoreKeywords, () =>
+            {
+                // lambda -> DeepUnhandledOuter -> DeepUnhandledMiddle -> DeepUnhandledInnerThrows (4 levels).
+                // No try/catch in the chain — UnwindToPossibleHandler returns null,
+                // triggering the unhandled exception path which faults the task.
+                // unwindedFrames starts at 1 (current) + walks 2 more continuations = 3.
+                try
+                {
+                    RunScenario(async () =>
+                    {
+                        await DeepUnhandledOuter();
+                    });
+                }
+                catch (InvalidOperationException)
+                {
+                }
+
+                SendFlushCommand();
+            });
+
+            var eventIds = CollectBulkEventIds(events);
+            var frameCounts = CollectUnwindFrameCounts(events);
+
+            Assert.Contains(ResumeAsyncContext, eventIds);
+            Assert.Contains(UnwindAsyncException, eventIds);
+            Assert.Contains(CompleteAsyncContext, eventIds);
+
+            Assert.NotEmpty(frameCounts);
+            Assert.All(frameCounts, count => Assert.Equal(4u, count));
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_HandledExceptionUnwind()
+        {
+            var events = CollectEvents(BulkUnwindAsyncException | CoreKeywords, () =>
+            {
+                // DeepOuterCatches -> DeepMiddle -> DeepInnerThrows (3 levels).
+                // DeepOuterCatches has try/catch — UnwindToPossibleHandler finds the handler.
+                // unwindedFrames starts at 1 (current) + walks 1 to find handler = 2.
+                RunScenarioAndFlush(async () =>
+                {
+                    await DeepOuterCatches();
+                });
+            });
+
+            var eventIds = CollectBulkEventIds(events);
+            var frameCounts = CollectUnwindFrameCounts(events);
+
+            Assert.Contains(ResumeAsyncContext, eventIds);
+            Assert.Contains(UnwindAsyncException, eventIds);
+            Assert.Contains(CompleteAsyncContext, eventIds);
+
+            Assert.NotEmpty(frameCounts);
+            Assert.All(frameCounts, count => Assert.Equal(2u, count));
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
         public void RuntimeAsync_WrapperIndexMatchesCallstack()
         {
             var captures = new List<(string MethodName, int WrapperSlot)>();
@@ -1026,12 +1065,127 @@ namespace System.Threading.Tasks.Tests
             Assert.DoesNotContain(ResetContinuationWrapperIndex, eventIds);
         }
 
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_PeriodicTimerFlush()
+        {
+            var events = CollectEvents(CoreKeywords, () =>
+            {
+                // Run scenario — do NOT flush explicitly afterwards.
+                RunScenario(async () =>
+                {
+                    await Func();
+                });
+
+                // Wait for the periodic flush timer (1s interval) to detect the idle
+                // buffer and flush it automatically.
+                Thread.Sleep(2000);
+            });
+
+            var eventIds = CollectBulkEventIds(events);
+            int coreEventCount = eventIds.FindAll(id => id == ResumeAsyncContext || id == SuspendAsyncContext || id == CompleteAsyncContext).Count;
+
+            Assert.True(coreEventCount > 0, "Expected periodic timer to flush bulk buffer with core lifecycle events");
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_MultiThreadFlush()
+        {
+            const int threadCount = 4;
+            var events = CollectEvents(CoreKeywords, () =>
+            {
+                // Ensure enough thread pool threads are available for concurrent execution.
+                ThreadPool.GetMinThreads(out int prevWorker, out int prevIO);
+                ThreadPool.SetMinThreads(threadCount, prevIO);
+
+                var tasks = new Task[threadCount];
+                for (int i = 0; i < threadCount; i++)
+                {
+                    tasks[i] = Task.Run(async () =>
+                    {
+                        await Func();
+                    });
+                }
+
+                Task.WhenAll(tasks).GetAwaiter().GetResult();
+                ThreadPool.SetMinThreads(prevWorker, prevIO);
+                SendFlushCommand();
+            });
+
+            var threadIds = CollectOsThreadIds(events);
+
+            Assert.True(threadIds.Count > 1, $"Expected events from multiple threads, got {threadIds.Count} distinct OS thread ID(s)");
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_DeadThreadFlush()
+        {
+            var events = CollectEvents(CoreKeywords, () =>
+            {
+                // Spawn a dedicated thread that runs async work then exits.
+                // Its thread-local bulk buffer becomes orphaned when the thread dies.
+                var thread = new Thread(() =>
+                {
+                    RunScenario(async () =>
+                    {
+                        await Func();
+                    });
+                });
+
+                thread.IsBackground = true;
+                thread.Start();
+                thread.Join(TimeSpan.FromSeconds(10));
+
+                // Do NOT send a flush command.
+                // Wait for the periodic flush timer to detect the dead thread
+                // and flush its orphaned buffer.
+                Thread.Sleep(2000);
+            });
+
+            var eventIds = CollectBulkEventIds(events);
+            int coreEventCount = eventIds.FindAll(id => id == ResumeAsyncContext || id == SuspendAsyncContext || id == CompleteAsyncContext).Count;
+
+            Assert.True(coreEventCount > 0, "Expected periodic timer to flush dead thread's bulk buffer");
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_NoEventsWhenDisabled()
+        {
+            // Run async work WITHOUT a listener attached
+            Task.Run(async () =>
+            {
+                for (int i = 0; i < 50; i++)
+                {
+                    await Func();
+                }
+            }).GetAwaiter().GetResult();
+
+            // Now attach listener and verify no stale events are emitted
+            var events = CollectEvents(CoreKeywords, () =>
+            {
+                // Don't run any async work - just check nothing comes through from before
+                Thread.Sleep(100);
+            });
+
+            // There may be a ResetAsyncThreadContext from the SyncPoint when keywords change,
+            // but there should be no suspend/resume/complete events from the earlier work.
+            var eventIds = CollectBulkEventIds(events);
+            int contextEvents = eventIds.FindAll(id => id == ResumeAsyncContext || id == SuspendAsyncContext || id == CompleteAsyncContext).Count;
+
+            Assert.Equal(0, contextEvents);
+        }
+
         public static IEnumerable<object[]> KeywordGatekeepingData()
         {
+            yield return new object[] { (long)BulkCreateAsyncContext, new byte[] { ResetAsyncThreadContext, CreateAsyncContext } };
             yield return new object[] { (long)BulkResumeAsyncContext, new byte[] { ResetAsyncThreadContext, ResumeAsyncContext } };
             yield return new object[] { (long)BulkSuspendAsyncContext, new byte[] { ResetAsyncThreadContext, SuspendAsyncContext } };
             yield return new object[] { (long)BulkCompleteAsyncContext, new byte[] { ResetAsyncThreadContext, CompleteAsyncContext } };
             yield return new object[] { (long)BulkUnwindAsyncException, new byte[] { ResetAsyncThreadContext, UnwindAsyncException } };
+            yield return new object[] { (long)BulkCreateAsyncCallstack, new byte[] { ResetAsyncThreadContext, CreateAsyncCallstack } };
             yield return new object[] { (long)BulkResumeAsyncCallstack, new byte[] { ResetAsyncThreadContext, ResumeAsyncCallstack } };
             yield return new object[] { (long)BulkResumeAsyncMethod, new byte[] { ResetAsyncThreadContext, ResumeAsyncMethod } };
             yield return new object[] { (long)BulkCompleteAsyncMethod, new byte[] { ResetAsyncThreadContext, CompleteAsyncMethod } };
@@ -1063,6 +1217,23 @@ namespace System.Threading.Tasks.Tests
             Assert.True(unexpected.Count == 0,
                 $"Keyword 0x{(long)kw:X}: unexpected event IDs [{string.Join(", ", unexpected)}], " +
                 $"allowed [{string.Join(", ", allowed)}]");
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/124072", typeof(PlatformDetection), nameof(PlatformDetection.IsInterpreter))]
+        public void RuntimeAsync_ResetAsyncThreadContextEvent()
+        {
+            var events = CollectEvents(CoreKeywords, () =>
+            {
+                RunScenarioAndFlush(async () =>
+                {
+                    await Func();
+                });
+            });
+
+            var eventIds = CollectBulkEventIds(events);
+
+            Assert.Contains(ResetAsyncThreadContext, eventIds);
         }
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsRuntimeAsyncSupported))]

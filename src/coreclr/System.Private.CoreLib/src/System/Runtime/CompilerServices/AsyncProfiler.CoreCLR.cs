@@ -10,6 +10,39 @@ namespace System.Runtime.CompilerServices
 {
     internal static partial class AsyncProfiler
     {
+        internal static partial class CreateAsyncContext
+        {
+            public static void Create(ulong id, Continuation nextContinuation)
+            {
+                Info info = default;
+                AsyncThreadContext context = AsyncThreadContext.Acquire(ref info);
+
+                try
+                {
+                    SyncPoint.Check(context);
+
+                    EventKeywords eventKeywords = context.ActiveEventKeywords;
+                    if (IsEventKeywordEnabled.AnyBulkAsyncEvents(eventKeywords))
+                    {
+                        long currentTimestamp = Stopwatch.GetTimestamp();
+                        if (IsEventKeywordEnabled.BulkCreateAsyncContextEvent(eventKeywords))
+                        {
+                            BulkEvent(context, currentTimestamp);
+                        }
+
+                        if (IsEventKeywordEnabled.BulkCreateAsyncCallstackEvent(eventKeywords))
+                        {
+                            AsyncCallstack.BulkEvent(context, currentTimestamp, BulkEventID.CreateAsyncCallstack, id, nextContinuation);
+                        }
+                    }
+                }
+                finally
+                {
+                    AsyncThreadContext.Release(context);
+                }
+            }
+        }
+
         internal static partial class ResumeAsyncContext
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -432,11 +465,9 @@ namespace System.Runtime.CompilerServices
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void BulkEvent(AsyncThreadContext context, BulkEventID eventID, ulong id, AsyncType type, Continuation? asyncCallstack)
+            public static void BulkEvent(AsyncThreadContext context, long currentTimestamp, BulkEventID eventID, ulong id, Continuation? asyncCallstack)
             {
-                long currentTimestamp = Stopwatch.GetTimestamp();
-                long delta = currentTimestamp - context.LastBulkEventTimestamp;
-                BulkEvent(context, currentTimestamp, delta, eventID, id, type, asyncCallstack);
+                BulkEvent(context, currentTimestamp, eventID, id, AsyncType.Runtime, asyncCallstack);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
