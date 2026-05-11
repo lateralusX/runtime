@@ -1359,17 +1359,20 @@ namespace System.Runtime.CompilerServices
 
         internal static class AsyncDebugger
         {
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void CreateAsyncContext(Task task)
             {
                 Task.AddToActiveTasks(task);
                 TplEventSource.Log.TraceOperationBegin(task.Id, "System.Runtime.CompilerServices.AsyncHelpers+RuntimeAsyncTask", 0);
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void ResumeAsyncContext(Task task)
             {
                 TplEventSource.Log.TraceSynchronousWorkBegin(task.Id, CausalitySynchronousWork.Execution);
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void SuspendAsyncContext(ref AsyncDispatcherInfo info, Continuation curContinuation)
             {
                 if (info.NextContinuation != null)
@@ -1380,12 +1383,14 @@ namespace System.Runtime.CompilerServices
                 TplEventSource.Log.TraceSynchronousWorkEnd(CausalitySynchronousWork.Execution);
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void SuspendAsyncContext(Continuation curContinuation, Continuation newContinuation)
             {
                 Task.ReplaceOrAddRuntimeAsyncContinuationTimestamp(curContinuation, newContinuation);
                 TplEventSource.Log.TraceSynchronousWorkEnd(CausalitySynchronousWork.Execution);
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void CompleteAsyncContext(Task? task)
             {
                 if (task != null)
@@ -1396,6 +1401,7 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void AsyncMethodUnhandledException(Task? task, Exception ex, Continuation curContinuation)
             {
                 if (task != null)
@@ -1406,11 +1412,13 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void AsyncMethodHandledException(Continuation curContinuation, uint unwindedFrames)
             {
                 Task.RemoveRuntimeAsyncContinuationChainTimestamps(curContinuation, unwindedFrames);
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void ResumeAsyncMethod(ref AsyncDispatcherInfo info, Continuation curContinuation)
             {
                 if (info.CurrentTask != null)
@@ -1419,11 +1427,13 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void CompleteAsyncMethod(Continuation curContinuation)
             {
                 Task.RemoveRuntimeAsyncContinuationTimestamp(curContinuation);
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void HandleSuspended(Continuation? nextContinuation, Continuation? newContinuation)
             {
                 if (nextContinuation != null)
@@ -1439,6 +1449,7 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public static void HandleSuspendedFailed(Task task, Continuation? nextContinuation)
             {
                 if (nextContinuation != null)

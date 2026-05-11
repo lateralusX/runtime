@@ -120,11 +120,13 @@ namespace System.Runtime.CompilerServices
                             int maxDynamicEventPayloadSize = templateBytes.Length;
 
                             ref EventBuffer eventBuffer = ref context.EventBuffer;
-                            if (Serializer.AsyncEventHeader(context, ref eventBuffer, AsyncEventID.AsyncProfilerMetadata, MaxStaticEventPayloadSize + maxDynamicEventPayloadSize))
+                            long currentTimestamp = Stopwatch.GetTimestamp();
+                            int index = Serializer.BeginAsyncEvent(context, ref eventBuffer, currentTimestamp, AsyncEventID.AsyncProfilerMetadata, MaxStaticEventPayloadSize + maxDynamicEventPayloadSize);
+                            if (index != -1)
                             {
                                 SyncClock(out long utcTimeSync, out long qpcSync);
 
-                                Span<byte> payloadSpan = eventBuffer.Data.AsSpan(eventBuffer.Index, MaxStaticEventPayloadSize + maxDynamicEventPayloadSize);
+                                Span<byte> payloadSpan = eventBuffer.Data.AsSpan(index, MaxStaticEventPayloadSize + maxDynamicEventPayloadSize);
                                 int payloadSpanIndex = 0;
 
                                 payloadSpanIndex += Serializer.WriteCompressedUInt64(payloadSpan.Slice(payloadSpanIndex), (ulong)Stopwatch.Frequency);
@@ -137,7 +139,7 @@ namespace System.Runtime.CompilerServices
                                 templateBytes.CopyTo(payloadSpan.Slice(payloadSpanIndex));
                                 payloadSpanIndex += templateBytes.Length;
 
-                                eventBuffer.Index += payloadSpanIndex;
+                                Serializer.CommitAsyncEvent(context, ref eventBuffer, currentTimestamp, index + payloadSpanIndex);
 
                                 // Force flush to deliver event promptly.
                                 context.Flush();
@@ -176,17 +178,18 @@ namespace System.Runtime.CompilerServices
                     const int MaxEventPayloadSize = Serializer.MaxCompressedUInt64Size + Serializer.MaxCompressedUInt64Size;
 
                     ref EventBuffer eventBuffer = ref transientContext.EventBuffer;
-                    if (Serializer.AsyncEventHeader(transientContext, ref eventBuffer, AsyncEventID.AsyncProfilerSyncClock, MaxEventPayloadSize))
+                    int index = Serializer.BeginAsyncEvent(transientContext, ref eventBuffer, currentTimestamp, AsyncEventID.AsyncProfilerSyncClock, MaxEventPayloadSize);
+                    if (index != -1)
                     {
                         SyncClock(out long utcTimeSync, out long qpcSync);
 
-                        Span<byte> payloadSpan = eventBuffer.Data.AsSpan(eventBuffer.Index, MaxEventPayloadSize);
+                        Span<byte> payloadSpan = eventBuffer.Data.AsSpan(index, MaxEventPayloadSize);
                         int payloadSpanIndex = 0;
 
                         payloadSpanIndex += Serializer.WriteCompressedUInt64(payloadSpan.Slice(payloadSpanIndex), (ulong)qpcSync);
                         payloadSpanIndex += Serializer.WriteCompressedUInt64(payloadSpan.Slice(payloadSpanIndex), (ulong)utcTimeSync);
 
-                        eventBuffer.Index += payloadSpanIndex;
+                        Serializer.CommitAsyncEvent(transientContext, ref eventBuffer, currentTimestamp, index + payloadSpanIndex);
 
                         // Force flush to deliver event promptly.
                         transientContext.Flush();
@@ -278,13 +281,6 @@ namespace System.Runtime.CompilerServices
                 public const int MaxCompressedInt64Size = 10;
                 public const int MaxEventHeaderSize = 37;
                 public const int MaxAsyncEventHeaderSize = 11;
-
-                public ref struct AsyncEventHeaderRollbackData
-                {
-                    public int Index;
-                    public uint EventCount;
-                    public long LastEventTimestamp;
-                }
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public static int WriteCompressedInt32(Span<byte> buffer, int value)
@@ -385,86 +381,17 @@ namespace System.Runtime.CompilerServices
                     eventBuffer.Index = headerSpanIndex;
                 }
 
-                public static bool AsyncEventHeader(AsyncThreadContext context, ref EventBuffer eventBuffer, AsyncEventID eventID, int maxEventPayloadSize)
-                {
-                    long currentTimestamp = Stopwatch.GetTimestamp();
-                    long delta = currentTimestamp - context.LastEventTimestamp;
-                    return AsyncEventHeader(context, ref eventBuffer, currentTimestamp, delta, eventID, maxEventPayloadSize);
-                }
-
-                public static bool AsyncEventHeader(AsyncThreadContext context, ref EventBuffer eventBuffer, long currentTimestamp, AsyncEventID eventID, int maxEventPayloadSize)
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static void EmitAsyncEvent(AsyncThreadContext context, ref EventBuffer eventBuffer, long currentTimestamp, AsyncEventID eventID)
                 {
                     long delta = currentTimestamp - context.LastEventTimestamp;
-                    return AsyncEventHeader(context, ref eventBuffer, currentTimestamp, delta, eventID, maxEventPayloadSize);
-                }
-
-                public static bool AsyncEventHeader(AsyncThreadContext context, ref EventBuffer eventBuffer, long currentTimestamp, long delta, AsyncEventID eventID, int maxEventPayloadSize, out AsyncEventHeaderRollbackData rollbackData)
-                {
-                    byte[] buffer = eventBuffer.Data;
-                    int index = eventBuffer.Index;
-                    long previousTimestamp = context.LastEventTimestamp;
-
-                    if ((index + MaxAsyncEventHeaderSize + maxEventPayloadSize) <= buffer.Length && delta >= 0)
-                    {
-                        context.LastEventTimestamp = currentTimestamp;
-                    }
-                    else
-                    {
-                        // Event is too big for buffer, drop it.
-                        if (MaxAsyncEventHeaderSize + maxEventPayloadSize > buffer.Length)
-                        {
-                            rollbackData = default;
-                            return false;
-                        }
-
-                        context.Flush();
-
-                        previousTimestamp = context.LastEventTimestamp;
-                        delta = 0;
-                        index = eventBuffer.Index;
-                    }
-
-                    // Capture state after potential flush but before writing the header.
-                    rollbackData = new AsyncEventHeaderRollbackData
-                    {
-                        Index = index,
-                        EventCount = eventBuffer.EventCount,
-                        LastEventTimestamp = previousTimestamp,
-                    };
-
-                    Span<byte> headerSpan = buffer.AsSpan(index, MaxAsyncEventHeaderSize);
-                    int headerSpanIndex = 0;
-
-                    headerSpan[headerSpanIndex++] = (byte)eventID; // eventID
-                    headerSpanIndex += WriteCompressedUInt64(headerSpan.Slice(headerSpanIndex), (ulong)delta); // Timestamp delta from last event
-
-                    eventBuffer.Index += headerSpanIndex;
-                    eventBuffer.EventCount++;
-
-                    return true;
-                }
-
-                public static bool AsyncEventHeader(AsyncThreadContext context, ref EventBuffer eventBuffer, long currentTimestamp, long delta, AsyncEventID eventID, int maxEventPayloadSize)
-                {
                     byte[] buffer = eventBuffer.Data;
                     int index = eventBuffer.Index;
 
-                    if ((index + MaxAsyncEventHeaderSize + maxEventPayloadSize) <= buffer.Length && delta >= 0)
+                    if (delta < 0 || (uint)(buffer.Length - index) < (uint)(MaxAsyncEventHeaderSize))
                     {
-                        context.LastEventTimestamp = currentTimestamp;
-                    }
-                    else
-                    {
-                        // Event is too big for buffer, drop it.
-                        if (MaxAsyncEventHeaderSize + maxEventPayloadSize > buffer.Length)
-                        {
-                            return false;
-                        }
-
-                        context.Flush();
-
-                        delta = 0;
-                        index = eventBuffer.Index;
+                        EmitAsyncEventSlowPath(context, ref eventBuffer, eventID, currentTimestamp);
+                        return;
                     }
 
                     Span<byte> headerSpan = buffer.AsSpan(index, MaxAsyncEventHeaderSize);
@@ -473,18 +400,67 @@ namespace System.Runtime.CompilerServices
                     headerSpan[headerSpanIndex++] = (byte)eventID; // eventID
                     headerSpanIndex += WriteCompressedUInt64(headerSpan.Slice(headerSpanIndex), (ulong)delta); // Timestamp delta from last event
 
-                    eventBuffer.Index += headerSpanIndex;
-                    eventBuffer.EventCount++;
-
-                    return true;
+                    Serializer.CommitAsyncEvent(context, ref eventBuffer, currentTimestamp, index + headerSpanIndex);
                 }
 
-                public static void RollbackAsyncEventHeader(AsyncThreadContext context, in AsyncEventHeaderRollbackData rollbackData)
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static int BeginAsyncEvent(AsyncThreadContext context, ref EventBuffer eventBuffer, long currentTimestamp, AsyncEventID eventID, int maxEventPayloadSize)
                 {
-                    ref EventBuffer eventBuffer = ref context.EventBuffer;
-                    eventBuffer.Index = rollbackData.Index;
-                    eventBuffer.EventCount = rollbackData.EventCount;
-                    context.LastEventTimestamp = rollbackData.LastEventTimestamp;
+                    long delta = currentTimestamp - context.LastEventTimestamp;
+                    byte[] buffer = eventBuffer.Data;
+                    int index = eventBuffer.Index;
+
+                    if (delta < 0 || (uint)(buffer.Length - index) < (uint)(MaxAsyncEventHeaderSize + maxEventPayloadSize))
+                    {
+                        return BeginAsyncEventSlowPath(context, ref eventBuffer, eventID, maxEventPayloadSize);
+                    }
+
+                    Span<byte> headerSpan = buffer.AsSpan(index, MaxAsyncEventHeaderSize);
+                    int headerSpanIndex = 0;
+
+                    headerSpan[headerSpanIndex++] = (byte)eventID; // eventID
+                    headerSpanIndex += WriteCompressedUInt64(headerSpan.Slice(headerSpanIndex), (ulong)delta); // Timestamp delta from last event
+
+                    return index + headerSpanIndex;
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static void CommitAsyncEvent(AsyncThreadContext context, ref EventBuffer eventBuffer, long currentTimestamp, int index)
+                {
+                    eventBuffer.Index = index;
+                    eventBuffer.EventCount++;
+                    context.LastEventTimestamp = currentTimestamp;
+                }
+
+                private static void EmitAsyncEventSlowPath(AsyncThreadContext context, ref EventBuffer eventBuffer, AsyncEventID eventID, long currentTimestamp)
+                {
+                    int index = BeginAsyncEventSlowPath(context, ref eventBuffer, eventID, 0);
+                    if (index != -1)
+                    {
+                        Serializer.CommitAsyncEvent(context, ref eventBuffer, currentTimestamp, index);
+                    }
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static int BeginAsyncEventSlowPath(AsyncThreadContext context, ref EventBuffer eventBuffer, AsyncEventID eventID, int maxEventPayloadSize)
+                {
+                    // Event is too big for buffer, drop it.
+                    if (MaxAsyncEventHeaderSize + maxEventPayloadSize > eventBuffer.Data.Length)
+                    {
+                        return -1;
+                    }
+
+                    context.Flush();
+
+                    int index = eventBuffer.Index;
+
+                    Span<byte> headerSpan = eventBuffer.Data.AsSpan(index, MaxAsyncEventHeaderSize);
+                    int headerSpanIndex = 0;
+
+                    headerSpan[headerSpanIndex++] = (byte)eventID; // eventID
+                    headerSpanIndex += WriteCompressedUInt64(headerSpan.Slice(headerSpanIndex), 0); // delta = 0 after flush
+
+                    return index + headerSpanIndex;
                 }
             }
         }
@@ -708,9 +684,11 @@ namespace System.Runtime.CompilerServices
                 const int MaxEventPayloadSize = Serializer.MaxCompressedUInt64Size;
 
                 ref EventBuffer eventBuffer = ref context.EventBuffer;
-                if (Serializer.AsyncEventHeader(context, ref eventBuffer, currentTimestamp, AsyncEventID.CreateAsyncContext, MaxEventPayloadSize))
+                int index = Serializer.BeginAsyncEvent(context, ref eventBuffer, currentTimestamp, AsyncEventID.CreateAsyncContext, MaxEventPayloadSize);
+                if (index != -1)
                 {
-                    eventBuffer.Index += Serializer.WriteCompressedUInt64(eventBuffer.Data.AsSpan(eventBuffer.Index, MaxEventPayloadSize), id);
+                    index += Serializer.WriteCompressedUInt64(eventBuffer.Data.AsSpan(index, MaxEventPayloadSize), id);
+                    Serializer.CommitAsyncEvent(context, ref eventBuffer, currentTimestamp, index);
                 }
             }
         }
@@ -722,9 +700,11 @@ namespace System.Runtime.CompilerServices
                 const int MaxEventPayloadSize = Serializer.MaxCompressedUInt64Size;
 
                 ref EventBuffer eventBuffer = ref context.EventBuffer;
-                if (Serializer.AsyncEventHeader(context, ref eventBuffer, currentTimestamp, AsyncEventID.ResumeAsyncContext, MaxEventPayloadSize))
+                int index = Serializer.BeginAsyncEvent(context, ref eventBuffer, currentTimestamp, AsyncEventID.ResumeAsyncContext, MaxEventPayloadSize);
+                if (index != -1)
                 {
-                    eventBuffer.Index += Serializer.WriteCompressedUInt64(eventBuffer.Data.AsSpan(eventBuffer.Index, MaxEventPayloadSize), id);
+                    index += Serializer.WriteCompressedUInt64(eventBuffer.Data.AsSpan(index, MaxEventPayloadSize), id);
+                    Serializer.CommitAsyncEvent(context, ref eventBuffer, currentTimestamp, index);
                 }
             }
         }
@@ -733,7 +713,7 @@ namespace System.Runtime.CompilerServices
         {
             public static void EmitEvent(AsyncThreadContext context, long currentTimestamp)
             {
-                Serializer.AsyncEventHeader(context, ref context.EventBuffer, currentTimestamp, AsyncEventID.SuspendAsyncContext, 0);
+                Serializer.EmitAsyncEvent(context, ref context.EventBuffer, currentTimestamp, AsyncEventID.SuspendAsyncContext);
             }
         }
 
@@ -755,7 +735,7 @@ namespace System.Runtime.CompilerServices
 
             public static void EmitEvent(AsyncThreadContext context, long currentTimestamp)
             {
-                Serializer.AsyncEventHeader(context, ref context.EventBuffer, currentTimestamp, AsyncEventID.CompleteAsyncContext, 0);
+                Serializer.EmitAsyncEvent(context, ref context.EventBuffer, currentTimestamp, AsyncEventID.CompleteAsyncContext);
             }
         }
 
@@ -768,18 +748,16 @@ namespace System.Runtime.CompilerServices
                 SyncPoint.Check(context);
 
                 EventKeywords activeEventKeywords = context.ActiveEventKeywords;
-                if (IsEnabled.AnyAsyncEvents(activeEventKeywords))
-                {
-                    long currentTimestamp = Stopwatch.GetTimestamp();
-                    if (IsEnabled.UnwindAsyncExceptionEvent(activeEventKeywords))
-                    {
-                        EmitEvent(context, currentTimestamp, unwindedFrames);
-                    }
+                long currentTimestamp = Stopwatch.GetTimestamp();
 
-                    if (IsEnabled.CompleteAsyncContextEvent(activeEventKeywords))
-                    {
-                        CompleteAsyncContext.EmitEvent(context, currentTimestamp);
-                    }
+                if (IsEnabled.UnwindAsyncExceptionEvent(activeEventKeywords))
+                {
+                    EmitEvent(context, currentTimestamp, unwindedFrames);
+                }
+
+                if (IsEnabled.CompleteAsyncContextEvent(activeEventKeywords))
+                {
+                    CompleteAsyncContext.EmitEvent(context, currentTimestamp);
                 }
 
                 AsyncThreadContext.Release(context);
@@ -804,9 +782,11 @@ namespace System.Runtime.CompilerServices
                 const int MaxEventPayloadSize = Serializer.MaxCompressedUInt32Size;
 
                 ref EventBuffer eventBuffer = ref context.EventBuffer;
-                if (Serializer.AsyncEventHeader(context, ref eventBuffer, currentTimestamp, AsyncEventID.UnwindAsyncException, MaxEventPayloadSize))
+                int index = Serializer.BeginAsyncEvent(context, ref eventBuffer, currentTimestamp, AsyncEventID.UnwindAsyncException, MaxEventPayloadSize);
+                if (index != -1)
                 {
-                    eventBuffer.Index += Serializer.WriteCompressedUInt32(eventBuffer.Data.AsSpan(eventBuffer.Index, MaxEventPayloadSize), unwindedFrames);
+                    index += Serializer.WriteCompressedUInt32(eventBuffer.Data.AsSpan(index, MaxEventPayloadSize), unwindedFrames);
+                    Serializer.CommitAsyncEvent(context, ref eventBuffer, currentTimestamp, index);
                 }
             }
         }
@@ -828,7 +808,7 @@ namespace System.Runtime.CompilerServices
 
             public static void EmitEvent(AsyncThreadContext context)
             {
-                Serializer.AsyncEventHeader(context, ref context.EventBuffer, AsyncEventID.ResumeAsyncMethod, 0);
+                Serializer.EmitAsyncEvent(context, ref context.EventBuffer, Stopwatch.GetTimestamp(), AsyncEventID.ResumeAsyncMethod);
             }
         }
 
@@ -849,7 +829,7 @@ namespace System.Runtime.CompilerServices
 
             public static void EmitEvent(AsyncThreadContext context)
             {
-                Serializer.AsyncEventHeader(context, ref context.EventBuffer, AsyncEventID.CompleteAsyncMethod, 0);
+                Serializer.EmitAsyncEvent(context, ref context.EventBuffer, Stopwatch.GetTimestamp(), AsyncEventID.CompleteAsyncMethod);
             }
         }
 
@@ -891,7 +871,7 @@ namespace System.Runtime.CompilerServices
 
             private static void EmitEvent(AsyncThreadContext context)
             {
-                Serializer.AsyncEventHeader(context, ref context.EventBuffer, AsyncEventID.ResetAsyncContinuationWrapperIndex, 0);
+                Serializer.EmitAsyncEvent(context, ref context.EventBuffer, Stopwatch.GetTimestamp(), AsyncEventID.ResetAsyncContinuationWrapperIndex);
             }
         }
 
@@ -926,7 +906,7 @@ namespace System.Runtime.CompilerServices
 
             private static void EmitEvent(AsyncThreadContext context)
             {
-                Serializer.AsyncEventHeader(context, ref context.EventBuffer, AsyncEventID.ResetAsyncThreadContext, 0);
+                Serializer.EmitAsyncEvent(context, ref context.EventBuffer, Stopwatch.GetTimestamp(), AsyncEventID.ResetAsyncThreadContext);
             }
         }
 
