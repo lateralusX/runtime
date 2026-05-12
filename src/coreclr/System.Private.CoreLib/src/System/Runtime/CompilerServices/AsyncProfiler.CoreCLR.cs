@@ -54,12 +54,16 @@ namespace System.Runtime.CompilerServices
 
                 if (IsEnabled.ResumeAsyncContextEvent(activeEventKeywords))
                 {
+                    PerfStats.RecordStart(out long perfStart);
                     EmitEvent(context, currentTimestamp, id);
+                    PerfStats.RecordEnd(context, AsyncEventID.ResumeAsyncContext, perfStart);
                 }
 
                 if (IsEnabled.ResumeAsyncCallstackEvent(activeEventKeywords))
                 {
+                    PerfStats.RecordStart(out long perfStart);
                     AsyncCallstack.EmitEvent(context, currentTimestamp, id, info.NextContinuation);
+                    PerfStats.RecordEnd(context, AsyncEventID.ResumeAsyncCallstack, perfStart);
                 }
 
                 AsyncThreadContext.Release(context);
@@ -77,7 +81,9 @@ namespace System.Runtime.CompilerServices
 
                 if (IsEnabled.ResumeAsyncContextEvent(activeEventKeywords))
                 {
+                    PerfStats.RecordStart(out long perfStart);
                     EmitEvent(context, currentTimestamp, id);
+                    PerfStats.RecordEnd(context, AsyncEventID.ResumeAsyncContext, perfStart);
                 }
 
                 if (IsEnabled.ResumeAsyncCallstackEvent(activeEventKeywords))
@@ -100,7 +106,9 @@ namespace System.Runtime.CompilerServices
 
                 if (IsEnabled.SuspendAsyncContextEvent(activeEventKeywords))
                 {
+                    PerfStats.RecordStart(out long perfStart);
                     EmitEvent(context, currentTimestamp);
+                    PerfStats.RecordEnd(context, AsyncEventID.SuspendAsyncContext, perfStart);
                 }
 
                 if (IsEnabled.SuspendAsyncCallstackEvent(activeEventKeywords))

@@ -1,3 +1,4 @@
+#define ASYNC_PROFILER_PERF_STATS
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -474,6 +475,10 @@ namespace System.Runtime.CompilerServices
                 _eventBuffer.Data = Array.Empty<byte>();
                 AsyncThreadContextId = Interlocked.Increment(ref s_nextAsyncThreadContextId);
                 OsThreadId = Thread.CurrentOSThreadId;
+
+#if ASYNC_PROFILER_PERF_STATS
+                PerfStatsEntries = new PerfStatsEntry[PerfStats.MaxEventTypes];
+#endif
             }
 
             private EventBuffer _eventBuffer;
@@ -491,6 +496,10 @@ namespace System.Runtime.CompilerServices
             public volatile bool InUse;
 
             public volatile bool BlockContext;
+
+#if ASYNC_PROFILER_PERF_STATS
+            public readonly PerfStatsEntry[] PerfStatsEntries;
+#endif
 
             public ref EventBuffer EventBuffer
             {
@@ -727,7 +736,9 @@ namespace System.Runtime.CompilerServices
 
                 if (IsEnabled.CompleteAsyncContextEvent(context.ActiveEventKeywords))
                 {
+                    PerfStats.RecordStart(out long perfStart);
                     EmitEvent(context, Stopwatch.GetTimestamp());
+                    PerfStats.RecordEnd(context, AsyncEventID.CompleteAsyncContext, perfStart);
                 }
 
                 AsyncThreadContext.Release(context);
@@ -963,6 +974,74 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+#if ASYNC_PROFILER_PERF_STATS
+            public static void AggregateStats(PerfStatsEntry[] aggregated)
+            {
+                long spinWaitTimeout = Stopwatch.Frequency / 10;
+
+                lock (CacheLock)
+                {
+                    foreach (AsyncThreadContextHolder contextHolder in s_cache)
+                    {
+                        AsyncThreadContext context = contextHolder.Context;
+
+                        // Block the context to prevent concurrent event writes
+                        // that could tear the ticks/count pair.
+                        context.BlockContext = true;
+                        SpinWait sw = default;
+                        long timeout = Stopwatch.GetTimestamp() + spinWaitTimeout;
+                        while (context.InUse)
+                        {
+                            sw.SpinOnce();
+                            if (Stopwatch.GetTimestamp() > timeout)
+                                break;
+                        }
+
+                        if (!context.InUse)
+                        {
+                            for (int i = 0; i < aggregated.Length; i++)
+                            {
+                                aggregated[i].Ticks += context.PerfStatsEntries[i].Ticks;
+                                aggregated[i].Count += context.PerfStatsEntries[i].Count;
+                            }
+                        }
+
+                        context.BlockContext = false;
+                    }
+                }
+            }
+
+            public static void ResetStats()
+            {
+                long spinWaitTimeout = Stopwatch.Frequency / 10;
+
+                lock (CacheLock)
+                {
+                    foreach (AsyncThreadContextHolder contextHolder in s_cache)
+                    {
+                        AsyncThreadContext context = contextHolder.Context;
+
+                        context.BlockContext = true;
+                        SpinWait sw = default;
+                        long timeout = Stopwatch.GetTimestamp() + spinWaitTimeout;
+                        while (context.InUse)
+                        {
+                            sw.SpinOnce();
+                            if (Stopwatch.GetTimestamp() > timeout)
+                                break;
+                        }
+
+                        if (!context.InUse)
+                        {
+                            Array.Clear(context.PerfStatsEntries);
+                        }
+
+                        context.BlockContext = false;
+                    }
+                }
+            }
+#endif
+
             public static void EnableCleanupTimer()
             {
                 lock (CacheLock)
@@ -1114,6 +1193,148 @@ namespace System.Runtime.CompilerServices
             private static Timer? s_cleanupTimer;
 
             private static List<AsyncThreadContextHolder> s_cache = new List<AsyncThreadContextHolder>();
+        }
+
+#if ASYNC_PROFILER_PERF_STATS
+        // Two longs per entry = 16 bytes, no padding. Contiguous layout means
+        // updating ticks+count for one event touches a single cache line.
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct PerfStatsEntry
+        {
+            public long Ticks;
+            public long Count;
+        }
+#endif
+
+        internal static class PerfStats
+        {
+#if ASYNC_PROFILER_PERF_STATS
+            public const int MaxEventTypes = 15; // AsyncEventID values are 1-14
+
+            private static volatile bool s_capturing;
+            private static double s_overheadTicksPerCall; // calibrated cost of RecordStart+RecordEnd per call (fractional ticks)
+
+            // These methods are accessed via reflection from external tools.
+            // Prevent the linker from trimming them.
+            [System.Diagnostics.CodeAnalysis.DynamicDependency(nameof(StartCapture), typeof(PerfStats))]
+            [System.Diagnostics.CodeAnalysis.DynamicDependency(nameof(StopCapture), typeof(PerfStats))]
+            [System.Diagnostics.CodeAnalysis.DynamicDependency(nameof(ResetStats), typeof(PerfStats))]
+            [System.Diagnostics.CodeAnalysis.DynamicDependency(nameof(DumpStats), typeof(PerfStats))]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void RecordStart(out long startTicks)
+            {
+                startTicks = s_capturing ? Stopwatch.GetTimestamp() : 0;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void RecordEnd(AsyncThreadContext context, AsyncEventID eventId, long startTicks)
+            {
+                if (startTicks == 0)
+                    return;
+
+                long elapsed = Stopwatch.GetTimestamp() - startTicks;
+                ref PerfStatsEntry entry = ref context.PerfStatsEntries[(int)eventId];
+                entry.Ticks += elapsed;
+                entry.Count++;
+            }
+
+            private static double CalibrateOverhead()
+            {
+                const int iterations = 100_000;
+                const int warmup = 10_000;
+
+                // Warmup
+                for (int i = 0; i < warmup; i++)
+                {
+                    long s = Stopwatch.GetTimestamp();
+                    long e = Stopwatch.GetTimestamp();
+                    _ = e - s;
+                }
+
+                // Measure: two QPC calls + subtract (same as RecordStart + RecordEnd)
+                long total = 0;
+                for (int i = 0; i < iterations; i++)
+                {
+                    long start = Stopwatch.GetTimestamp();
+                    long end = Stopwatch.GetTimestamp();
+                    total += end - start;
+                }
+
+                return (double)total / iterations;
+            }
+
+            public static void StartCapture()
+            {
+                s_overheadTicksPerCall = CalibrateOverhead();
+                AsyncThreadContextCache.ResetStats();
+                s_capturing = true;
+            }
+
+            public static void StopCapture()
+            {
+                s_capturing = false;
+            }
+
+            public static void ResetStats()
+            {
+                AsyncThreadContextCache.ResetStats();
+            }
+
+            public static string? DumpStats()
+            {
+                PerfStatsEntry[] aggregated = new PerfStatsEntry[MaxEventTypes];
+
+                AsyncThreadContextCache.AggregateStats(aggregated);
+
+                bool hasData = false;
+                for (int i = 1; i < MaxEventTypes; i++)
+                {
+                    if (aggregated[i].Count > 0)
+                    {
+                        hasData = true;
+                        break;
+                    }
+                }
+
+                if (!hasData)
+                    return null;
+
+                double freq = Stopwatch.Frequency;
+                double overhead = s_overheadTicksPerCall;
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"AsyncProfiler PerfStats (overhead calibration: {overhead / freq * 1e9:F1}ns per measurement):");
+
+                for (int i = 1; i < MaxEventTypes; i++)
+                {
+                    ref PerfStatsEntry e = ref aggregated[i];
+                    if (e.Count == 0)
+                        continue;
+
+                    double adjustedTicks = Math.Max(0, e.Ticks - overhead * e.Count);
+                    double avgNs = adjustedTicks / e.Count / freq * 1e9;
+                    double totalMs = adjustedTicks / freq * 1e3;
+                    double rawAvgNs = e.Ticks / (double)e.Count / freq * 1e9;
+                    string name = i switch
+                    {
+                        _ => ((AsyncEventID)i).ToString()
+                    };
+                    sb.AppendLine($"  {name,-35}: {avgNs,8:F1}ns avg (raw: {rawAvgNs:F1}ns), {e.Count,10} events, {totalMs,10:F2}ms total");
+                }
+
+                return sb.ToString();
+            }
+#else
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void RecordStart(out long startTicks)
+            {
+                startTicks = 0;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void RecordEnd(AsyncThreadContext context, AsyncEventID eventId, long startTicks)
+            {
+            }
+#endif
         }
     }
 }
