@@ -67,6 +67,15 @@ namespace System.Runtime.CompilerServices
             MethodInfo? methodInfo = typeof(TStateMachine).GetMethod("MoveNext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (methodInfo is not null)
             {
+#if !MONO
+                // State machines are value types, so reflection returns the unboxing-stub MethodDesc for MoveNext,
+                // but the ETW MethodLoad/MethodDCStart events report the underlying "real" MethodDesc that is
+                // actually JITted. Emit the unwrapped identity so profilers can correlate offline by MethodID.
+                if (methodInfo is IRuntimeMethodInfo runtimeMethodInfo)
+                {
+                    return (ulong)RuntimeMethodHandle.GetUnboxedMethodDescValue(runtimeMethodInfo);
+                }
+#endif
                 return (ulong)methodInfo.MethodHandle.Value;
             }
 

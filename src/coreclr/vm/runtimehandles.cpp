@@ -2005,6 +2005,29 @@ FCIMPL2(MethodDesc*, RuntimeMethodHandle::GetMethodFromCanonical, MethodDesc *pM
 }
 FCIMPLEND
 
+extern "C" MethodDesc* QCALLTYPE RuntimeMethodHandle_GetUnboxedMethodDesc(MethodDesc* pMethod)
+{
+    QCALL_CONTRACT;
+
+    MethodDesc* pResult = pMethod;
+
+    BEGIN_QCALL;
+
+    _ASSERTE(pMethod != NULL);
+    if (pMethod->IsUnboxingStub())
+    {
+        MethodDesc* pUnboxed = pMethod->GetExistingWrappedMethodDesc();
+        if (pUnboxed != NULL)
+        {
+            pResult = pUnboxed;
+        }
+    }
+
+    END_QCALL;
+
+    return pResult;
+}
+
 extern "C" void QCALLTYPE RuntimeMethodHandle_GetMethodBody(MethodDesc* pMethod, QCall::TypeHandle pDeclaringType, QCall::ObjectHandleOnStack result)
 {
     QCALL_CONTRACT;
