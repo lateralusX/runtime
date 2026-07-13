@@ -1067,25 +1067,15 @@ namespace System.Runtime.CompilerServices
 
         internal static partial class SuspendAsyncContext
         {
-            public static void Suspend(AsyncStateMachineDispatcher dispatcher, ref Info info)
+            public static void Suspend(ref Info info)
             {
                 AsyncThreadContext context = AsyncThreadContext.Acquire(ref info);
 
                 SyncPoint.Check(context);
 
-                EventKeywords activeEventKeywords = context.ActiveEventKeywords;
-                if (IsEnabled.AnyAsyncEvents(activeEventKeywords))
+                if (IsEnabled.SuspendStateMachineAsyncContextEvent(context.ActiveEventKeywords))
                 {
-                    long currentTimestamp = Stopwatch.GetTimestamp();
-                    if (IsEnabled.ResumeStateMachineAsyncCallstackEvent(activeEventKeywords))
-                    {
-                        ResumeAsyncContext.Append(dispatcher, context, currentTimestamp);
-                    }
-
-                    if (IsEnabled.SuspendStateMachineAsyncContextEvent(activeEventKeywords))
-                    {
-                        EmitEvent(context, currentTimestamp, AsyncEventID.SuspendStateMachineAsyncContext);
-                    }
+                    EmitEvent(context, Stopwatch.GetTimestamp(), AsyncEventID.SuspendStateMachineAsyncContext);
                 }
 
                 AsyncThreadContext.Release(context);

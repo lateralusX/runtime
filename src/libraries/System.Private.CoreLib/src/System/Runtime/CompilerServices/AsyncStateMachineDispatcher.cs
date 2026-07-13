@@ -71,13 +71,14 @@ namespace System.Runtime.CompilerServices
             AsyncStateMachineDispatcherInfo* info = AsyncStateMachineDispatcherInfo.t_current;
             AsyncStateMachineDispatcher? activeDispatcher = info != null ? info->Dispatcher : null;
 
-            if (activeDispatcher != null && ReferenceEquals(activeDispatcher.InnerBox, box))
+            if (activeDispatcher != null && ReferenceEquals(info->AsyncProfilerInfo.CurrentContinuation, box))
             {
                 if (AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
                 {
                     AsyncProfiler.CreateAsyncContext.Append(activeDispatcher, ref info->AsyncProfilerInfo);
                 }
 
+                activeDispatcher.InnerBox = box;
                 return activeDispatcher;
             }
 
@@ -188,7 +189,11 @@ namespace System.Runtime.CompilerServices
     {
         private IAsyncStateMachineBox? _inner;
 
-        internal IAsyncStateMachineBox? InnerBox => _inner;
+        internal IAsyncStateMachineBox? InnerBox
+        {
+            get => _inner;
+            set => _inner = value;
+        }
 
         internal IAsyncStateMachineBox? LastContinuation;
 
@@ -301,7 +306,7 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (AsyncInstrumentation.IsEnabled.SuspendAsyncContext(flags) && !isCompleted)
                 {
-                    AsyncProfiler.SuspendAsyncContext.Suspend(this, ref info.AsyncProfilerInfo);
+                    AsyncProfiler.SuspendAsyncContext.Suspend(ref info.AsyncProfilerInfo);
                 }
             }
         }
