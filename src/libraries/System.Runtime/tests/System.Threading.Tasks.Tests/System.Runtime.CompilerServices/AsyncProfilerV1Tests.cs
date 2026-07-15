@@ -1353,6 +1353,17 @@ namespace System.Threading.Tasks.Tests
             AssertExactlyOneCreateAndComplete(stream, branchCCallstacks[0].DispatcherId, nameof(StateMachineAsync_WhenAll_TracksAllBranches_BranchC_Marker));
             AssertExactlyOneCreateAndComplete(stream, markerCallstacks[0].DispatcherId, nameof(StateMachineAsync_WhenAll_TracksAllBranches_Marker));
 
+            // Each branch is an independent dispatcher; its walk must stop at its own boundary and
+            // never leak a concurrent sibling's (or the outer marker's) frame into its callstack.
+            string branchAMarker = nameof(StateMachineAsync_WhenAll_TracksAllBranches_BranchA_Marker);
+            string branchBMarker = nameof(StateMachineAsync_WhenAll_TracksAllBranches_BranchB_Marker);
+            string branchCMarker = nameof(StateMachineAsync_WhenAll_TracksAllBranches_BranchC_Marker);
+            string outerMarker = nameof(StateMachineAsync_WhenAll_TracksAllBranches_Marker);
+            AssertCallstacksExcludeForeignMarkers(stream, branchACallstacks, branchAMarker, branchBMarker, branchCMarker, outerMarker);
+            AssertCallstacksExcludeForeignMarkers(stream, branchBCallstacks, branchBMarker, branchAMarker, branchCMarker, outerMarker);
+            AssertCallstacksExcludeForeignMarkers(stream, branchCCallstacks, branchCMarker, branchAMarker, branchBMarker, outerMarker);
+            AssertCallstacksExcludeForeignMarkers(stream, markerCallstacks, outerMarker, branchAMarker, branchBMarker, branchCMarker);
+
             // The outer marker's chain should fire the standard Create -> Resume -> Complete sequence in its own dispatcher tree, in that order.
             ulong markerDispatcherId = markerCallstacks[0].DispatcherId;
             var markerIds = stream.ChainEventsFromDispatcher(markerDispatcherId).Select(e => e.EventId).ToList();
@@ -1434,6 +1445,17 @@ namespace System.Threading.Tasks.Tests
             AssertExactlyOneCreateAndComplete(stream, slow1Callstacks[0].DispatcherId, nameof(StateMachineAsync_WhenAny_TracksAllBranches_Slow1_Marker));
             AssertExactlyOneCreateAndComplete(stream, slow2Callstacks[0].DispatcherId, nameof(StateMachineAsync_WhenAny_TracksAllBranches_Slow2_Marker));
             AssertCreateBalancesSuspendAndCompleteInChain(stream, markerCallstacks[0].DispatcherId, nameof(StateMachineAsync_WhenAny_TracksAllBranches_Marker));
+
+            // Each branch is an independent dispatcher; its walk must stop at its own boundary and
+            // never leak a concurrent sibling's (or the outer marker's) frame into its callstack.
+            string fastMarker = nameof(StateMachineAsync_WhenAny_TracksAllBranches_Fast_Marker);
+            string slow1Marker = nameof(StateMachineAsync_WhenAny_TracksAllBranches_Slow1_Marker);
+            string slow2Marker = nameof(StateMachineAsync_WhenAny_TracksAllBranches_Slow2_Marker);
+            string whenAnyOuterMarker = nameof(StateMachineAsync_WhenAny_TracksAllBranches_Marker);
+            AssertCallstacksExcludeForeignMarkers(stream, fastCallstacks, fastMarker, slow1Marker, slow2Marker, whenAnyOuterMarker);
+            AssertCallstacksExcludeForeignMarkers(stream, slow1Callstacks, slow1Marker, fastMarker, slow2Marker, whenAnyOuterMarker);
+            AssertCallstacksExcludeForeignMarkers(stream, slow2Callstacks, slow2Marker, fastMarker, slow1Marker, whenAnyOuterMarker);
+            AssertCallstacksExcludeForeignMarkers(stream, markerCallstacks, whenAnyOuterMarker, fastMarker, slow1Marker, slow2Marker);
 
             // The outer marker's chain: exactly one Create, at least two Resumes (one after
             // WhenAny, one after WhenAll on the slow branches), then Complete.
@@ -1905,6 +1927,82 @@ namespace System.Threading.Tasks.Tests
             // Inner cancelled task + outer marker must each see exactly one Create and one Complete in their own dispatcher tree.
             AssertExactlyOneCreateAndComplete(stream, innerCallstacks[0].DispatcherId, nameof(StateMachineAsync_TaskCancellation_Inner_Marker));
             AssertExactlyOneCreateAndComplete(stream, markerCallstacks[0].DispatcherId, nameof(StateMachineAsync_TaskCancellation_Marker));
+        }
+
+        [RuntimeAsyncMethodGeneration(false)]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static async Task StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Child_Marker()
+        {
+            await Task.Yield();
+        }
+
+        [RuntimeAsyncMethodGeneration(false)]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static async Task StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Middle_Marker()
+        {
+            // Suspend once so this box becomes a leaf dispatcher, then resume and await a nested child
+            // async method (its own dispatcher). When that child completes it inline-resumes this box;
+            // the trailing yield then re-suspends this same box as a leaf again.
+            await Task.Yield();
+            await StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Child_Marker();
+            await Task.Yield();
+        }
+
+        [RuntimeAsyncMethodGeneration(false)]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static async Task StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Marker()
+        {
+            // Suspend/resume first so this outer marker is a live dispatcher (non-zero parent id) by
+            // the time the middle frame below first suspends.
+            await Task.Yield();
+            await StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Middle_Marker();
+        }
+
+        [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsStateMachineAsyncAndThreadingSupported))]
+        public void StateMachineAsync_NestedChildResume_ReusesParentDispatcher()
+        {
+            var events = CollectEvents(ResumeStateMachineAsyncCallstackKeyword | StateMachineAsyncCoreKeywords, () =>
+            {
+                RunScenarioAndFlush(() => StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Marker());
+            });
+
+            // DumpAllEvents(events);
+
+            var stream = ParseAllEvents(events);
+
+            // Resolve a dispatcher id from the resume callstack whose leaf (top) frame is the given
+            // marker, i.e. the callstack captured while that method's own box was executing.
+            ulong LeafDispatcherId(string markerName)
+            {
+                var leafCallstack = stream.CallstacksWithMarker(AsyncEventID.ResumeStateMachineAsyncCallstack, markerName)
+                    .FirstOrDefault(c => c.Frames.Count > 0
+                        && (GetMethodNameFromMethodId(c.CallstackType, c.Frames[0].MethodId)?.Contains(markerName, StringComparison.Ordinal) ?? false));
+                AssertNotNull(stream, leafCallstack);
+                return leafCallstack!.DispatcherId;
+            }
+
+            ulong middleDispatcherId = LeafDispatcherId(nameof(StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Middle_Marker));
+            ulong childDispatcherId = LeafDispatcherId(nameof(StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Child_Marker));
+
+            // Create events are the only context events that carry an explicit dispatcher id on the wire,
+            // so scope the invariant to them.
+            var middleCreates = stream.All
+                .Where(e => e.EventId == AsyncEventID.CreateStateMachineAsyncContext && e.DispatcherId == middleDispatcherId)
+                .ToList();
+
+            // The middle frame is a single box (one Task.Id). Even though it suspends, resumes, awaits a
+            // nested child dispatcher, and re-suspends after that child completes, its dispatcher context
+            // should be created exactly once for the whole lifetime.
+            AssertEqual(stream, 1, middleCreates.Count);
+
+            // No Create for the middle frame may attribute its parent to its own nested child dispatcher:
+            // the child is a descendant, never a parent.
+            foreach (var create in middleCreates)
+            {
+                AssertTrue(stream, create.ParentDispatcherId != childDispatcherId,
+                    $"Middle dispatcher {middleDispatcherId} was created with ParentDispatcherId {create.ParentDispatcherId} " +
+                    $"pointing at its own nested child dispatcher {childDispatcherId} (inverted parent/child edge)");
+            }
         }
 
         [RuntimeAsyncMethodGeneration(false)]

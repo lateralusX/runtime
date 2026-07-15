@@ -918,7 +918,7 @@ namespace System.Runtime.CompilerServices
                     return 0;
                 }
 
-                AsyncStateMachineDispatcher? parent = info->Dispatcher;
+                Task? parent = info->Dispatcher;
                 return parent is not null ? (ulong)parent.Id : 0;
             }
 #endif
@@ -1674,7 +1674,7 @@ namespace System.Runtime.CompilerServices
 
                 while (state.Count < maxAsyncCallstackFrames && state.Continuation != null)
                 {
-                    if (state.Continuation is AsyncStateMachineDispatcher)
+                    if (state.Continuation is Task dispatcherTask && dispatcherTask.IsAsyncStateMachineDispatcher)
                     {
                         state.Continuation = null;
                         break;

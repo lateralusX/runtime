@@ -151,6 +151,7 @@ namespace System.Threading.Tasks
             RanToCompletion = 0x1000000,             // bin: 0000 0001 0000 0000 0000 0000 0000 0000
             WaitingForActivation = 0x2000000,        // bin: 0000 0010 0000 0000 0000 0000 0000 0000
             CompletionReserved = 0x4000000,          // bin: 0000 0100 0000 0000 0000 0000 0000 0000
+            AsyncStateMachineDispatcher = 0x8000000, // bin: 0000 1000 0000 0000 0000 0000 0000 0000
             WaitCompletionNotification = 0x10000000, // bin: 0001 0000 0000 0000 0000 0000 0000 0000
             ExecutionContextIsNull = 0x20000000,     // bin: 0010 0000 0000 0000 0000 0000 0000 0000
             TaskScheduledWasFired = 0x40000000,      // bin: 0100 0000 0000 0000 0000 0000 0000 0000
@@ -899,6 +900,30 @@ namespace System.Threading.Tasks
                 Interlocked.And(ref m_stateFlags, ~(int)TaskStateFlags.WaitCompletionNotification);
             }
         }
+
+        /// <summary>
+        /// Sets or clears the <see cref="TaskStateFlags.AsyncStateMachineDispatcher"/> state bit, which marks
+        /// this task as the root of an async dispatch context for the async profiler. The bit is toggled at
+        /// suspension time as the task's role changes between dispatch context root (awaiting a non-box leaf)
+        /// and an inner frame (awaiting another state-machine box).
+        /// </summary>
+        /// <param name="value">true to set the bit; false to clear it.</param>
+        internal void SetAsyncStateMachineDispatcher(bool value)
+        {
+            if (value)
+            {
+                // Atomically set the TaskStateFlags.AsyncStateMachineDispatcher bit.
+                AtomicStateUpdate((int)TaskStateFlags.AsyncStateMachineDispatcher, 0);
+            }
+            else
+            {
+                // Atomically clear the TaskStateFlags.AsyncStateMachineDispatcher bit.
+                Interlocked.And(ref m_stateFlags, ~(int)TaskStateFlags.AsyncStateMachineDispatcher);
+            }
+        }
+
+        /// <summary>Gets whether this task is currently acting as an async state-machine dispatch context root.</summary>
+        internal bool IsAsyncStateMachineDispatcher => (m_stateFlags & (int)TaskStateFlags.AsyncStateMachineDispatcher) != 0;
 
         /// <summary>
         /// Calls the debugger notification method if the right bit is set and if

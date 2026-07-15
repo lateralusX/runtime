@@ -368,10 +368,24 @@ namespace System.Runtime.CompilerServices
 
             private void MoveNext(Thread? threadPoolThread)
             {
-                Debug.Assert(!IsCompleted);
-
                 AsyncInstrumentation.Flags flags = AsyncInstrumentation.Flags.Disabled;
                 if (AsyncInstrumentation.IsActive && AsyncInstrumentation.LoadFlags(out flags))
+                {
+                    if (AsyncInstrumentation.IsEnabled.AsyncProfiler(flags) && IsAsyncStateMachineDispatcher)
+                    {
+                        MoveNextAsDispatcher(threadPoolThread, flags);
+                        return;
+                    }
+                }
+
+                MoveNext(threadPoolThread, flags);
+            }
+
+            private void MoveNext(Thread? threadPoolThread, AsyncInstrumentation.Flags flags)
+            {
+                Debug.Assert(!IsCompleted);
+
+                if (flags != AsyncInstrumentation.Flags.Disabled)
                 {
                     if (AsyncInstrumentation.IsEnabled.AsyncProfiler(flags))
                     {
@@ -410,6 +424,42 @@ namespace System.Runtime.CompilerServices
                 if (AsyncInstrumentation.IsEnabled.Tpl(flags))
                 {
                     TplEventSource.Log.TraceSynchronousWorkEnd(CausalitySynchronousWork.Execution);
+                }
+            }
+
+            private unsafe void MoveNextAsDispatcher(Thread? threadPoolThread, AsyncInstrumentation.Flags flags)
+            {
+                AsyncStateMachineDispatcherInfo info;
+                ref AsyncStateMachineDispatcherInfo* refInfo = ref AsyncStateMachineDispatcherInfo.t_current;
+                AsyncStateMachineDispatcherInfo* refPreviousInfo = refInfo;
+                refInfo = &info;
+                info.Next = refPreviousInfo;
+
+                AsyncProfiler.InitInfo(ref info.AsyncProfilerInfo);
+
+                info.Dispatcher = this;
+                info.AsyncProfilerInfo.CurrentContinuation = this;
+
+                // The flag marks a box that is currently suspended as a leaf dispatcher (a
+                // walk boundary). This box is now resuming and running as the dispatch root,
+                // so clear it. If it re-suspends awaiting another leaf, CreateDispatcher
+                // re-sets the flag.
+                SetAsyncStateMachineDispatcher(false);
+
+                try
+                {
+                    if (AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
+                    {
+                        AsyncProfiler.ResumeAsyncContext.Resume(ref info);
+                    }
+
+                    MoveNext(threadPoolThread, flags);
+                }
+                finally
+                {
+                    // SuspendOrCompleteContext never throws, so the frame is always popped afterwards.
+                    AsyncStateMachineDispatcherInfo.SuspendOrCompleteContext(ref info, flags);
+                    refInfo = info.Next;
                 }
             }
 

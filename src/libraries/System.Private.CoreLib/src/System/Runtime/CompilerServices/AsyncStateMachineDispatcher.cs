@@ -19,7 +19,7 @@ namespace System.Runtime.CompilerServices
 #else
         [FieldOffset(4)]
 #endif
-        public AsyncStateMachineDispatcher? Dispatcher;
+        public Task? Dispatcher;
 
 #if TARGET_64BIT
         [FieldOffset(16)]
@@ -61,17 +61,6 @@ namespace System.Runtime.CompilerServices
 
         internal bool ContinuationChainChanged => NextContinuationForDiagnostics != null;
 
-        internal static unsafe AsyncStateMachineDispatcher? GetActiveDispatcher()
-        {
-            if (!IsSupported)
-            {
-                return null;
-            }
-
-            AsyncStateMachineDispatcherInfo* info = AsyncStateMachineDispatcherInfo.t_current;
-            return info != null ? info->Dispatcher : null;
-        }
-
         internal static unsafe IAsyncStateMachineBox CreateDispatcher(IAsyncStateMachineBox box, AsyncInstrumentation.Flags flags)
         {
             if (!IsSupported)
@@ -79,33 +68,58 @@ namespace System.Runtime.CompilerServices
                 return box;
             }
 
-            if (box is AsyncStateMachineDispatcher)
+            Task? boxAsTask = box as Task;
+            if (boxAsTask != null && boxAsTask.IsAsyncStateMachineDispatcher)
             {
                 return box;
             }
 
             AsyncStateMachineDispatcherInfo* info = AsyncStateMachineDispatcherInfo.t_current;
-            AsyncStateMachineDispatcher? activeDispatcher = info != null ? info->Dispatcher : null;
+            Task? activeDispatcher = info != null ? info->Dispatcher : null;
 
-            if (activeDispatcher != null && ReferenceEquals(info->AsyncProfilerInfo.CurrentContinuation, box))
+            if (activeDispatcher is AsyncStateMachineDispatcher reusedDispatcher)
+            {
+                if (ReferenceEquals(reusedDispatcher.InnerBox, box))
+                {
+                    if (AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
+                    {
+                        AsyncProfiler.CreateAsyncContext.Append(ref *info);
+                    }
+
+                    return reusedDispatcher;
+                }
+            }
+            else if (ReferenceEquals(activeDispatcher, box))
             {
                 if (AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
                 {
                     AsyncProfiler.CreateAsyncContext.Append(ref *info);
                 }
 
-                activeDispatcher.InnerBox = box;
-                return activeDispatcher;
+                boxAsTask?.SetAsyncStateMachineDispatcher(true);
+                return box;
+            }
+
+            if (boxAsTask != null)
+            {
+                EmitCreateAsyncContext(info, boxAsTask, flags);
+                boxAsTask.SetAsyncStateMachineDispatcher(true);
+                return box;
             }
 
             AsyncStateMachineDispatcher dispatcher = new AsyncStateMachineDispatcher(box);
+            EmitCreateAsyncContext(info, dispatcher, flags);
+            return dispatcher;
+        }
 
+        private static unsafe void EmitCreateAsyncContext(AsyncStateMachineDispatcherInfo* info, Task dispatcher, AsyncInstrumentation.Flags flags)
+        {
             if (AsyncInstrumentation.IsEnabled.CreateAsyncContext(flags) || AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
             {
                 ulong parentDispatcherId = AsyncProfiler.DispatcherIds.CaptureParentDispatcherId();
                 ulong dispatcherId = AsyncProfiler.DispatcherIds.GetDispatcherId(dispatcher);
 
-                if (activeDispatcher != null)
+                if (info != null)
                 {
                     AsyncProfiler.CreateAsyncContext.Create(ref *info, parentDispatcherId, dispatcherId);
                 }
@@ -114,8 +128,6 @@ namespace System.Runtime.CompilerServices
                     AsyncProfiler.CreateAsyncContext.Create(parentDispatcherId, dispatcherId);
                 }
             }
-
-            return dispatcher;
         }
 
         internal static unsafe void UnwindAsyncFrame(object completingBox, AsyncInstrumentation.Flags flags)
@@ -145,7 +157,7 @@ namespace System.Runtime.CompilerServices
             }
 
             AsyncStateMachineDispatcherInfo* info = t_current;
-            AsyncStateMachineDispatcher? activeDispatcher = info != null ? info->Dispatcher : null;
+            Task? activeDispatcher = info != null ? info->Dispatcher : null;
             if (activeDispatcher == null)
             {
                 return;
@@ -181,6 +193,26 @@ namespace System.Runtime.CompilerServices
             }
         }
 
+        internal static void SuspendOrCompleteContext(ref AsyncStateMachineDispatcherInfo info, AsyncInstrumentation.Flags flags)
+        {
+            try
+            {
+                bool isCompleted = info.AsyncProfilerInfo.CurrentContinuationCompleted;
+                if (AsyncInstrumentation.IsEnabled.CompleteAsyncContext(flags) && isCompleted)
+                {
+                    AsyncProfiler.CompleteAsyncContext.Complete(ref info);
+                }
+                else if (AsyncInstrumentation.IsEnabled.SuspendAsyncContext(flags) && !isCompleted)
+                {
+                    AsyncProfiler.SuspendAsyncContext.Suspend(ref info.AsyncProfilerInfo);
+                }
+            }
+            catch (Exception)
+            {
+                // Best-effort instrumentation: swallow so the dispatch frame is always popped.
+            }
+        }
+
         internal static unsafe void CompleteAsyncMethod(object completingBox, AsyncInstrumentation.Flags flags)
         {
             if (!IsSupported)
@@ -205,15 +237,12 @@ namespace System.Runtime.CompilerServices
     {
         private IAsyncStateMachineBox? _inner;
 
-        internal IAsyncStateMachineBox? InnerBox
-        {
-            get => _inner;
-            set => _inner = value;
-        }
+        internal IAsyncStateMachineBox? InnerBox => _inner;
 
         internal AsyncStateMachineDispatcher(IAsyncStateMachineBox inner) : base()
         {
             _inner = inner;
+            m_stateFlags |= (int)TaskStateFlags.AsyncStateMachineDispatcher;
         }
 
         internal sealed override void ExecuteDirectly(Thread? threadPoolThread) => MoveNext();
@@ -289,15 +318,7 @@ namespace System.Runtime.CompilerServices
             }
             finally
             {
-                bool isCompleted = info.AsyncProfilerInfo.CurrentContinuationCompleted;
-                if (AsyncInstrumentation.IsEnabled.CompleteAsyncContext(flags) && isCompleted)
-                {
-                    AsyncProfiler.CompleteAsyncContext.Complete(ref info);
-                }
-                else if (AsyncInstrumentation.IsEnabled.SuspendAsyncContext(flags) && !isCompleted)
-                {
-                    AsyncProfiler.SuspendAsyncContext.Suspend(ref info.AsyncProfilerInfo);
-                }
+                AsyncStateMachineDispatcherInfo.SuspendOrCompleteContext(ref info, flags);
             }
         }
     }
