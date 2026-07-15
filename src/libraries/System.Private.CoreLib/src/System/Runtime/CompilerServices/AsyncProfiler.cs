@@ -1674,7 +1674,7 @@ namespace System.Runtime.CompilerServices
 
                 while (state.Count < maxAsyncCallstackFrames && state.Continuation != null)
                 {
-                    if (state.Continuation is Task dispatcherTask && dispatcherTask.IsAsyncStateMachineDispatcher)
+                    if (state.Continuation is IAsyncStateMachineDispatcher { IsLeaf: true })
                     {
                         state.Continuation = null;
                         break;

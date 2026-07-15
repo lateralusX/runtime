@@ -68,8 +68,9 @@ namespace System.Runtime.CompilerServices
                 return box;
             }
 
-            Task? boxAsTask = box as Task;
-            if (boxAsTask != null && boxAsTask.IsAsyncStateMachineDispatcher)
+            IAsyncStateMachineDispatcher? dispatcherBox = box as IAsyncStateMachineDispatcher;
+
+            if (dispatcherBox?.IsLeaf == true)
             {
                 return box;
             }
@@ -96,14 +97,16 @@ namespace System.Runtime.CompilerServices
                     AsyncProfiler.CreateAsyncContext.Append(ref *info);
                 }
 
-                boxAsTask?.SetAsyncStateMachineDispatcher(true);
+                Debug.Assert(dispatcherBox != null);
+                dispatcherBox!.IsLeaf = true;
+
                 return box;
             }
 
-            if (boxAsTask != null)
+            if (dispatcherBox is Task dispatcherBoxAsTask)
             {
-                EmitCreateAsyncContext(info, boxAsTask, flags);
-                boxAsTask.SetAsyncStateMachineDispatcher(true);
+                EmitCreateAsyncContext(info, dispatcherBoxAsTask, flags);
+                dispatcherBox.IsLeaf = true;
                 return box;
             }
 
@@ -233,7 +236,12 @@ namespace System.Runtime.CompilerServices
         }
     }
 
-    internal sealed class AsyncStateMachineDispatcher : Task<VoidTaskResult>, IAsyncStateMachineBox
+    internal interface IAsyncStateMachineDispatcher
+    {
+        bool IsLeaf { get; set; }
+    }
+
+    internal sealed class AsyncStateMachineDispatcher : Task<VoidTaskResult>, IAsyncStateMachineBox, IAsyncStateMachineDispatcher
     {
         private IAsyncStateMachineBox? _inner;
 
@@ -242,7 +250,13 @@ namespace System.Runtime.CompilerServices
         internal AsyncStateMachineDispatcher(IAsyncStateMachineBox inner) : base()
         {
             _inner = inner;
-            m_stateFlags |= (int)TaskStateFlags.AsyncStateMachineDispatcher;
+        }
+
+        // The wrapper is always the leaf dispatcher for its inner box, so this is permanently true;
+        bool IAsyncStateMachineDispatcher.IsLeaf
+        {
+            get => true;
+            set { }
         }
 
         internal sealed override void ExecuteDirectly(Thread? threadPoolThread) => MoveNext();
@@ -266,12 +280,20 @@ namespace System.Runtime.CompilerServices
             info.Dispatcher = this;
             info.AsyncProfilerInfo.CurrentContinuation = inner;
 
+            AsyncInstrumentation.Flags flags = AsyncInstrumentation.LoadFlags();
+
             try
             {
-                InstrumentedMoveNext(ref info, inner);
+                if (AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
+                {
+                    AsyncProfiler.ResumeAsyncContext.Resume(ref info);
+                }
+
+                inner.MoveNext();
             }
             finally
             {
+                AsyncStateMachineDispatcherInfo.SuspendOrCompleteContext(ref info, flags);
                 refInfo = info.Next;
             }
         }
@@ -302,24 +324,6 @@ namespace System.Runtime.CompilerServices
             state = -1;
             nextContinuation = null;
             return false;
-        }
-
-        private static void InstrumentedMoveNext(ref AsyncStateMachineDispatcherInfo info, IAsyncStateMachineBox inner)
-        {
-            AsyncInstrumentation.Flags flags = AsyncInstrumentation.LoadFlags();
-            try
-            {
-                if (AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
-                {
-                    AsyncProfiler.ResumeAsyncContext.Resume(ref info);
-                }
-
-                inner.MoveNext();
-            }
-            finally
-            {
-                AsyncStateMachineDispatcherInfo.SuspendOrCompleteContext(ref info, flags);
-            }
         }
     }
 }
