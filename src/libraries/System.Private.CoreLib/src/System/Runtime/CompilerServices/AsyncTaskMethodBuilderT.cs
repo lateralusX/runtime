@@ -293,7 +293,7 @@ namespace System.Runtime.CompilerServices
         /// <summary>
         /// A strongly-typed box allocated instead of <see cref="AsyncStateMachineBox{TStateMachine}"/>
         /// while the async profiler is active. It carries the dispatcher machinery (dispatcher frame
-        /// and open-context tracking) so the base box stays free of profiler-only state and behavior
+        /// and node identity) so the base box stays free of profiler-only state and behavior
         /// on the common, profiler-disabled path.
         /// </summary>
         /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
@@ -303,7 +303,7 @@ namespace System.Runtime.CompilerServices
         {
             private bool _isLeaf;
 
-            private bool _hasOpenContext;
+            private ulong _dispatcherId;
 
             bool IAsyncStateMachineDispatcher.IsLeaf
             {
@@ -311,9 +311,22 @@ namespace System.Runtime.CompilerServices
                 set => _isLeaf = value;
             }
 
+            ulong IAsyncStateMachineDispatcher.DispatcherId
+            {
+                get
+                {
+                    if (_dispatcherId == 0)
+                    {
+                        _dispatcherId = (ulong)NewId();
+                    }
+
+                    return _dispatcherId;
+                }
+            }
+
             private protected override void InstrumentedMoveNext(Thread? threadPoolThread, AsyncInstrumentation.Flags flags)
             {
-                if (_isLeaf || _hasOpenContext)
+                if (_isLeaf)
                 {
                     MoveNextAsDispatcher(threadPoolThread, flags);
                     return;
@@ -333,10 +346,10 @@ namespace System.Runtime.CompilerServices
                 AsyncProfiler.InitInfo(ref info.AsyncProfilerInfo);
 
                 info.Dispatcher = this;
+                info.AsyncProfilerInfo.DispatcherId = _dispatcherId;
                 info.AsyncProfilerInfo.CurrentContinuation = this;
 
                 _isLeaf = false;
-                _hasOpenContext = true;
 
                 try
                 {
@@ -352,11 +365,10 @@ namespace System.Runtime.CompilerServices
                 finally
                 {
                     // SuspendOrCompleteContext never throws, so the frame is always popped afterwards.
-                    AsyncStateMachineDispatcherInfo.SuspendOrCompleteContext(ref info, flags);
-
-                    if (info.AsyncProfilerInfo.CurrentContinuationCompleted)
+                    bool suspended = AsyncStateMachineDispatcherInfo.SuspendOrCompleteContext(ref info, flags);
+                    if (!suspended)
                     {
-                        _hasOpenContext = false;
+                        _dispatcherId = 0;
                     }
 
                     refInfo = info.Next;

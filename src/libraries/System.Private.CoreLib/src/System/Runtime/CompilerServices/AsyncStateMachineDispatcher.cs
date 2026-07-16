@@ -87,6 +87,7 @@ namespace System.Runtime.CompilerServices
                         AsyncProfiler.CreateAsyncContext.Append(ref *info);
                     }
 
+                    info->AsyncProfilerInfo.CurrentContinuationResumes = true;
                     return reusedDispatcher;
                 }
             }
@@ -100,12 +101,13 @@ namespace System.Runtime.CompilerServices
                 Debug.Assert(dispatcherBox != null);
                 dispatcherBox!.IsLeaf = true;
 
+                info->AsyncProfilerInfo.CurrentContinuationResumes = true;
                 return box;
             }
 
-            if (dispatcherBox is Task dispatcherBoxAsTask)
+            if (dispatcherBox is Task)
             {
-                EmitCreateAsyncContext(info, dispatcherBoxAsTask, flags);
+                EmitCreateAsyncContext(info, dispatcherBox, flags);
                 dispatcherBox.IsLeaf = true;
                 return box;
             }
@@ -115,7 +117,7 @@ namespace System.Runtime.CompilerServices
             return dispatcher;
         }
 
-        private static unsafe void EmitCreateAsyncContext(AsyncStateMachineDispatcherInfo* info, Task dispatcher, AsyncInstrumentation.Flags flags)
+        private static unsafe void EmitCreateAsyncContext(AsyncStateMachineDispatcherInfo* info, IAsyncStateMachineDispatcher dispatcher, AsyncInstrumentation.Flags flags)
         {
             if (AsyncInstrumentation.IsEnabled.CreateAsyncContext(flags) || AsyncInstrumentation.IsEnabled.ResumeAsyncContext(flags))
             {
@@ -196,24 +198,38 @@ namespace System.Runtime.CompilerServices
             }
         }
 
-        internal static void SuspendOrCompleteContext(ref AsyncStateMachineDispatcherInfo info, AsyncInstrumentation.Flags flags)
+        internal static bool SuspendOrCompleteContext(ref AsyncStateMachineDispatcherInfo info, AsyncInstrumentation.Flags flags)
         {
+            bool suspended = false;
+
             try
             {
-                bool isCompleted = info.AsyncProfilerInfo.CurrentContinuationCompleted;
-                if (AsyncInstrumentation.IsEnabled.CompleteAsyncContext(flags) && isCompleted)
+                // A node ends this dispatch in a suspend only when the method has not completed and
+                // it re-armed itself as a leaf (it will be resumed again under this same node).
+                // Otherwise the node is done: the method completed, or leaf-ship was handed off to a
+                // child context that took over the chain (this node won't be resumed again).
+                suspended = !info.AsyncProfilerInfo.CurrentContinuationCompleted && info.AsyncProfilerInfo.CurrentContinuationResumes;
+                if (suspended)
                 {
-                    AsyncProfiler.CompleteAsyncContext.Complete(ref info);
+                    if (AsyncInstrumentation.IsEnabled.SuspendAsyncContext(flags))
+                    {
+                        AsyncProfiler.SuspendAsyncContext.Suspend(ref info.AsyncProfilerInfo);
+                    }
                 }
-                else if (AsyncInstrumentation.IsEnabled.SuspendAsyncContext(flags) && !isCompleted)
+                else
                 {
-                    AsyncProfiler.SuspendAsyncContext.Suspend(ref info.AsyncProfilerInfo);
+                    if (AsyncInstrumentation.IsEnabled.CompleteAsyncContext(flags))
+                    {
+                        AsyncProfiler.CompleteAsyncContext.Complete(ref info);
+                    }
                 }
             }
             catch (Exception)
             {
                 // Best-effort instrumentation: swallow so the dispatch frame is always popped.
             }
+
+            return suspended;
         }
 
         internal static unsafe void CompleteAsyncMethod(object completingBox, AsyncInstrumentation.Flags flags)
@@ -239,6 +255,7 @@ namespace System.Runtime.CompilerServices
     internal interface IAsyncStateMachineDispatcher
     {
         bool IsLeaf { get; set; }
+        ulong DispatcherId { get; }
     }
 
     internal sealed class AsyncStateMachineDispatcher : Task<VoidTaskResult>, IAsyncStateMachineBox, IAsyncStateMachineDispatcher
@@ -259,6 +276,8 @@ namespace System.Runtime.CompilerServices
             set { }
         }
 
+        ulong IAsyncStateMachineDispatcher.DispatcherId => (ulong)Id;
+
         internal sealed override void ExecuteDirectly(Thread? threadPoolThread) => MoveNext();
 
         public unsafe void MoveNext()
@@ -278,6 +297,7 @@ namespace System.Runtime.CompilerServices
             AsyncProfiler.InitInfo(ref info.AsyncProfilerInfo);
 
             info.Dispatcher = this;
+            info.AsyncProfilerInfo.DispatcherId = (ulong)Id;
             info.AsyncProfilerInfo.CurrentContinuation = inner;
 
             AsyncInstrumentation.Flags flags = AsyncInstrumentation.LoadFlags();

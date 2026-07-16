@@ -153,21 +153,25 @@ namespace System.Runtime.CompilerServices
 
         internal ref struct Info
         {
+            public ulong DispatcherId;
             public object? Context;
             public object? CurrentContinuation;
             public IAsyncStateMachineBox? LastContinuation;
             public ref nint ContinuationTable;
             public uint ContinuationIndex;
             public bool CurrentContinuationCompleted;
+            public bool CurrentContinuationResumes;
             public bool ReachedLastContinuation;
         }
 
         internal static void InitInfo(ref Info info)
         {
+            info.DispatcherId = 0;
             info.Context = null;
             info.CurrentContinuation = null;
-            info.CurrentContinuationCompleted = false;
             info.LastContinuation = null;
+            info.CurrentContinuationCompleted = false;
+            info.CurrentContinuationResumes = false;
             info.ReachedLastContinuation = false;
             ContinuationWrapper.InitInfo(ref info);
         }
@@ -898,28 +902,17 @@ namespace System.Runtime.CompilerServices
 
         internal static partial class DispatcherIds
         {
-            public static ulong GetDispatcherId(Task dispatcher) => (ulong)dispatcher.Id;
+            public static ulong GetDispatcherId(IAsyncStateMachineDispatcher dispatcher) =>
+                dispatcher.DispatcherId;
 
-            public static ulong GetDispatcherId(ref AsyncStateMachineDispatcherInfo info)
-            {
-                if (info.Dispatcher != null)
-                {
-                    return GetDispatcherId(info.Dispatcher);
-                }
-                return 0;
-            }
+            public static ulong GetDispatcherId(ref AsyncStateMachineDispatcherInfo info) =>
+                info.AsyncProfilerInfo.DispatcherId;
 
 #if !RUNTIME_ASYNC_SUPPORTED
             public static unsafe ulong CaptureParentDispatcherId()
             {
                 AsyncStateMachineDispatcherInfo* info = AsyncStateMachineDispatcherInfo.t_current;
-                if (info == null)
-                {
-                    return 0;
-                }
-
-                Task? parent = info->Dispatcher;
-                return parent is not null ? (ulong)parent.Id : 0;
+                return info != null ? info->AsyncProfilerInfo.DispatcherId : 0;
             }
 #endif
         }

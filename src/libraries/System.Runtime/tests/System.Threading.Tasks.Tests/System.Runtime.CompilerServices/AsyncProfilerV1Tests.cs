@@ -1931,77 +1931,108 @@ namespace System.Threading.Tasks.Tests
 
         [RuntimeAsyncMethodGeneration(false)]
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static async Task StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Child_Marker()
+        private static async Task StateMachineAsync_NestedChildResume_FlattensPerSegment_Child_Marker()
         {
             await Task.Yield();
         }
 
         [RuntimeAsyncMethodGeneration(false)]
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static async Task StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Middle_Marker()
+        private static async Task StateMachineAsync_NestedChildResume_FlattensPerSegment_Middle_Marker()
         {
             // Suspend once so this box becomes a leaf dispatcher, then resume and await a nested child
             // async method (its own dispatcher). When that child completes it inline-resumes this box;
-            // the trailing yield then re-suspends this same box as a leaf again.
+            // the trailing yield then re-suspends this same box, which under the flattened per-segment
+            // model starts a fresh dispatcher segment parented to the just-completed child.
             await Task.Yield();
-            await StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Child_Marker();
+            await StateMachineAsync_NestedChildResume_FlattensPerSegment_Child_Marker();
             await Task.Yield();
         }
 
         [RuntimeAsyncMethodGeneration(false)]
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static async Task StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Marker()
+        private static async Task StateMachineAsync_NestedChildResume_FlattensPerSegment_Marker()
         {
             // Suspend/resume first so this outer marker is a live dispatcher (non-zero parent id) by
             // the time the middle frame below first suspends.
             await Task.Yield();
-            await StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Middle_Marker();
+            await StateMachineAsync_NestedChildResume_FlattensPerSegment_Middle_Marker();
         }
 
         [ConditionalFact(typeof(AsyncProfilerTests), nameof(IsStateMachineAsyncAndThreadingSupported))]
-        public void StateMachineAsync_NestedChildResume_ReusesParentDispatcher()
+        public void StateMachineAsync_NestedChildResume_FlattensPerSegment()
         {
             var events = CollectEvents(ResumeStateMachineAsyncCallstackKeyword | StateMachineAsyncCoreKeywords, () =>
             {
-                RunScenarioAndFlush(() => StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Marker());
+                RunScenarioAndFlush(() => StateMachineAsync_NestedChildResume_FlattensPerSegment_Marker());
             });
 
             // DumpAllEvents(events);
 
             var stream = ParseAllEvents(events);
 
-            // Resolve a dispatcher id from the resume callstack whose leaf (top) frame is the given
-            // marker, i.e. the callstack captured while that method's own box was executing.
-            ulong LeafDispatcherId(string markerName)
+            // Resume callstacks whose leaf (top) frame is the given marker: the callstacks captured while
+            // that method's own box was the running continuation. A box that merely appears deeper in
+            // someone else's callstack (e.g. Middle inside the child's [Child, Middle, Marker]) is
+            // excluded, so this isolates the segments a box was resumed under in its own right.
+            List<ParsedEvent> LeafResumes(string markerName) =>
+                stream.CallstacksWithMarker(AsyncEventID.ResumeStateMachineAsyncCallstack, markerName)
+                    .Where(c => c.Frames.Count > 0
+                        && (GetMethodNameFromMethodId(c.CallstackType, c.Frames[0].MethodId)?.Contains(markerName, StringComparison.Ordinal) ?? false))
+                    .ToList();
+
+            var outerResumes = LeafResumes(nameof(StateMachineAsync_NestedChildResume_FlattensPerSegment_Marker));
+            var middleResumes = LeafResumes(nameof(StateMachineAsync_NestedChildResume_FlattensPerSegment_Middle_Marker));
+            var childResumes = LeafResumes(nameof(StateMachineAsync_NestedChildResume_FlattensPerSegment_Child_Marker));
+
+            AssertNotEmpty(stream, outerResumes);
+            AssertNotEmpty(stream, middleResumes);
+            AssertNotEmpty(stream, childResumes);
+
+            ulong childDispatcherId = childResumes[0].DispatcherId;
+
+            // The middle box suspends, resumes, awaits a nested child dispatcher, then (after the child
+            // inline-resumes it) re-suspends. Under the flattened per-segment model each resumed segment
+            // gets its own unique dispatcher id, so the middle box surfaces as exactly two distinct
+            // segments rather than one reused context.
+            var middleSegmentIds = middleResumes.Select(c => c.DispatcherId).Distinct().ToList();
+            AssertEqual(stream, 2, middleSegmentIds.Count);
+
+            // Flattening: the post-child bubble-up resumes the middle box as a flat [Middle, Marker]
+            // continuation. No middle resume callstack is nested under (contains) the child dispatcher's
+            // frame, so the child's callstack suffix is never duplicated into the parent's resume.
+            foreach (var resume in middleResumes)
             {
-                var leafCallstack = stream.CallstacksWithMarker(AsyncEventID.ResumeStateMachineAsyncCallstack, markerName)
-                    .FirstOrDefault(c => c.Frames.Count > 0
-                        && (GetMethodNameFromMethodId(c.CallstackType, c.Frames[0].MethodId)?.Contains(markerName, StringComparison.Ordinal) ?? false));
-                AssertNotNull(stream, leafCallstack);
-                return leafCallstack!.DispatcherId;
+                AssertFalse(stream, resume.HasMarkerFrame(nameof(StateMachineAsync_NestedChildResume_FlattensPerSegment_Child_Marker)),
+                    $"Middle resume callstack (DispatcherId {resume.DispatcherId}) is nested under its child dispatcher; flattening failed");
             }
 
-            ulong middleDispatcherId = LeafDispatcherId(nameof(StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Middle_Marker));
-            ulong childDispatcherId = LeafDispatcherId(nameof(StateMachineAsync_NestedChildResume_ReusesParentDispatcher_Child_Marker));
-
-            // Create events are the only context events that carry an explicit dispatcher id on the wire,
-            // so scope the invariant to them.
+            // Each middle segment is created exactly once, and exactly one of the two segments is parented
+            // to the just-completed child dispatcher. That "child as parent" edge is the intended
+            // per-segment relationship: the same box resumed in a new chain is a child of the context that
+            // inline-resumed it, not an inverted parent/child edge.
             var middleCreates = stream.All
-                .Where(e => e.EventId == AsyncEventID.CreateStateMachineAsyncContext && e.DispatcherId == middleDispatcherId)
+                .Where(e => e.EventId == AsyncEventID.CreateStateMachineAsyncContext && middleSegmentIds.Contains(e.DispatcherId))
                 .ToList();
+            AssertEqual(stream, 2, middleCreates.Count);
+            AssertEqual(stream, 1, middleCreates.Count(c => c.ParentDispatcherId == childDispatcherId));
 
-            // The middle frame is a single box (one Task.Id). Even though it suspends, resumes, awaits a
-            // nested child dispatcher, and re-suspends after that child completes, its dispatcher context
-            // should be created exactly once for the whole lifetime.
-            AssertEqual(stream, 1, middleCreates.Count);
+            // Whole-scenario balance: walking the full dispatcher tree from the outer marker, every
+            // segment that is created is also completed exactly once, with no leaked Suspend and no
+            // double Complete (each created id is unique and pairs with a single Complete).
+            var chain = stream.ChainEventsFromDispatcher(outerResumes[0].DispatcherId);
+            var createdIds = chain.Where(e => e.EventId == AsyncEventID.CreateStateMachineAsyncContext)
+                .Select(e => e.DispatcherId)
+                .ToList();
+            AssertNotEmpty(stream, createdIds);
+            AssertEqual(stream, createdIds.Count, createdIds.Distinct().Count());
 
-            // No Create for the middle frame may attribute its parent to its own nested child dispatcher:
-            // the child is a descendant, never a parent.
-            foreach (var create in middleCreates)
+            foreach (ulong id in createdIds)
             {
-                AssertTrue(stream, create.ParentDispatcherId != childDispatcherId,
-                    $"Middle dispatcher {middleDispatcherId} was created with ParentDispatcherId {create.ParentDispatcherId} " +
-                    $"pointing at its own nested child dispatcher {childDispatcherId} (inverted parent/child edge)");
+                int completes = chain.Count(e => e.EventId == AsyncEventID.CompleteStateMachineAsyncContext && e.DispatcherId == id);
+                int suspends = chain.Count(e => e.EventId == AsyncEventID.SuspendStateMachineAsyncContext && e.DispatcherId == id);
+                AssertEqual(stream, 1, completes);
+                AssertEqual(stream, 0, suspends);
             }
         }
 
