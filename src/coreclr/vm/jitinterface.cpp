@@ -13297,7 +13297,7 @@ static TADDR UnsafeJitFunctionWorker(
         //
         // Notify the debugger that we have successfully jitted the function
         //
-        if (g_pDebugInterface)
+        if (g_pDebugInterface && !pJitInfo->JitAgain())
         {
             g_pDebugInterface->JITComplete(nativeCodeVersion, (TADDR)nativeEntry);
 

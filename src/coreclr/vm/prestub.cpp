@@ -51,7 +51,9 @@
 
 #ifndef DACCESS_COMPILE
 
+#if !defined(TARGET_ARM64) || !defined(TARGET_APPLE)
 EXTERN_C void STDCALL ThePreStubPatch();
+#endif // !TARGET_ARM64 || !TARGET_APPLE
 
 #ifndef FEATURE_PORTABLE_ENTRYPOINTS
 const TADDR g_cdacThePreStub = GetEEFuncEntryPoint(ThePreStub);
@@ -1891,7 +1893,17 @@ static PCODE PreStubWorker_Preemptive(
         HardwareExceptionHolder;
 
         // Give debugger opportunity to stop here
+#if !defined(TARGET_ARM64) || !defined(TARGET_APPLE)
+        // DAC FollowStub uses this stopping point without subscribing to callbacks.
         ThePreStubPatch();
+#endif // !TARGET_ARM64 || !TARGET_APPLE
+#ifdef DEBUGGING_SUPPORTED
+        if (DebuggerTracepointHelpers::IsEnabled(DEBUGGER_TRACEPOINT_PRE_STUB))
+        {
+            DebuggerTracepointArgsT1<PCODE> args(DEBUGGER_TRACEPOINT_PRE_STUB, pbRetVal);
+            g_pDebugger->DispatchTracepoint(&args);
+        }
+#endif // DEBUGGING_SUPPORTED
     }
 
     return pbRetVal;
@@ -2014,7 +2026,17 @@ extern "C" PCODE STDCALL PreStubWorker(TransitionBlock* pTransitionBlock, Method
             HardwareExceptionHolder;
 
             // Give debugger opportunity to stop here
+#if !defined(TARGET_ARM64) || !defined(TARGET_APPLE)
+            // DAC FollowStub uses this stopping point without subscribing to callbacks.
             ThePreStubPatch();
+#endif // !TARGET_ARM64 || !TARGET_APPLE
+#ifdef DEBUGGING_SUPPORTED
+            if (DebuggerTracepointHelpers::IsEnabled(DEBUGGER_TRACEPOINT_PRE_STUB))
+            {
+                DebuggerTracepointArgsT1<PCODE> args(DEBUGGER_TRACEPOINT_PRE_STUB, pbRetVal);
+                g_pDebugger->DispatchTracepoint(&args);
+            }
+#endif // DEBUGGING_SUPPORTED
         }
 
         pPFrame->Pop(CURRENT_THREAD);
@@ -3259,10 +3281,13 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(
 
     // Force a GC on every jit if the stress level is high enough
     GCStress<cfg_any>::MaybeTrigger();
-    if (g_externalMethodFixupTraceActiveCount > 0)
+#ifdef DEBUGGING_SUPPORTED
+    if (DebuggerTracepointHelpers::IsEnabled(DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP))
     {
-        g_pDebugger->ExternalMethodFixupNextStep(pCode);
+        DebuggerTracepointArgsT1<PCODE> args(DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP, pCode);
+        g_pDebugger->DispatchTracepoint(&args);
     }
+#endif // DEBUGGING_SUPPORTED
     // Ready to return
 
     UNINSTALL_UNWIND_AND_CONTINUE_HANDLER_EX(propagateExceptionToNativeCode);

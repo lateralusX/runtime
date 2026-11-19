@@ -1121,8 +1121,7 @@ class DebuggerController
     // pIP is the ip right after the prolog of the method we've entered.
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
-    static void DispatchMulticastDelegate(DELEGATEREF pbDel, INT32 countDel);
-    static void DispatchExternalMethodFixup(PCODE addr);
+    static void DispatchTracepoint(DebuggerTracepointArgs *args);
 
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
@@ -1343,11 +1342,13 @@ public:
     void EnableMethodEnter();
     void DisableMethodEnter();
 
-    void EnableMultiCastDelegate();
-    void DisableMultiCastDelegate();
-
-    void EnableExternalMethodFixup();
-    void DisableExternalMethodFixup();
+    bool ActivateTracepoint(DebuggerTracepointType type);
+    void DeactivateTracepoint(DebuggerTracepointType type);
+    bool IsTracepointEnabled(DebuggerTracepointType type)
+    {
+        LIMITED_METHOD_CONTRACT;
+        return !m_deleted && m_tracepoints[type];
+    }
 
     void DisableAll();
 
@@ -1445,9 +1446,7 @@ public:
                                     const BYTE * ip,
                                     FramePointer fp);
 
-    virtual void TriggerMulticastDelegate(DELEGATEREF pDel, INT32 delegateCount);
-
-    virtual void TriggerExternalMethodFixup(PCODE target);
+    virtual void TriggerTracepoint(DebuggerTracepointArgs *args);
 
     // Send the managed debug event.
     // This is called after TriggerPatch/TriggerSingleStep actually trigger.
@@ -1487,8 +1486,7 @@ private:
     int                 m_eventQueuedCount;
     bool                m_deleted;
     bool                m_fEnableMethodEnter;
-    bool                m_multicastDelegateHelper;
-    bool                m_externalMethodFixup;
+    bool                m_tracepoints[DEBUGGER_TRACEPOINT_MAX];
 
 #endif // !DACCESS_COMPILE
 };
@@ -1732,8 +1730,7 @@ protected:
 
 
     virtual void TriggerMethodEnter(Thread * thread, DebuggerJitInfo * dji, const BYTE * ip, FramePointer fp);
-    void TriggerMulticastDelegate(DELEGATEREF pDel, INT32 delegateCount);
-    void TriggerExternalMethodFixup(PCODE target);
+    void TriggerTracepoint(DebuggerTracepointArgs *args) override;
 
     void ResetRange();
 
@@ -1817,12 +1814,20 @@ protected:
     };
 
 
-    void EnableJMCBackStop(MethodDesc * pStartMethod);
+    enum class MethodEnterReason
+    {
+        StubManagerBackstop,
+        InterpreterStepIn,
+        TracepointFallback
+    };
+
+    void EnableJMCBackStop(MethodDesc * pStartMethod, MethodEnterReason reason = MethodEnterReason::StubManagerBackstop);
 
 #ifdef _DEBUG
     // MethodDesc that the Stepin started in.
     // This is used for the JMC-backstop.
     MethodDesc * m_StepInStartMethod;
+    MethodEnterReason m_methodEnterReason;
 
     // This flag is to ensure that PrepareForSendEvent is called before SendEvent.
     bool                    m_fReadyToSend;
@@ -1896,6 +1901,7 @@ public:
     {
         SSR_Success,            // Breakpoints placed, step can proceed
         SSR_NeedStepIn,         // Caller should handle step-in (call target available)
+        SSR_NeedStepInInterop,  // Use MethodEnter without tracing marshalling helpers
         SSR_NeedStepOut,        // Caller should invoke TrapStepOut (return/throw)
         SSR_Failed              // Could not set up step
     };
@@ -1945,6 +1951,7 @@ private:
                       Thread *thread,
                       TRIGGER_WHY tyWhy);
     void TriggerTraceCall(Thread *thread, const BYTE *ip);
+    void TriggerTracepoint(DebuggerTracepointArgs *args) override;
     bool SendEvent(Thread *thread, bool fInterruptedBySetIp);
 };
 

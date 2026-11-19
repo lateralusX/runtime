@@ -2214,6 +2214,12 @@ public:
                             unsigned int errorLine,
                             bool exitThread);
 
+    bool HasUnrecoverableError()
+    {
+        LIMITED_METHOD_CONTRACT;
+        return CORDBUnrecoverableError(this);
+    }
+
     virtual BOOL IsSynchronizing(void)
     {
         LIMITED_METHOD_CONTRACT;
@@ -2503,8 +2509,7 @@ public:
 
     HRESULT ReDaclEvents(PSECURITY_DESCRIPTOR securityDescriptor);
 #ifndef DACCESS_COMPILE
-    void MulticastTraceNextStep(DELEGATEREF pbDel, INT32 count);
-    void ExternalMethodFixupNextStep(PCODE address);
+    void DispatchTracepoint(DebuggerTracepointArgs *args);
 #endif
 
 #ifdef DACCESS_COMPILE

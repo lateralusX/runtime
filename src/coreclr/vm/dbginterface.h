@@ -361,8 +361,7 @@ public:
 
 #ifndef DACCESS_COMPILE
     virtual HRESULT DeoptimizeMethod(Module* pModule, mdMethodDef methodDef) = 0;
-    virtual void MulticastTraceNextStep(DELEGATEREF pbDel, INT32 count) = 0;
-    virtual void ExternalMethodFixupNextStep(PCODE address) = 0;
+    virtual void DispatchTracepoint(DebuggerTracepointArgs *args) = 0;
     virtual void ProcessAnyPendingEvals(Thread* pThread) = 0;
 
     virtual void SendCreateThreadAtInterpreterEntry(Thread* pRuntimeThread) = 0;

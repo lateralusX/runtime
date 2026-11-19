@@ -10,6 +10,7 @@
 #include "gcenv.h"
 #include "interpexec.h"
 #include "frames.h"
+#include "dbginterface.h"
 #include "virtualcallstub.h"
 #include "comdelegate.h"
 #include "gchelpers.inl"
@@ -483,6 +484,14 @@ void InvokeManagedMethod(MethodDesc *pMD, int8_t *pArgs, int8_t *pRet, PCODE tar
     {
         pContinuationRet = &continuationUnused;
     }
+
+#ifdef DEBUGGING_SUPPORTED
+    // Compiled targets do not execute the interpreter's MethodEnter probe.
+    if (CORDebuggerTraceCall() && GetThread()->PreemptiveGCDisabled())
+    {
+        g_pDebugInterface->TraceCall(reinterpret_cast<const BYTE*>(pHeader->GetTarget()));
+    }
+#endif // DEBUGGING_SUPPORTED
 
     pHeader->Invoke(pHeader->Routines, pArgs, pRet, pHeader->TotalStackSize, pContinuationRet);
 }

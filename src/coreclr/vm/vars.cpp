@@ -162,8 +162,7 @@ GVAL_IMPL_INIT(DWORD,         g_CORDebuggerControlFlags, DBCF_NORMAL_OPERATION);
 GPTR_IMPL(EEDbgInterfaceImpl, g_pEEDbgInterfaceImpl);
 
 #ifndef DACCESS_COMPILE
-GVAL_IMPL_INIT(DWORD, g_multicastDelegateTraceActiveCount, 0);
-GVAL_IMPL_INIT(DWORD, g_externalMethodFixupTraceActiveCount, 0);
+GARY_IMPL(DWORD, g_debuggerTracepointCounters, DEBUGGER_TRACEPOINT_MAX);
 #endif // DACCESS_COMPILE
 
 #endif // DEBUGGING_SUPPORTED

@@ -1208,7 +1208,18 @@ void WaitForEndOfShutdown()
         pThread->SetThreadStateNC(Thread::TSNC_BlockedForShutdown);
     }
 
-    for (;;) g_pEEShutDownEvent->Wait(INFINITE, TRUE, false);
+    for (;;)
+    {
+        EX_TRY
+        {
+            // Alertable waits can throw; this thread must remain blocked during shutdown.
+            g_pEEShutDownEvent->Wait(INFINITE, TRUE, false);
+        }
+        EX_CATCH
+        {
+        }
+        EX_END_CATCH
+    }
 }
 
 // ---------------------------------------------------------------------------

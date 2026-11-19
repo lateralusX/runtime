@@ -591,6 +591,17 @@ StackWalkAction ControllerStackInfo::WalkStack(FrameInfo *pInfo, void *data)
                 // Continue unless we found a managed return frame.
                 return pInfo->managed ? SWA_ABORT : SWA_CONTINUE;
             }
+#ifdef FEATURE_INTERPRETER
+            else if (pInfo->HasMethodFrame() &&
+                     pInfo->pIJM != nullptr &&
+                     pInfo->pIJM == ExecutionManager::GetInterpreterJitManager() &&
+                     i->m_activeFrame.chainReason == CHAIN_ENTER_UNMANAGED)
+            {
+                // An interpreted caller can share its frame pointer with an unmanaged chain marker.
+                i->m_activeFrame = *pInfo;
+                CopyREGDISPLAY(&(i->m_activeFrame.registers), &(pInfo->registers));
+            }
+#endif // FEATURE_INTERPRETER
         }
         else
         {
@@ -1079,8 +1090,7 @@ DebuggerController::DebuggerController(Thread * pThread, AppDomain * pAppDomain)
     m_eventQueuedCount(0),
     m_deleted(false),
     m_fEnableMethodEnter(false),
-    m_multicastDelegateHelper(false),
-    m_externalMethodFixup(false)
+    m_tracepoints{}
 {
     CONTRACTL
     {
@@ -1272,10 +1282,10 @@ void DebuggerController::DisableAll()
             DisableTraceCall();
         if (m_fEnableMethodEnter)
             DisableMethodEnter();
-        if (m_multicastDelegateHelper)
-            DisableMultiCastDelegate();
-        if (m_externalMethodFixup)
-            DisableExternalMethodFixup();
+        for (int type = DEBUGGER_TRACEPOINT_MIN; type < DEBUGGER_TRACEPOINT_MAX; type++)
+        {
+            DeactivateTracepoint(static_cast<DebuggerTracepointType>(type));
+        }
     }
 }
 
@@ -2620,13 +2630,8 @@ bool DebuggerController::PatchTrace(TraceDestination *trace,
 
         return true;
 
-    case TRACE_MULTICAST_DELEGATE_HELPER:
-        EnableMultiCastDelegate();
-        return true;
-
-    case TRACE_EXTERNAL_METHOD_FIXUP:
-        EnableExternalMethodFixup();
-        return true;
+    case TRACE_TRACEPOINT:
+        return ActivateTracepoint(trace->GetTracepointType());
 
     case TRACE_OTHER:
         LOG((LF_CORDB, LL_INFO10000,
@@ -4170,136 +4175,119 @@ void DebuggerController::DispatchMethodEnter(void * pIP, FramePointer fp)
 
 }
 
-void DebuggerController::EnableMultiCastDelegate()
+bool DebuggerController::ActivateTracepoint(DebuggerTracepointType type)
 {
     CONTRACTL
     {
         NOTHROW;
         GC_NOTRIGGER;
+        MODE_ANY;
     }
     CONTRACTL_END;
 
     ControllerLockHolder chController;
-    if (!m_multicastDelegateHelper)
+    if (!m_tracepoints[type])
     {
-        LOG((LF_CORDB, LL_INFO1000000, "DC::EnableMultiCastDel, this=%p, previously disabled\n", this));
-        m_multicastDelegateHelper = true;
-        g_multicastDelegateTraceActiveCount += 1;
+        DWORD* counter = DebuggerTracepointHelpers::GetCounterAddress(type);
+        VolatileStoreWithoutBarrier(counter, *counter + 1);
+        m_tracepoints[type] = true;
+        LOG((LF_CORDB, LL_INFO10000, "DC::ActivateTracepoint: %p enabled %s\n",
+            this,
+            DebuggerTracepointHelpers::ToString(type)));
     }
-    else
-    {
-        LOG((LF_CORDB, LL_INFO1000000, "DC::EnableMultiCastDel, this=%p, already set\n", this));
-    }
+
+    return true;
 }
 
-void DebuggerController::DisableMultiCastDelegate()
+void DebuggerController::DeactivateTracepoint(DebuggerTracepointType type)
 {
     CONTRACTL
     {
         NOTHROW;
         GC_NOTRIGGER;
+        MODE_ANY;
     }
     CONTRACTL_END;
 
     ControllerLockHolder chController;
-    if (m_multicastDelegateHelper)
+    if (m_tracepoints[type])
     {
-        LOG((LF_CORDB, LL_INFO10000, "DC::DisableMultiCastDelegate, this=%p, previously set\n", this));
-        m_multicastDelegateHelper = false;
-        g_multicastDelegateTraceActiveCount -= 1;
-    }
-    else
-    {
-        LOG((LF_CORDB, LL_INFO10000, "DC::DisableMultiCastDelegate, this=%p, already disabled\n", this));
+        DWORD* counter = DebuggerTracepointHelpers::GetCounterAddress(type);
+        _ASSERTE(*counter > 0);
+        VolatileStoreWithoutBarrier(counter, *counter - 1);
+        m_tracepoints[type] = false;
+        LOG((LF_CORDB, LL_INFO10000, "DC::DeactivateTracepoint: %p disabled %s\n",
+            this,
+            DebuggerTracepointHelpers::ToString(type)));
     }
 }
 
-// Loop through controllers and dispatch TriggerMulticastDelegate
-void DebuggerController::DispatchMulticastDelegate(DELEGATEREF pbDel, INT32 countDel)
+void DebuggerController::DispatchTracepoint(DebuggerTracepointArgs *args)
 {
-    LOG((LF_CORDB, LL_INFO10000, "DC::DispatchMulticastDelegate\n"));
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_ANY;
+    }
+    CONTRACTL_END;
 
     Thread * pThread = g_pEEInterface->GetThread();
-    _ASSERTE(pThread  != NULL);
+    _ASSERTE(pThread != NULL && args != NULL);
+
+    if (!DebuggerTracepointHelpers::IsEnabled(args->type))
+    {
+        return;
+    }
 
     ControllerLockHolder lockController;
+
+    if (g_pDebugger->HasUnrecoverableError())
+    {
+        return;
+    }
+
+    LOG((LF_CORDB, LL_INFO10000, "DC::DispatchTracepoint: %s thread=%p\n",
+        DebuggerTracepointHelpers::ToString(args->type),
+        pThread));
 
     DebuggerController *p = g_controllers;
     while (p != NULL)
     {
-        if (p->m_multicastDelegateHelper)
+        if (p->IsTracepointEnabled(args->type))
         {
             if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
             {
-                p->TriggerMulticastDelegate(pbDel, countDel);
-            }
-        }
-        p = p->m_next;
-    }
-}
+                LOG((LF_CORDB, LL_INFO10000, "DC::DispatchTracepoint: %s controller=%p thread=%p delivered\n",
+                    DebuggerTracepointHelpers::ToString(args->type),
+                    p,
+                    pThread));
 
-void DebuggerController::EnableExternalMethodFixup()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_NOTRIGGER;
-    }
-    CONTRACTL_END;
+                bool failed = false;
+                EX_TRY
+                {
+                    p->TriggerTracepoint(args);
+                }
+                EX_CATCH
+                {
+                    HRESULT hr = GET_EXCEPTION()->GetHR();
 
-    ControllerLockHolder chController;
-    if (!m_externalMethodFixup)
-    {
-        LOG((LF_CORDB, LL_INFO1000000, "DC::EnableExternalMethodFixup, this=%p, previously disabled\n", this));
-        m_externalMethodFixup = true;
-        g_externalMethodFixupTraceActiveCount += 1;
-    }
-    else
-    {
-        LOG((LF_CORDB, LL_INFO1000000, "DC::EnableExternalMethodFixup, this=%p, already set\n", this));
-    }
-}
+                    LOG((LF_CORDB, LL_INFO10, "DC::DispatchTracepoint: %s controller=%p failed, hr=0x%08x\n",
+                        DebuggerTracepointHelpers::ToString(args->type),
+                        p,
+                        hr));
 
-void DebuggerController::DisableExternalMethodFixup()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_NOTRIGGER;
-    }
-    CONTRACTL_END;
+                    // A failed callback may have consumed its subscription or armed only some patches.
+                    p->DisableAll();
+                    CORDBDebuggerSetUnrecoverableError(g_pDebugger, hr, false);
+                    failed = true;
+                }
+                EX_END_CATCH
 
-    ControllerLockHolder chController;
-    if (m_externalMethodFixup)
-    {
-        LOG((LF_CORDB, LL_INFO10000, "DC::DisableExternalMethodFixup, this=%p, previously set\n", this));
-        m_externalMethodFixup = false;
-        g_externalMethodFixupTraceActiveCount -= 1;
-    }
-    else
-    {
-        LOG((LF_CORDB, LL_INFO10000, "DC::DisableExternalMethodFixup, this=%p, already disabled\n", this));
-    }
-}
-
-// Loop through controllers and dispatch TriggerExternalMethodFixup
-void DebuggerController::DispatchExternalMethodFixup(PCODE addr)
-{
-    LOG((LF_CORDB, LL_INFO10000, "DC::DispatchExternalMethodFixup\n"));
-
-    Thread * pThread = g_pEEInterface->GetThread();
-    _ASSERTE(pThread  != NULL);
-
-    ControllerLockHolder lockController;
-
-    DebuggerController *p = g_controllers;
-    while (p != NULL)
-    {
-        if (p->m_externalMethodFixup)
-        {
-            if ((p->GetThread() == NULL) || (p->GetThread() == pThread))
-            {
-                p->TriggerExternalMethodFixup(addr);
+                if (failed)
+                {
+                    return;
+                }
             }
         }
         p = p->m_next;
@@ -4449,13 +4437,9 @@ void DebuggerController::DispatchFuncEvalExit(Thread * thread)
 
 
 }
-void DebuggerController::TriggerMulticastDelegate(DELEGATEREF pDel, INT32 delegateCount)
+void DebuggerController::TriggerTracepoint(DebuggerTracepointArgs *args)
 {
-    _ASSERTE(!"This code should be unreachable. If your controller enables MulticastDelegateHelper events, it should also override this callback to do something useful when the event arrives.");
-}
-void DebuggerController::TriggerExternalMethodFixup(PCODE target)
-{
-    _ASSERTE(!"This code should be unreachable. If your controller enables ExternalMethodFixup events, it should also override this callback to do something useful when the event arrives.");
+    _ASSERTE(!"A controller enabling tracepoints must override TriggerTracepoint");
 }
 
 
@@ -5273,7 +5257,7 @@ void InterpreterStepHelper::AddInterpreterPatch(const int32_t* pIP)
 {
     CONTRACTL
     {
-        NOTHROW;
+        THROWS;
         GC_NOTRIGGER;
     }
     CONTRACTL_END;
@@ -5300,7 +5284,7 @@ InterpreterStepHelper::StepSetupResult InterpreterStepHelper::SetupStep(
 {
     CONTRACTL
     {
-        NOTHROW;
+        THROWS;
         GC_NOTRIGGER;
     }
     CONTRACTL_END;
@@ -5355,6 +5339,17 @@ InterpreterStepHelper::StepSetupResult InterpreterStepHelper::SetupStep(
                 {
                     LOG((LF_CORDB, LL_INFO10000, "ISH::SS: Call with no skip IP!\n"));
                     return SSR_Failed;
+                }
+                if (m_pInterpMethod != nullptr &&
+                    (interpWalker.GetOpcode() == INTOP_CALL || interpWalker.GetOpcode() == INTOP_CALL_NULLCHECK))
+                {
+                    const int32_t* pIP = reinterpret_cast<const int32_t*>(m_currentPC);
+                    MethodDesc* pTarget = static_cast<MethodDesc*>(m_pInterpMethod->pDataItems[pIP[3]]);
+                    if (pTarget->IsPInvoke())
+                    {
+                        LOG((LF_CORDB, LL_INFO10000, "ISH::SS: Marshalled PInvoke, preserving return patch without trace calls\n"));
+                        return SSR_NeedStepInInterop;
+                    }
                 }
                 return SSR_NeedStepIn; // Caller enables JMC backstop
             }
@@ -5502,6 +5497,8 @@ DebuggerStepper::DebuggerStepper(Thread *thread,
     m_cFuncEvalNesting(0)
 {
 #ifdef _DEBUG
+    m_StepInStartMethod = nullptr;
+    m_methodEnterReason = MethodEnterReason::StubManagerBackstop;
     m_fReadyToSend = false;
 #endif
 }
@@ -6037,13 +6034,13 @@ bool DebuggerStepper::TrapStepInto(ControllerStackInfo *info,
 // Enable the JMC backstop for stepping on Step-In.
 // This activate the JMC probes, which will provide a safety net
 // to stop a stepper if the StubManagers don't predict the call properly.
-// Ideally, this should never be necessary (because the SMs would do their job).
-void DebuggerStepper::EnableJMCBackStop(MethodDesc * pStartMethod)
+// Interpreter step-in and callback fallback intentionally use these probes.
+void DebuggerStepper::EnableJMCBackStop(MethodDesc * pStartMethod, MethodEnterReason reason)
 {
     // JMC steppers should not need the JMC backstop unless a thread inadvertently stops in an LCG method.
     //_ASSERTE(DEBUGGER_CONTROLLER_JMC_STEPPER != this->GetDCType());
 
-    // Since we should never hit the JMC backstop (since it's really a SM issue), we'll assert if we actually do.
+    // Unexpected use of the JMC backstop indicates a stub-manager issue.
     // However, there's 1 corner case here. If we trace calls at the start of the method before the JMC-probe,
     // then we'll still hit the JMC backstop in our own method.
     // Record that starting method. That way, if we end up hitting our JMC backstop in our own method,
@@ -6053,6 +6050,7 @@ void DebuggerStepper::EnableJMCBackStop(MethodDesc * pStartMethod)
 #ifdef _DEBUG
     // May be NULL if we didn't start in a method.
     m_StepInStartMethod = pStartMethod;
+    m_methodEnterReason = reason;
 #endif
 
     // We don't want traditional steppers to rely on MethodEnter (b/c it's not guaranteed to be correct),
@@ -6205,11 +6203,18 @@ bool DebuggerStepper::TrapInterpreterCodeStep(ControllerStackInfo *info, bool in
             return true;
 
         case InterpreterStepHelper::SSR_NeedStepIn:
+        case InterpreterStepHelper::SSR_NeedStepInInterop:
             // All call types use JMC backstop — step-over patch already placed by SetupStep
-            // TODO: This will not work correctly if the call target is JIT/R2R compiled code.
+            // TODO: Direct JIT/R2R calls may still lack entry notifications.
             // https://github.com/dotnet/runtime/issues/124547
             LOG((LF_CORDB,LL_INFO10000,"DS::TICS: Step-in call, enabling MethodEnter backstop\n"));
-            EnableJMCBackStop(info->m_activeFrame.md);
+            if (result == InterpreterStepHelper::SSR_NeedStepIn && GetDCType() == DEBUGGER_CONTROLLER_STEPPER)
+            {
+                EnableTraceCall(LEAF_MOST_FRAME);
+                if (IsCloserToRoot(info->m_activeFrame.fp, m_fpStepInto))
+                    m_fpStepInto = info->m_activeFrame.fp;
+            }
+            EnableJMCBackStop(info->m_activeFrame.md, MethodEnterReason::InterpreterStepIn);
             return true;
 
         case InterpreterStepHelper::SSR_NeedStepOut:
@@ -6889,6 +6894,13 @@ void DebuggerStepper::TrapStepOut(ControllerStackInfo *info, bool fForceTraditio
 
             // User break should always be called from managed code, so it should never actually hit this codepath.
             _ASSERTE(GetDCType() != DEBUGGER_CONTROLLER_USER_BREAKPOINT);
+
+            if (IsCloserToRoot(info->m_activeFrame.fp, m_fp))
+            {
+                // Sibling targets can reuse the returned target's frame pointer.
+                LOG((LF_CORDB, LL_INFO10000, "DS::TSO: multicast target returned; resetting step range\n"));
+                ResetRange();
+            }
 
             // JMC steppers shouldn't be patching stubs.
             if (DEBUGGER_CONTROLLER_JMC_STEPPER == this->GetDCType())
@@ -7957,8 +7969,8 @@ void DebuggerStepper::TriggerMethodEnter(Thread * thread,
 #if defined(TARGET_ARM64) && defined(__APPLE__)
     LOG((LF_CORDB, LL_INFO10000, "DebuggerStepper::TriggerMethodEnter: Consistency_check_MSGF not needed because we skip setting breakpoints in certain patches on arm64-macOS\n"));
 #else
-    if ((m_StepInStartMethod != pDesc) &&
-        (!m_StepInStartMethod->IsLCGMethod()))
+    if ((m_methodEnterReason == MethodEnterReason::StubManagerBackstop) && (m_StepInStartMethod != pDesc) &&
+        ((m_StepInStartMethod == nullptr) || !m_StepInStartMethod->IsLCGMethod()))
     {
         // Since normal step-in should stop us at the prolog, and TME is after the prolog,
         // if a stub-manager did successfully find the address, we should get a TriggerPatch first
@@ -8061,16 +8073,34 @@ bool DebuggerStepper::TriggerSingleStep(Thread *thread, const BYTE *ip)
     info.GetStackInfo(ticket, GetThread(), LEAF_MOST_FRAME, NULL);
 
     // This is a special case where we return from a managed method back to the helper that invokes
-    // the main program entrypoint (Environment.CallEntryPoint) or an interop stub.  These are not
+    // the main program entrypoint (Environment.CallEntryPoint) or an interop/multicast stub. These are not
     // interesting frames for the debugger - single-stepping into them should be treated like stepping
     // into native code. Disable the single step and enable trace call / method enter so the stepper can
     // catch the next interesting transition or, if stepping out through Environment.CallEntryPoint,
     // let the process exit naturally.
-    if (fd == g_pEnvironmentCallEntryPointMethodDesc || fd->IsInteropStub())
+    bool isMulticastStub = fd->IsILStub() && fd->AsDynamicMethodDesc()->IsMulticastStub();
+    if (fd == g_pEnvironmentCallEntryPointMethodDesc || fd->IsInteropStub() || isMulticastStub)
     {
-        LOG((LF_CORDB,LL_INFO10000, "DS::TSS: in CallEntryPoint or interop stub, Returning false (case 0)!\n"));
+        LOG((LF_CORDB,LL_INFO10000, "DS::TSS: in CallEntryPoint, interop or multicast stub, Returning false (case 0)!\n"));
+        if (isMulticastStub && IsCloserToRoot(info.m_activeFrame.fp, m_fp))
+        {
+            // Sibling targets share a caller frame, but not the returned target's ranges.
+            LOG((LF_CORDB, LL_INFO10000, "DS::TSS: multicast target returned; resetting step range\n"));
+            ResetRange();
+        }
         if (this->GetDCType() == DEBUGGER_CONTROLLER_STEPPER)
         {
+            if (isMulticastStub)
+            {
+                TraceDestination trace;
+                if (!g_pEEInterface->TraceStub(ip, &trace) || !g_pEEInterface->FollowTrace(&trace) ||
+                    !PatchTrace(&trace, info.m_activeFrame.fp, (m_rgfMappingStop & STOP_UNMANAGED) != 0))
+                {
+                    LOG((LF_CORDB, LL_INFO10000, "DS::TSS: multicast stub could not be traced; trapping step out\n"));
+                    TrapStepOut(&info);
+                    EnableUnwind(m_fp);
+                }
+            }
             EnableTraceCall(info.m_activeFrame.fp);
         }
         else if (this->GetDCType() == DEBUGGER_CONTROLLER_JMC_STEPPER)
@@ -8238,32 +8268,100 @@ void DebuggerStepper::TriggerUnwind(Thread *thread,
     m_reason = unwindReason;
 }
 
-void DebuggerStepper::TriggerMulticastDelegate(DELEGATEREF pDel, INT32 delegateCount)
+void DebuggerStepper::TriggerTracepoint(DebuggerTracepointArgs *args)
 {
+    CONTRACTL
+    {
+        THROWS;
+        GC_NOTRIGGER;
+        MODE_ANY;
+    }
+    CONTRACTL_END;
+
+    if (IsFrozen())
+    {
+        LOG((LF_CORDB, LL_INFO10000, "DS::TriggerTracepoint: controller=%p %s ignored while frozen\n",
+            this,
+            DebuggerTracepointHelpers::ToString(args->type)));
+
+        return;
+    }
+
+    // Consume the subscription before tracing, since the destination can rearm the same tracepoint.
+    DeactivateTracepoint(args->type);
+
     TraceDestination trace;
-    FramePointer fp = LEAF_MOST_FRAME;
 
-    PTRARRAYREF pDelInvocationList = (PTRARRAYREF) pDel->GetHelperObject();
-    DELEGATEREF pCurrentInvokeDel = (DELEGATEREF) pDelInvocationList->GetAt(delegateCount);
+    if (StubManager::TraceTracepoint(args, &trace) && g_pEEInterface->FollowTrace(&trace) &&
+        PatchTrace(&trace, LEAF_MOST_FRAME, (m_rgfMappingStop & STOP_UNMANAGED) != 0))
+    {
+        LOG((LF_CORDB, LL_INFO10000, "DS::TriggerTracepoint: controller=%p %s destination=%s armed\n",
+            this,
+            DebuggerTracepointHelpers::ToString(args->type),
+            GetTType(trace.GetTraceType())));
 
-    StubLinkStubManager::TraceDelegateObject((BYTE*)OBJECTREFToObject(pCurrentInvokeDel), &trace);
+        m_reason = STEP_CALL;
 
-    g_pEEInterface->FollowTrace(&trace);
-    //fStopInUnmanaged only matters for TRACE_UNMANAGED
-    PatchTrace(&trace, fp, /*fStopInUnmanaged*/false);
-    this->DisableMultiCastDelegate();
-}
+        return;
+    }
 
-void DebuggerStepper::TriggerExternalMethodFixup(PCODE target)
-{
-    TraceDestination trace;
-    FramePointer fp = LEAF_MOST_FRAME;
+    LOG((LF_CORDB, LL_INFO10000, "DS::TriggerTracepoint: %s could not be traced; trapping step out\n",
+        DebuggerTracepointHelpers::ToString(args->type)));
 
-    trace.InitForStub(target);
-    g_pEEInterface->FollowTrace(&trace);
-    //fStopInUnmanaged only matters for TRACE_UNMANAGED
-    PatchTrace(&trace, fp, /*fStopInUnmanaged*/false);
-    this->DisableExternalMethodFixup();
+    // The fallback runs in a runtime helper and has no real patch to use as a stack-trace ticket.
+    DebuggerControllerPatch patch = {};
+    patch.trace.InitForTracepoint(args->type);
+
+    StackTraceTicket ticket(&patch);
+    ControllerStackInfo info;
+    info.GetStackInfo(ticket, GetThread(), LEAF_MOST_FRAME, NULL);
+
+    bool terminalMulticastTracepoint = false;
+    if (args->type == DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE)
+    {
+        DebuggerTracepointArgsT2<DELEGATEREF, INT32> *multicastArgs =
+            static_cast<DebuggerTracepointArgsT2<DELEGATEREF, INT32> *>(args);
+        terminalMulticastTracepoint = multicastArgs->arg2 == multicastArgs->arg1->GetExtraData();
+    }
+
+    bool skippedCompletedMulticastStub = false;
+    while (info.HasReturnFrame(true))
+    {
+        FrameInfo &returnFrame = info.GetReturnFrame(true);
+
+        if (returnFrame.HasMethodFrame() && returnFrame.managed && returnFrame.md->IsILStub() &&
+            returnFrame.md->AsDynamicMethodDesc()->IsMulticastStub())
+        {
+            if (!terminalMulticastTracepoint)
+            {
+                break;
+            }
+
+            if (skippedCompletedMulticastStub)
+            {
+                break;
+            }
+
+            // This multicast stub has finished; leave enclosing multicast stubs for TrapStepOut.
+            skippedCompletedMulticastStub = true;
+        }
+        else if (returnFrame.HasMethodFrame() && returnFrame.managed && !returnFrame.md->IsILStub() &&
+                 returnFrame.md->GetMethodTable() != CoreLibBinder::GetClassIfExist(CLASS__STUBHELPERS))
+        {
+            break;
+        }
+
+        info.GetStackInfo(ticket, GetThread(), returnFrame.fp, NULL);
+    }
+
+    FramePointer fp = info.m_activeFrame.fp;
+
+    TrapStepOut(&info);
+    EnableJMCBackStop(NULL, MethodEnterReason::TracepointFallback);
+    EnableTraceCall(fp);
+    EnableUnwind(fp);
+
+    m_reason = STEP_NORMAL;
 }
 
 // Prepare for sending an event.
@@ -8950,6 +9048,17 @@ void DebuggerThreadStarter::TriggerTraceCall(Thread *thread, const BYTE *ip)
     }
 #endif //DEBUGGING_SUPPORTED
 
+}
+
+void DebuggerThreadStarter::TriggerTracepoint(DebuggerTracepointArgs *args)
+{
+    DeactivateTracepoint(args->type);
+
+    TraceDestination trace;
+    if (StubManager::TraceTracepoint(args, &trace) && g_pEEInterface->FollowTrace(&trace))
+    {
+        PatchTrace(&trace, LEAF_MOST_FRAME, true);
+    }
 }
 
 bool DebuggerThreadStarter::SendEvent(Thread *thread, bool fIpChanged)
