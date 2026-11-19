@@ -436,11 +436,6 @@ GVAL_DECL(DWORD,              g_CORDebuggerControlFlags);
 #ifdef DEBUGGING_SUPPORTED
 GPTR_DECL(EEDbgInterfaceImpl, g_pEEDbgInterfaceImpl);
 
-#ifndef DACCESS_COMPILE
-GVAL_DECL(DWORD, g_multicastDelegateTraceActiveCount);
-GVAL_DECL(DWORD, g_externalMethodFixupTraceActiveCount);
-#endif // DACCESS_COMPILE
-
 #endif // DEBUGGING_SUPPORTED
 
 // Global default for Concurrent GC. The default is on (value 1)

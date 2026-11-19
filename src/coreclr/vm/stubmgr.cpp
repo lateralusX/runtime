@@ -28,8 +28,7 @@ const char *GetTType( TraceType tt)
         case TRACE_MGR_PUSH:                  return "TRACE_MGR_PUSH";
         case TRACE_OTHER:                     return "TRACE_OTHER";
         case TRACE_UNJITTED_METHOD:           return "TRACE_UNJITTED_METHOD";
-        case TRACE_MULTICAST_DELEGATE_HELPER: return "TRACE_MULTICAST_DELEGATE_HELPER";
-        case TRACE_EXTERNAL_METHOD_FIXUP:     return "TRACE_EXTERNAL_METHOD_FIXUP";
+        case TRACE_TRACEPOINT:                return "TRACE_TRACEPOINT";
     }
     return "TRACE_REALLY_WACKED";
 }
@@ -121,12 +120,9 @@ const CHAR * TraceDestination::DbgToString(SString & buffer)
                 pValue = buffer.GetUTF8();
                 break;
 
-            case TRACE_MULTICAST_DELEGATE_HELPER:
-                pValue = "TRACE_MULTICAST_DELEGATE_HELPER";
-                break;
-
-            case TRACE_EXTERNAL_METHOD_FIXUP:
-                pValue = "TRACE_EXTERNAL_METHOD_FIXUP";
+            case TRACE_TRACEPOINT:
+                buffer.Printf("TRACE_TRACEPOINT(type=%s)", DebuggerTracepointHelpers::ToString(GetTracepointType()));
+                pValue = buffer.GetUTF8();
                 break;
 
             case TRACE_OTHER:
@@ -597,6 +593,46 @@ BOOL StubManager::TraceStub(PCODE stubStartAddress, TraceDestination *trace)
     return FALSE;
 }
 
+#ifndef DACCESS_COMPILE
+BOOL StubManager::TraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        CAN_TAKE_LOCK;
+        MODE_ANY;
+    }
+    CONTRACTL_END;
+
+    _ASSERTE(args != NULL && trace != NULL);
+
+    StubManagerIterator it;
+    while (it.Next())
+    {
+        StubManager *manager = it.Current();
+        if (manager->HandlesTracepoint(args))
+        {
+            BOOL result = manager->DoTraceTracepoint(args, trace);
+
+            LOG((LF_CORDB, LL_INFO10000,
+                 "StubManager::TraceTracepoint: %s handled by %s, result=%d\n",
+                 DebuggerTracepointHelpers::ToString(args->type),
+                 manager->DbgGetName(),
+                 result));
+
+            return result;
+        }
+    }
+
+    LOG((LF_CORDB, LL_INFO10000,
+         "StubManager::TraceTracepoint: no manager for %s\n",
+         DebuggerTracepointHelpers::ToString(args->type)));
+
+    return FALSE;
+}
+#endif // !DACCESS_COMPILE
+
 //-----------------------------------------------------------
 //-----------------------------------------------------------
 BOOL StubManager::FollowTrace(TraceDestination *trace)
@@ -925,7 +961,9 @@ void StubManager::DbgGetLog(SString * pStringOut)
 
 #endif // _DEBUG
 
+#ifdef DACCESS_COMPILE
 extern "C" void STDCALL ThePreStubPatchLabel(void);
+#endif // DACCESS_COMPILE
 
 //-----------------------------------------------------------
 //-----------------------------------------------------------
@@ -946,15 +984,15 @@ BOOL ThePreStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestination *tr
     // We cannot tell where the stub will end up
     // until after the prestub worker has been run.
     //
-#if defined(TARGET_ARM64) && defined(__APPLE__)
-    // On ARM64 Mac, we cannot put a breakpoint inside of ThePreStubPatchLabel
-    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: Skipping on arm64-macOS\n"));
+#if defined(DACCESS_COMPILE) && defined(TARGET_ARM64) && defined(TARGET_APPLE)
+    LOG((LF_CORDB, LL_INFO10000, "TPSM::DoTraceStub: DAC cannot follow the prestub on Apple arm64\n"));
     return FALSE;
-#else
+#elif defined(DACCESS_COMPILE)
     trace->InitForFramePush(GetEEFuncEntryPoint(ThePreStubPatchLabel));
-
+#else
+    trace->InitForTracepoint(DEBUGGER_TRACEPOINT_PRE_STUB);
+#endif // DACCESS_COMPILE
     return TRUE;
-#endif //defined(TARGET_ARM64) && defined(__APPLE__)
 }
 
 //-----------------------------------------------------------
@@ -963,6 +1001,23 @@ BOOL ThePreStubManager::CheckIsStub_Internal(PCODE stubStartAddress)
     LIMITED_METHOD_DAC_CONTRACT;
     return stubStartAddress == GetPreStubEntryPoint();
 }
+
+#ifndef DACCESS_COMPILE
+BOOL ThePreStubManager::HandlesTracepoint(DebuggerTracepointArgs *args)
+{
+    LIMITED_METHOD_CONTRACT;
+    return args->type == DEBUGGER_TRACEPOINT_PRE_STUB;
+}
+
+BOOL ThePreStubManager::DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
+{
+    LIMITED_METHOD_CONTRACT;
+    _ASSERTE(HandlesTracepoint(args));
+    DebuggerTracepointArgsT1<PCODE> *target = static_cast<DebuggerTracepointArgsT1<PCODE>*>(args);
+    trace->InitForStub(target->arg1);
+    return TRUE;
+}
+#endif // !DACCESS_COMPILE
 
 
 // -------------------------------------------------------
@@ -1083,13 +1138,7 @@ BOOL PrecodeStubManager::DoTraceStub(PCODE stubStartAddress,
 #ifdef HAS_PINVOKE_IMPORT_PRECODE
         case PRECODE_PINVOKE_IMPORT:
 #ifndef DACCESS_COMPILE
-#if defined(TARGET_ARM64) && defined(__APPLE__)
-            // On ARM64 Mac, we cannot put a breakpoint inside of PInvokeImportThunk
-            LOG((LF_CORDB, LL_INFO10000, "PSM::DoTraceStub: Skipping on arm64-macOS\n"));
-            return FALSE;
-#else
-            trace->InitForUnmanaged(GetEEFuncEntryPoint(PInvokeImportThunk));
-#endif //defined(TARGET_ARM64) && defined(__APPLE__)
+            trace->InitForTracepoint(DEBUGGER_TRACEPOINT_PINVOKE_IMPORT);
 #else
             trace->InitForOther((PCODE)NULL);
 #endif
@@ -1143,6 +1192,21 @@ BOOL PrecodeStubManager::DoTraceStub(PCODE stubStartAddress,
 }
 
 #ifndef DACCESS_COMPILE
+BOOL PrecodeStubManager::HandlesTracepoint(DebuggerTracepointArgs *args)
+{
+    LIMITED_METHOD_CONTRACT;
+    return args->type == DEBUGGER_TRACEPOINT_PINVOKE_IMPORT;
+}
+
+BOOL PrecodeStubManager::DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
+{
+    LIMITED_METHOD_CONTRACT;
+    _ASSERTE(HandlesTracepoint(args));
+    DebuggerTracepointArgsT1<PCODE> *target = static_cast<DebuggerTracepointArgsT1<PCODE>*>(args);
+    trace->InitForUnmanaged(target->arg1);
+    return TRUE;
+}
+
 BOOL PrecodeStubManager::TraceManager(Thread *thread,
                             TraceDestination *trace,
                             T_CONTEXT *pContext,
@@ -1502,7 +1566,7 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 #ifdef DACCESS_COMPILE
         DacNotImpl();
 #else
-        trace->InitForExternalMethodFixup();
+        trace->InitForTracepoint(DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP);
 #endif
         return TRUE;
 
@@ -1512,6 +1576,23 @@ BOOL RangeSectionStubManager::DoTraceStub(PCODE stubStartAddress, TraceDestinati
 
     return FALSE;
 }
+
+#ifndef DACCESS_COMPILE
+BOOL RangeSectionStubManager::HandlesTracepoint(DebuggerTracepointArgs *args)
+{
+    LIMITED_METHOD_CONTRACT;
+    return args->type == DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP;
+}
+
+BOOL RangeSectionStubManager::DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
+{
+    LIMITED_METHOD_CONTRACT;
+    _ASSERTE(HandlesTracepoint(args));
+    DebuggerTracepointArgsT1<PCODE> *target = static_cast<DebuggerTracepointArgsT1<PCODE>*>(args);
+    trace->InitForStub(target->arg1);
+    return TRUE;
+}
+#endif // !DACCESS_COMPILE
 
 #ifdef DACCESS_COMPILE
 LPCWSTR RangeSectionStubManager::GetStubManagerName(PCODE addr)
@@ -1613,12 +1694,10 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
 
 #ifndef DACCESS_COMPILE
 
-    PCODE traceDestination = (PCODE)NULL;
-
     MethodDesc* pStubMD = ExecutionManager::GetCodeMethodDesc(stubStartAddress);
     if (pStubMD != NULL && pStubMD->AsDynamicMethodDesc()->IsMulticastStub())
     {
-        trace->InitForMulticastDelegateHelper();
+        trace->InitForTracepoint(DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE);
     }
     else
     {
@@ -1626,7 +1705,7 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
         trace->InitForManagerPush(stubStartAddress, this);
     }
 
-    LOG_TRACE_DESTINATION(trace, traceDestination, "ILStubManager::DoTraceStub");
+    LOG_TRACE_DESTINATION(trace, stubStartAddress, "ILStubManager::DoTraceStub");
 
     return TRUE;
 
@@ -1638,6 +1717,47 @@ BOOL ILStubManager::DoTraceStub(PCODE stubStartAddress,
 }
 
 #ifndef DACCESS_COMPILE
+BOOL ILStubManager::HandlesTracepoint(DebuggerTracepointArgs *args)
+{
+    LIMITED_METHOD_CONTRACT;
+    return args->type == DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE;
+}
+
+BOOL ILStubManager::DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
+{
+    LIMITED_METHOD_CONTRACT;
+    GCX_ASSERT_COOP();
+    _ASSERTE(HandlesTracepoint(args));
+
+    DebuggerTracepointArgsT2<DELEGATEREF, INT32> *invocation =
+        static_cast<DebuggerTracepointArgsT2<DELEGATEREF, INT32>*>(args);
+
+    DELEGATEREF delegate = invocation->arg1;
+    INT32 index = invocation->arg2;
+    INT_PTR count = delegate->GetExtraData();
+
+    _ASSERTE(index >= 0 && index <= count);
+
+    LOG((LF_CORDB, LL_INFO10000,
+         "ILStubManager::DoTraceTracepoint: multicast index=%d count=%zu terminal=%d\n",
+         index,
+         static_cast<size_t>(count),
+         index == count));
+
+    // The stub notifies once more after the last delegate returns, nothing left to trace.
+    if (index == count)
+    {
+        return FALSE;
+    }
+
+    ArrayBase *invocationList = static_cast<ArrayBase*>(OBJECTREFToObject(delegate->GetHelperObject()));
+    _ASSERTE(invocationList->GetComponentSize() == sizeof(OBJECTREF));
+
+    OBJECTREF target = reinterpret_cast<OBJECTREF*>(invocationList->GetDataPtr())[index];
+
+    return StubLinkStubManager::TraceDelegateObject(reinterpret_cast<BYTE*>(OBJECTREFToObject(target)), trace);
+}
+
 #ifdef FEATURE_COMINTEROP
 static PCODE GetCOMTarget(Object *pThis, CLRToCOMCallInfo *pCLRToCOMCallInfo)
 {
@@ -1862,14 +1982,20 @@ BOOL PInvokeStubManager::DoTraceStub(PCODE stubStartAddress,
     }
 
     PInvokeMethodDesc* pNMD = reinterpret_cast<PInvokeMethodDesc*>(pMD);
-    // Note: The PInvoke target may not yet be resolved if it uses lazy binding
-    // (PRECODE_PINVOKE_IMPORT). In that case, GetPInvokeTarget() returns the
-    // precode address. There is a narrow race where the target gets resolved
-    // between this read and the debugger setting a breakpoint, but this is
-    // low priority to address.
     PCODE target = (PCODE)pNMD->GetPInvokeTarget();
     LOG((LF_CORDB, LL_INFO10000, "PISM::DoTraceStub: PInvoke target %p\n", reinterpret_cast<void*>(target)));
-    trace->InitForUnmanaged(target);
+#if defined(TARGET_UNIX) && defined(HAS_PINVOKE_IMPORT_PRECODE)
+    // An unresolved target is runtime precode, not the final native destination.
+    // Follow it so image-mapped import precode uses the shared tracepoint.
+    if (target == pNMD->GetPInvokeImportThunkGlue()->GetEntryPoint())
+    {
+        trace->InitForStub(target);
+    }
+    else
+#endif // TARGET_UNIX && HAS_PINVOKE_IMPORT_PRECODE
+    {
+        trace->InitForUnmanaged(target);
+    }
 
     LOG_TRACE_DESTINATION(trace, target, "PInvokeStubManager::DoTraceStub");
 

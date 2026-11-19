@@ -39,6 +39,7 @@
 #include "pinvokeoverride.h"
 #include "nativelibrary.h"
 #include "interoplibinterface.h"
+#include "../debug/ee/debugger.h"
 
 #include <formattype.h>
 #include "../md/compiler/custattr.h"
@@ -6200,6 +6201,14 @@ EXTERN_C void* PInvokeImportWorker(PInvokeMethodDesc* pMD)
     UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;
     UNINSTALL_MANAGED_EXCEPTION_DISPATCHER;
     UNINSTALL_RESUME_AFTER_CATCH_HANDLER_WITH_FRAME;
+
+#ifdef DEBUGGING_SUPPORTED
+    if (DebuggerTracepointHelpers::IsEnabled(DEBUGGER_TRACEPOINT_PINVOKE_IMPORT))
+    {
+        DebuggerTracepointArgsT1<PCODE> args(DEBUGGER_TRACEPOINT_PINVOKE_IMPORT, (PCODE)pMD->GetPInvokeTarget());
+        g_pDebugger->DispatchTracepoint(&args);
+    }
+#endif // DEBUGGING_SUPPORTED
 
     return pMD->GetPInvokeTarget();
 }

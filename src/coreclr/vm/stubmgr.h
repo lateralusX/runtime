@@ -61,8 +61,7 @@ enum TraceType
 
     TRACE_FRAME_PUSH,                // Don't know where stub goes, stop at address, and then ask the frame that is on the stack
     TRACE_MGR_PUSH,                  // Don't know where stub goes, stop at address then call TraceManager() below to find out
-    TRACE_MULTICAST_DELEGATE_HELPER, // Stub goes to a multicast delegate helper
-    TRACE_EXTERNAL_METHOD_FIXUP,     // Stub goes to an external method fixup helper
+    TRACE_TRACEPOINT,                // Resume execution until a runtime callback can resolve the target
 
     TRACE_OTHER                      // We are going somewhere you can't step into (eg. ee helper function)
 };
@@ -150,18 +149,19 @@ public:
     }
 
 
-    void InitForMulticastDelegateHelper()
+    void InitForTracepoint(DebuggerTracepointType tracepointType)
     {
-        this->type = TRACE_MULTICAST_DELEGATE_HELPER;
+        this->type = TRACE_TRACEPOINT;
         this->address = (PCODE)NULL;
+        this->tracepointType = tracepointType;
         this->stubManager = NULL;
     }
 
-    void InitForExternalMethodFixup()
+    DebuggerTracepointType GetTracepointType()
     {
-        this->type = TRACE_EXTERNAL_METHOD_FIXUP;
-        this->address = (PCODE)NULL;
-        this->stubManager = NULL;
+        LIMITED_METHOD_CONTRACT;
+        _ASSERTE(type == TRACE_TRACEPOINT);
+        return tracepointType;
     }
 
     // Nobody recognized the target address. We will not be able to step-in to it.
@@ -206,6 +206,7 @@ private:
     PCODE                           address;            // Where the stub is going
     StubManager                     *stubManager;       // The manager that claims this stub
     MethodDesc                      *pDesc;
+    DebuggerTracepointType           tracepointType;
 };
 
 // For logging
@@ -244,6 +245,23 @@ class StubManager
     // if 'trace' indicates TRACE_STUB, keep calling TraceStub on 'trace', until you get out of all stubs
     // returns true if successful
     static BOOL FollowTrace(TraceDestination *trace);
+
+#ifndef DACCESS_COMPILE
+    static BOOL TraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
+
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args)
+    {
+        LIMITED_METHOD_CONTRACT;
+        return FALSE;
+    }
+
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace)
+    {
+        LIMITED_METHOD_CONTRACT;
+        _ASSERTE(!"A stub manager handling a tracepoint must implement tracing it");
+        return FALSE;
+    }
+#endif // !DACCESS_COMPILE
 
 #ifdef DACCESS_COMPILE
     static void EnumMemoryRegions(CLRDataEnumMemoryFlags flags);
@@ -377,6 +395,9 @@ class ThePreStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args);
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
+
     static void Init(void);
 #endif
 
@@ -418,6 +439,11 @@ class PrecodeStubManager : public StubManager
 
   public:
     virtual BOOL CheckIsStub_Internal(PCODE stubStartAddress);
+
+#ifndef DACCESS_COMPILE
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args);
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
+#endif // !DACCESS_COMPILE
 
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 #ifndef DACCESS_COMPILE
@@ -525,6 +551,11 @@ class RangeSectionStubManager : public StubManager
 
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
+#ifndef DACCESS_COMPILE
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args);
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
+#endif // !DACCESS_COMPILE
+
 #ifdef DACCESS_COMPILE
     virtual void DoEnumMemoryRegions(CLRDataEnumMemoryFlags flags);
 
@@ -576,6 +607,9 @@ class ILStubManager : public StubManager
     virtual BOOL DoTraceStub(PCODE stubStartAddress, TraceDestination *trace);
 
 #ifndef DACCESS_COMPILE
+    virtual BOOL HandlesTracepoint(DebuggerTracepointArgs *args);
+    virtual BOOL DoTraceTracepoint(DebuggerTracepointArgs *args, TraceDestination *trace);
+
     virtual BOOL TraceManager(Thread *thread,
                               TraceDestination *trace,
                               T_CONTEXT *pContext,

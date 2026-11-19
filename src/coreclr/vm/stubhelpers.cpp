@@ -701,7 +701,14 @@ extern "C" void QCALLTYPE StubHelpers_MulticastDebuggerTraceHelper(QCall::Object
 
     GCX_COOP();
 
-    g_pDebugger->MulticastTraceNextStep((DELEGATEREF)(element.Get()), count);
+#ifdef DEBUGGING_SUPPORTED
+    if (DebuggerTracepointHelpers::IsEnabled(DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE))
+    {
+        DebuggerTracepointArgsT2<DELEGATEREF, INT32> args(
+            DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE, (DELEGATEREF)element.Get(), count);
+        g_pDebugger->DispatchTracepoint(&args);
+    }
+#endif // DEBUGGING_SUPPORTED
 
     END_QCALL;
 }

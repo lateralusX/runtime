@@ -15940,13 +15940,17 @@ BOOL Debugger::IsOutOfProcessSetContextEnabled()
 #endif // OUT_OF_PROCESS_SETTHREADCONTEXT
 #endif // DACCESS_COMPILE
 #ifndef DACCESS_COMPILE
-void Debugger::MulticastTraceNextStep(DELEGATEREF pbDel, INT32 count)
+void Debugger::DispatchTracepoint(DebuggerTracepointArgs *args)
 {
-    DebuggerController::DispatchMulticastDelegate(pbDel, count);
-}
-void Debugger::ExternalMethodFixupNextStep(PCODE address)
-{
-    DebuggerController::DispatchExternalMethodFixup(address);
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_ANY;
+    }
+    CONTRACTL_END;
+
+    DebuggerController::DispatchTracepoint(args);
 }
 #endif //DACCESS_COMPILE
 

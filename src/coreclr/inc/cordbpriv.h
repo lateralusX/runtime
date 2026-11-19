@@ -55,4 +55,72 @@ enum DebuggerAssemblyControlFlags
     DACF_MISC_FLAGS_MASK            = 0x10,
 };
 
+enum DebuggerTracepointType
+{
+    DEBUGGER_TRACEPOINT_MIN = 0,
+    DEBUGGER_TRACEPOINT_PRE_STUB = DEBUGGER_TRACEPOINT_MIN,
+    DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP,
+    DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE,
+    DEBUGGER_TRACEPOINT_PINVOKE_IMPORT,
+    DEBUGGER_TRACEPOINT_MAX
+};
+
+struct DebuggerTracepointArgs
+{
+    DebuggerTracepointArgs(DebuggerTracepointType type) : type(type) {}
+    DebuggerTracepointType type;
+};
+
+template<typename T1>
+struct DebuggerTracepointArgsT1 : public DebuggerTracepointArgs
+{
+    DebuggerTracepointArgsT1(DebuggerTracepointType type, T1 arg1)
+        : DebuggerTracepointArgs(type), arg1(arg1) {}
+    T1 arg1;
+};
+
+template<typename T1, typename T2>
+struct DebuggerTracepointArgsT2 : public DebuggerTracepointArgsT1<T1>
+{
+    DebuggerTracepointArgsT2(DebuggerTracepointType type, T1 arg1, T2 arg2)
+        : DebuggerTracepointArgsT1<T1>(type, arg1), arg2(arg2) {}
+    T2 arg2;
+};
+
+#if defined(DEBUGGING_SUPPORTED) && !defined(DACCESS_COMPILE)
+GARY_DECL(DWORD, g_debuggerTracepointCounters, DEBUGGER_TRACEPOINT_MAX);
+#endif // DEBUGGING_SUPPORTED && !DACCESS_COMPILE
+
+class DebuggerTracepointHelpers
+{
+public:
+    static const char* ToString(DebuggerTracepointType type)
+    {
+        LIMITED_METHOD_CONTRACT;
+        switch (type)
+        {
+            case DEBUGGER_TRACEPOINT_PRE_STUB: return "DEBUGGER_TRACEPOINT_PRE_STUB";
+            case DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP: return "DEBUGGER_TRACEPOINT_EXTERNAL_METHOD_FIXUP";
+            case DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE: return "DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE";
+            case DEBUGGER_TRACEPOINT_PINVOKE_IMPORT: return "DEBUGGER_TRACEPOINT_PINVOKE_IMPORT";
+            default: return "Unknown DebuggerTracepointType";
+        }
+    }
+
+#if defined(DEBUGGING_SUPPORTED) && !defined(DACCESS_COMPILE)
+    static DWORD* GetCounterAddress(DebuggerTracepointType type)
+    {
+        LIMITED_METHOD_CONTRACT;
+        _ASSERTE(type >= DEBUGGER_TRACEPOINT_MIN && type < DEBUGGER_TRACEPOINT_MAX);
+        return g_debuggerTracepointCounters + type;
+    }
+
+    static bool IsEnabled(DebuggerTracepointType type)
+    {
+        LIMITED_METHOD_CONTRACT;
+        return VolatileLoad(GetCounterAddress(type)) != 0;
+    }
+#endif // DEBUGGING_SUPPORTED && !DACCESS_COMPILE
+};
+
 #endif /* _cordbpriv_h_ */

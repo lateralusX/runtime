@@ -2023,28 +2023,15 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
             dwReturnValNum = pCode->NewLocal(sig.GetRetTypeHandleNT());
 
         ILCodeLabel *nextDelegate = pCode->NewCodeLabel();
+        ILCodeLabel *checkCount = pCode->NewCodeLabel();
 
         // initialize counter
         pCode->EmitLDC_I4(0);
         pCode->EmitSTLOC(dwLoopCounterNum);
+        pCode->EmitBR(checkCount);
 
         //Label_nextDelegate:
         pCode->EmitLabel(nextDelegate);
-
-#ifdef DEBUGGING_SUPPORTED
-        ILCodeLabel *invokeTraceHelper = pCode->NewCodeLabel();
-        ILCodeLabel *debuggerCheckEnd = pCode->NewCodeLabel();
-
-        // Call MulticastDebuggerTraceHelper only if we have a controller subscribing to the event
-        pCode->EmitLDC_I((DWORD_PTR)&g_multicastDelegateTraceActiveCount);
-        pCode->EmitLDIND_I4();
-        // g_multicastDelegateTraceActiveCount != 0
-        pCode->EmitLDC_I4(0);
-        pCode->EmitCEQ();
-        pCode->EmitBRFALSE(invokeTraceHelper);
-
-        pCode->EmitLabel(debuggerCheckEnd);
-#endif // DEBUGGING_SUPPORTED
 
         // Load next delegate from array using LoopCounter as index
         pCode->EmitLoadThis();
@@ -2069,6 +2056,21 @@ extern "C" PCODE QCALLTYPE Delegate_GetMulticastInvokeSlow(MethodTable* pDelegat
         pCode->EmitLDC_I4(1);
         pCode->EmitADD();
         pCode->EmitSTLOC(dwLoopCounterNum);
+
+        pCode->EmitLabel(checkCount);
+
+#ifdef DEBUGGING_SUPPORTED
+        ILCodeLabel *invokeTraceHelper = pCode->NewCodeLabel();
+        ILCodeLabel *debuggerCheckEnd = pCode->NewCodeLabel();
+
+        // Also notify after the last delegate, so stepping can leave the multicast stub.
+        pCode->EmitLDC_I((DWORD_PTR)DebuggerTracepointHelpers::GetCounterAddress(DEBUGGER_TRACEPOINT_MULTICAST_DELEGATE));
+        pCode->EmitLDIND_I4();
+        pCode->EmitLDC_I4(0);
+        pCode->EmitCEQ();
+        pCode->EmitBRFALSE(invokeTraceHelper);
+        pCode->EmitLabel(debuggerCheckEnd);
+#endif // DEBUGGING_SUPPORTED
 
         // compare LoopCounter with _extraData. If less then branch to nextDelegate
         pCode->EmitLDLOC(dwLoopCounterNum);
