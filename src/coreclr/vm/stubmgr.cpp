@@ -1987,7 +1987,7 @@ BOOL PInvokeStubManager::DoTraceStub(PCODE stubStartAddress,
 #if defined(TARGET_UNIX) && defined(HAS_PINVOKE_IMPORT_PRECODE)
     // An unresolved target is runtime precode, not the final native destination.
     // Follow it so image-mapped import precode uses the shared tracepoint.
-    if (target == pNMD->GetPInvokeImportThunkGlue()->GetEntryPoint())
+    if (target == (PCODE)pNMD->GetPInvokeImportThunkGlue()->GetEntryPoint())
     {
         trace->InitForStub(target);
     }

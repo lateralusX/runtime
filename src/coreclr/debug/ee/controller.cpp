@@ -1490,6 +1490,36 @@ bool DebuggerController::BindPatch(DebuggerControllerPatch *patch,
     return true;
 }
 
+#if defined(_DEBUG) && defined(HOST_OSX) && defined(HOST_ARM64)
+// The CoreCLR image and stubs mapped from its templates are signed code that
+// Hardened Runtime does not allow to be written.
+static bool IsImmutableRuntimeCode(PCODE address)
+{
+    if (g_pEEInterface->IsIPInModule(GetClrModuleBase(), address))
+    {
+        return true;
+    }
+
+    RangeSection *pRS = ExecutionManager::FindCodeRange(address, ExecutionManager::GetScanFlags());
+    if (pRS == NULL || (pRS->_flags & RangeSection::RANGE_SECTION_RANGELIST) == 0)
+    {
+        return false;
+    }
+
+    switch (pRS->_pRangeList->GetCodeBlockKind())
+    {
+    case STUB_CODE_BLOCK_STUBPRECODE:
+    case STUB_CODE_BLOCK_FIXUPPRECODE:
+#ifdef FEATURE_TIERED_COMPILATION
+    case STUB_CODE_BLOCK_CALLCOUNTING:
+#endif
+        return true;
+    default:
+        return false;
+    }
+}
+#endif // _DEBUG && HOST_OSX && HOST_ARM64
+
 // bool DebuggerController::ApplyPatch()    applies
 // the patch described to the code, and
 // remembers the replaced opcode.  Note that the same address
@@ -1552,6 +1582,10 @@ bool DebuggerController::ApplyPatch(DebuggerControllerPatch *patch)
 #endif // FEATURE_INTERPRETER
 
 #if _DEBUG
+#if defined(HOST_OSX) && defined(HOST_ARM64)
+        _ASSERTE(!IsImmutableRuntimeCode((PCODE)patch->address) &&
+            "Debugger breakpoint patches must not target immutable runtime code on macOS ARM64");
+#endif
         VerifyExecutableAddress((BYTE*)patch->address);
 #endif
 

@@ -1727,7 +1727,7 @@ protected:
 
 
     virtual void TriggerMethodEnter(Thread * thread, DebuggerJitInfo * dji, const BYTE * ip, FramePointer fp);
-    void TriggerTracepoint(DebuggerTracepointArgs *args) override;
+    virtual void TriggerTracepoint(DebuggerTracepointArgs *args);
 
     void ResetRange();
 
@@ -1948,7 +1948,7 @@ private:
                       Thread *thread,
                       TRIGGER_WHY tyWhy);
     void TriggerTraceCall(Thread *thread, const BYTE *ip);
-    void TriggerTracepoint(DebuggerTracepointArgs *args) override;
+    virtual void TriggerTracepoint(DebuggerTracepointArgs *args);
     bool SendEvent(Thread *thread, bool fInterruptedBySetIp);
 };
 
